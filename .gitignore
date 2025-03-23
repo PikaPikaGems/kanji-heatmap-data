@@ -1,0 +1,7 @@
+/input/*
+!/input/.keep
+/output/*
+!/output/.keep
+/releases/*
+!/releases/.keep
+
