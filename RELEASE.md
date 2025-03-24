@@ -24,12 +24,13 @@ You can also check the tags in GitHub [here][gh-tags].
 
 ## Publish in GitHub
 
-Go to [Releases][gh-releases] and create a new release.
+Go to [Releases][gh-releases] and draft a new release.
 
-1. Select the version tag from the dropdown.
-2. Release title: kanji-heatmap-data `<version>`
-3. Add any notable changes in the Description.
-4. Publish release
+1. Select the version tag from the dropdown
+2. Set Release title: kanji-heatmap-data `<version>`
+3. Add the notable changes in the Description
+4. Upload the generated `kanji-heatmap-data.tar.gz`
+5. Publish release
 
 [gh-releases]: https://github.com/PikaPikaGems/kanji-heatmap-data/releases
 [gh-tags]: https://github.com/PikaPikaGems/kanji-heatmap-data/tags
