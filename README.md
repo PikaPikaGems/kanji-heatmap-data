@@ -40,4 +40,10 @@ The following output files should be generated in the `output` directory:
 
 The software is distributed under the [MIT License][mit-license].
 
+The input data comes from [Kanji Data Releases][pika-data] and [JMdict Furigana Map][pika-furi],
+both under [CC BY-SA 4.0][cc-by-sa-4].
+
 [mit-license]: https://github.com/PikaPikaGems/kanji-heatmap-data/blob/main/LICENSE
+[cc-by-sa-4]: https://creativecommons.org/licenses/by-sa/4.0
+[pika-data]: https://github.com/PikaPikaGems/kanji-data-releases
+[pika-furi]: https://github.com/PikaPikaGems/jmdict-furigana-map
