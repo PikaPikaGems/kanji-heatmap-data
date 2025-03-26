@@ -148,12 +148,21 @@ def dump_word_details(all_words):
     vocab_furigana = {}
 
     for word in all_words:
-        furigana = furigana_source.get(word, []) 
+        furigana_deep = furigana_source.get(word, None)
 
-        if len(furigana) == 0:
+        if not furigana_deep:
             raise Exception("Decomposition Not Found", word)
         
-        vocab_furigana[word] = furigana
+        furigana_keys = [x for x in furigana_deep.keys()]
+
+        if not furigana_keys:
+            raise Exception("Decomposition Not Found", word)
+        
+        # get the first pronounciation available
+        key = furigana_keys[0]
+        furigana = furigana_deep[key]
+
+        vocab_furigana[word] = furigana 
     
     vocab_meanings = {}
     meaning_source_common = create_or_retrieve_vocab_meaning_map()
@@ -180,9 +189,10 @@ def dump_word_details(all_words):
     WORD_DETAILS = {}
     for word in all_words: 
         WORD_DETAILS[word] = [
-            vocab_furigana[word], 
-            vocab_meanings[word]
+            vocab_meanings[word],
+            vocab_furigana[word],
         ]
+    
     
 
     print("in common meaning source only:", count_common_source_only)
