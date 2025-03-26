@@ -18,6 +18,7 @@ Download aggregated kanji information from [Kanji Data Releases][pika-data]
 ```bash
 curl --output-dir input -OL https://github.com/PikaPikaGems/kanji-data-releases/releases/latest/download/kanji-data.tar.gz
 tar -xzf ./input/kanji-data.tar.gz -C ./input/
+rm ./input/kanji-data.tar.gz
 ```
 
 Download the map of vocabulary to its components from [JMdict Furigana Map][pika-furi]
@@ -25,15 +26,60 @@ Download the map of vocabulary to its components from [JMdict Furigana Map][pika
 ```bash
 curl --output-dir input -OL https://github.com/PikaPikaGems/jmdict-furigana-map/releases/latest/download/jmdict-furigana-map.json.tar.gz
 tar -xzf ./input/jmdict-furigana-map.json.tar.gz -C ./input/
+rm ./input/jmdict-furigana-map.json.tar.gz
 ```
 
-Download and prepare the the Simplified JMdict JSON file
+Download and prepare the the Simplified JMdict JSON file from [Jmdict Simplified][jmdict-simplified]
 
 ```
 curl --output-dir input -OL https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1%2B20250324123350/jmdict-eng-common-3.6.1+20250324123350.json.tgz
 tar -xzf ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz -C ./input/
 mv input/jmdict-eng-common-3.6.1.json input/scriptin-jmdict-eng-common.json
 
+```
+
+Remove the files which you don't need anymore, to reduce clutter
+
+```
+rm ./input/kanji-data.tar.gz
+rm ./input/jmdict-furigana-map.json.tar.gz
+rm ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz
+```
+
+This leave the `input` directory with the following files:
+
+**From [Kanji Data Releases][pika-data]**
+
+```
+cum_use.json
+kanji_vocab.json
+merged_kanji.json
+missing_components.json
+phonetic_components.json
+vocab_furigana.json
+vocab_meaning.json
+```
+
+**From: [JMdict Furigana Map][pika-furi]**
+
+```
+mdict-furigana-map.json
+```
+
+**From [Jmdict Simplified][jmdict-simplified]**
+
+```
+scriptin-jmdict-eng-common.json
+```
+
+### Overrides
+
+Edit the following files to specify the values you want to override
+
+```
+kanji_parts.json
+kanji_vocab.json
+keywords.json
 ```
 
 ### Transform Data
@@ -51,13 +97,30 @@ The following output files should be generated in the `output` directory:
 - phonetic.json
 - vocabulary.json
 
+Additionally the following files will be created by running the script above
+inthe `input` directory. This will not be part of the release file.
+
+```
+jmdict-vocab-meaning.json
+```
+
+### Inspect Data
+
+```bash
+./src/kanji_inspect.py
+```
+
+## Prepare release
+
+See `RELEASE.md`
+
 ## License and Credits
 
 The software is distributed under the [MIT License][mit-license].
 
 The input data comes from:
 
-1. Dmitry Shpika's [jmdict-simplified](https://github.com/scriptin/jmdict-simplified) which project uses the [JMdict/EDICT][jmdict-edict] file, which is the property of the Electronic Dictionary Research and Development Group (https://www.edrdg.org/),
+1. Dmitry Shpika's [jmdict-simplified][jmdict-simplified] which project uses the [JMdict/EDICT][jmdict-edict] file, which is the property of the Electronic Dictionary Research and Development Group (https://www.edrdg.org/),
    and used in conformance with the Group's [license](https://www.edrdg.org/edrdg/licence.html).
 2. [Kanji Data Releases][pika-data] and [JMdict Furigana Map][pika-furi],
    both under [CC BY-SA 4.0][cc-by-sa-4].
@@ -75,3 +138,4 @@ All derived files are distributed under the same license, as the original licens
 [pika-furi]: https://github.com/PikaPikaGems/jmdict-furigana-map
 [EDRDG-license]: http://www.edrdg.org/edrdg/licence.html
 [jmdict-edict]: https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project
+[jmdict-simplified]: https://github.com/scriptin/jmdict-simplified
