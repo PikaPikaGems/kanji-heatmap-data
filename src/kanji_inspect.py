@@ -16,9 +16,9 @@ OWN_KEYWORDS_OVERRIDE = kanji_load.load_keywords_override()
 def get_max_strokes(acc, iter):
     kanji = iter[1]
     kanji_info = KANJI_DATA[kanji]
-    new_acc = kanji_extract.get_strokes(kanji_info)
-    if new_acc is not None:
-        new_acc = max(new_acc, acc)
+    new_item = kanji_extract.get_strokes(kanji_info)
+    if new_item is not None:
+        new_acc = max(new_item, acc)
         if new_acc > acc:
             print("{:<2} {:<5}".format(kanji, new_acc))
         return new_acc
@@ -100,6 +100,10 @@ def get_component_parts(kanji_info):
 def get_keyword(kanji):
     return kanji_extract.get_keyword(KANJI_DATA[kanji], OWN_KEYWORDS_OVERRIDE)
 
+def get_keyword_chars(kanji_info):
+    kanji = kanji_info["kanji"]
+    return get_keyword(kanji)
+
 # ****************
 # Inspect the Data
 # ****************
@@ -112,6 +116,10 @@ print("---> max strokes count:", max_strokes)
 
 max_deps = reduce(generic_get_max(get_component_parts), iter, 0)
 print("---> max dependencies count:", max_deps)
+# 8
+
+max_keyword_length = reduce(generic_get_max(get_keyword_chars), iter, 0)
+print("---> max keyword length:",max_keyword_length )
 # 8
 
 max_on_readings = reduce(generic_get_max(kanji_extract.get_all_on_readings), iter, 0)
