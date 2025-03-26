@@ -33,9 +33,12 @@ def get_all_generic(all_, all_source_keys):
 
 def get_component_parts(kanji_info, overrides = {}):
 
-    deps = kanji_info.get('componentDependencies', {}).get('topoKanji', [])
-    return overrides.get(kanji_info['kanji'], None) or deps
+    override = overrides.get(kanji_info['kanji'], None)
 
+    if override is None:
+        return kanji_info.get('componentDependencies', {}).get('topoKanji', [])
+    return override
+    
 def get_keyword(kanji_info, overrides):
     all_ = kanji_info.get('meanings', {})
     def dig(source_key):
