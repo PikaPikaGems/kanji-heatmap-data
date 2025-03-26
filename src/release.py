@@ -5,31 +5,21 @@ import tarfile
 import argparse
 import sys
 import subprocess
-
+import constants as const
 
 def create_archive() -> bool:
-    output_files = [
-        "component_keyword.json",
-        "cum_use.json",
-        "kanji_extended.json",
-        "kanji_main.json",
-        "phonetic.json",
-        "vocabulary.json"
-    ]
-    output_dir = "output"
-    release_dir = "releases"
-    archive_file = "kanji-heatmap-data.tar.gz"
-    archive_path = os.path.join(release_dir, archive_file)
+    
+    archive_path = os.path.join(const.dir_releases, const.archive_file)
 
-    for output_file in output_files:
-        file_path = os.path.join(output_dir, output_file)
+    for output_file in const.output_files:
+        file_path = os.path.join(const.dir_out, output_file)
         if not os.path.isfile(file_path):
             print(f"Error: Required output file not found: {file_path}")
             return False
 
     with tarfile.open(archive_path, mode="w:gz") as tar:
-        for output_file in output_files:
-            file_path = os.path.join(output_dir, output_file)
+        for output_file in const.output_files:
+            file_path = os.path.join(const.dir_out, output_file)
             tar.add(file_path, arcname=output_file)
 
     print(f"Successfully created archive: {archive_path}")

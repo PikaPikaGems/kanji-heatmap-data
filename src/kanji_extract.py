@@ -55,7 +55,9 @@ def get_keyword(kanji_info, overrides):
         print("No keyword:", kanji_info["kanji"])
         return None
 
-    return keyword.strip().lower()
+    # some keywords are just too long
+    sanitized_keyword = keyword.split("/")[0].strip().lower()
+    return sanitized_keyword
 
 def get_all_meanings(kanji_info):
     all_source_keys = [

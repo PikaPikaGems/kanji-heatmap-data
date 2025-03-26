@@ -1,9 +1,9 @@
 import json
 
 INDENT = None
-#INDENT = 4
+# INDENT = 4
 SEPARATORS = (',', ':')
-#SEPARATORS = None
+# SEPARATORS = None
 
 def dump_json(file_name, data, indent=INDENT, separators=SEPARATORS):
     with open(file_name, mode="w", encoding="utf-8") as write_file:
@@ -11,15 +11,15 @@ def dump_json(file_name, data, indent=INDENT, separators=SEPARATORS):
 
 
 def get_data_from_file(file_path):
+    result = {}
     with open(file_path, mode="r", encoding="utf-8") as read_file:
-        return json.load(read_file)
+        result = json.load(read_file)
     
-    return {}
+    return result
 
 def compress_json(path_in, path_out):
     in_file = get_data_from_file(path_in)
     dump_json(path_out, in_file)
-
 
 def to_int(str, default_value=None):
     if isinstance(str, (int)):
