@@ -34,15 +34,15 @@ def build_vocab_meaning_map(items):
     result = {}
     
     for item in words:
-        # Step 1: Check if there's at least one common kanji element
+        # Check if there's at least one common kanji element
         common_kanji = [k for k in item.get('kanji', []) if k.get('common', False)]
         if not common_kanji:
             continue
             
-        # Step 2: Get the first common kanji text as the word
+        # Get the first common kanji text as the word
         word = common_kanji[0]['text']
         
-        # Step 3: Process senses to get the definition
+        # Process senses to get the definition
         definition_parts = []
         
         for sense in item.get('sense', []):
@@ -75,20 +75,27 @@ def create_or_retrieve_vocab_meaning_map():
     return meanings
     
 # *********************************
-# LOAD FROM JSON FILES
+# Functions to load json files
 # *********************************
-OWN_KEYWORDS_OVERRIDE = utils.get_data_from_file(IN_KEYWORD_OVERRIDES_PATH)
-OWN_PARTS_OVERRIDE = utils.get_data_from_file(IN_KANJI_PARTS_OVERRIDES_PATH)
-OWN_VOCAB_OVERRIDE = utils.get_data_from_file(IN_VOCAB_OVERRIDES_PATH)
+def load_keywords_override():
+    return utils.get_data_from_file(IN_KEYWORD_OVERRIDES_PATH)
 
-KANJI_DATA = utils.get_data_from_file(IN_MERGED_KANJI_PATH) 
+def load_decomposition_override():
+    return utils.get_data_from_file(IN_KANJI_PARTS_OVERRIDES_PATH)
 
-# We just put the kanji as part of the value of the dictionary sfor quick access
-for kanji in KANJI_DATA.keys(): 
-    KANJI_DATA[kanji]['kanji'] = kanji
+def load_vocab_override():
+    return utils.get_data_from_file(IN_VOCAB_OVERRIDES_PATH)
 
-# LOAD vocabulary details from json
-KANJI_WORDS = utils.get_data_from_file(IN_KANJI_VOCAB_PATH)
+def load_aggregated_kanji_data():
+    kanji_data = utils.get_data_from_file(IN_MERGED_KANJI_PATH)
+    # We just put the kanji as part of the value of the dictionary sfor quick access
+    for kanji in kanji_data.keys(): 
+        kanji_data[kanji]['kanji'] = kanji
+
+    return kanji_data
+
+def load_automated_kanji_vocab():
+    return utils.get_data_from_file(IN_KANJI_VOCAB_PATH)
 
 # *********************************
 # Functions to dump created dictionaries to json
@@ -102,20 +109,20 @@ def dump_phonetic_components():
 
 
 def dump_part_keyword_with_overrides():
-    # merge missing components from own keyword list
-    ADDITIONAL_KEYWORDS = utils.get_data_from_file(IN_MISSING_COMPONENTS_PATH)
+    additional_keywords = utils.get_data_from_file(IN_MISSING_COMPONENTS_PATH)
+    own_keywords_override = load_keywords_override()
+    kanji_data = load_aggregated_kanji_data()
 
-    for part, keyword in OWN_KEYWORDS_OVERRIDE.items():
-        if KANJI_DATA.get(part, None):
+    for part, keyword in own_keywords_override.items():
+        if kanji_data.get(part, None):
             continue
 
-        ADDITIONAL_KEYWORDS[part] = keyword
+        additional_keywords[part] = keyword
 
-    utils.dump_json(OUT_PART_KEYWORD_PATH, ADDITIONAL_KEYWORDS)
+    utils.dump_json(OUT_PART_KEYWORD_PATH, additional_keywords)
 
 
 def dump_cum_use():
-    # Compress cumulative use data
     def convert_cum_use_point(point):
         [x, y] = point 
         return [x, round(float(y), 2)]
@@ -128,11 +135,11 @@ def dump_cum_use():
     utils.dump_json(OUT_CUM_USE_PATH, cum_use_data)
 
 
-def dump_to_main_kanji_info(info):
-    utils.dump_json(OUT_KANJI_MAIN_PATH , info)
+def dump_to_main_kanji_info(data):
+    utils.dump_json(OUT_KANJI_MAIN_PATH , data)
 
-def dump_to_extended_kanji_info(info):
-    utils.dump_json(OUT_KANJI_EXTENDED_PATH , info)
+def dump_to_extended_kanji_info(data):
+    utils.dump_json(OUT_KANJI_EXTENDED_PATH , data)
 
 def dump_word_details(all_words):
     print ("All sample words count:", len(all_words))
@@ -149,20 +156,20 @@ def dump_word_details(all_words):
         vocab_furigana[word] = furigana
     
     vocab_meanings = {}
-    meaning_source1 = create_or_retrieve_vocab_meaning_map()
-    meaning_source2 = utils.get_data_from_file(IN_VOCAB_MEANING_PATH)
+    meaning_source_common = create_or_retrieve_vocab_meaning_map()
+    meaning_source_custom = utils.get_data_from_file(IN_VOCAB_MEANING_PATH)
 
-    countM1 = 0
-    countM2 = 0
+    count_common_source_only = 0
+    count_custom_source_only = 0
     for word in all_words:
-        meaning1 = meaning_source1.get(word, None)
-        meaning2 = meaning_source2.get(word, None)
+        meaning1 = meaning_source_common.get(word, None)
+        meaning2 = meaning_source_custom.get(word, None)
 
         if meaning1 and not meaning2:
-            countM1+=1
+            count_common_source_only+=1
 
         if meaning2 and not meaning1:
-            countM2+=1
+            count_custom_source_only+=1
 
         meaning = meaning1 or meaning2
         if len(meaning) == 0:
@@ -178,19 +185,10 @@ def dump_word_details(all_words):
         ]
     
 
-    print("in common dictionary only:", countM1)
-    print("in custom dictionary only:", countM2)
+    print("in common meaning source only:", count_common_source_only)
+    print("in custom meaning source only:", count_custom_source_only)
     utils.dump_json(OUT_VOCAB_PATH, WORD_DETAILS)
 
 
-# *********************************
-# This is what the user should import
-# *********************************
-KANJI_INFO = {
-    "KANJI_DATA": KANJI_DATA,
-    "OWN_KEYWORDS_OVERRIDE": OWN_KEYWORDS_OVERRIDE,
-    "OWN_PARTS_OVERRIDE": OWN_PARTS_OVERRIDE,
-    "KANJI_WORDS": KANJI_WORDS,
-    "OWN_VOCAB_OVERRIDE": OWN_VOCAB_OVERRIDE
-}
+
 

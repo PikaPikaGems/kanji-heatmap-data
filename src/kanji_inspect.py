@@ -2,13 +2,16 @@
 
 from functools import reduce
 import kanji_extract
-from kanji_load import KANJI_INFO
+import kanji_load
 
-KANJI_LIST = KANJI_INFO["KANJI_LIST"]
-WORD_DETAILS = KANJI_INFO['WORD_DETAILS']
-OWN_KEYWORDS_OVERRIDE = KANJI_INFO['OWN_KEYWORDS_OVERRIDE']
-KANJI_DATA = KANJI_INFO['KANJI_DATA']
-OWN_PARTS_OVERRIDE = KANJI_INFO['OWN_PARTS_OVERRIDE']
+KANJI_DATA = kanji_load.load_aggregated_kanji_data()
+KANJI_LIST = KANJI_DATA.keys()
+OWN_PARTS_OVERRIDE = kanji_load.load_decomposition_override()
+OWN_KEYWORDS_OVERRIDE = kanji_load.load_keywords_override()
+
+# ****************
+# Helper functions
+# ****************
 
 def get_max_strokes(acc, iter):
     kanji = iter[1]
@@ -91,14 +94,20 @@ def get_reading_stats(get_readings):
     for item in reading_counts_array[:top_x]:
         print("{:<10} {:<15}".format(item['count'], item['reading']))
 
+def get_component_parts(kanji_info):
+    return kanji_extract.get_component_parts(kanji_info, OWN_PARTS_OVERRIDE)
+
+def get_keyword(kanji):
+    return kanji_extract.get_keyword(KANJI_DATA[kanji], OWN_KEYWORDS_OVERRIDE)
+
+# ****************
+# Inspect the Data
+# ****************
 
 iter = [x for x in enumerate(KANJI_LIST)]
 max_strokes = reduce(get_max_strokes, iter, 0)
 print("---> max strokes count:", max_strokes)
 # 29
-
-def get_component_parts(kanji_info):
-    return kanji_extract.get_component_parts(kanji_info, OWN_PARTS_OVERRIDE)
 
 
 max_deps = reduce(generic_get_max(get_component_parts), iter, 0)
@@ -108,7 +117,7 @@ print("---> max dependencies count:", max_deps)
 max_on_readings = reduce(generic_get_max(kanji_extract.get_all_on_readings), iter, 0)
 
 print("---> max onyomi count:", max_on_readings)
-# 10
+# 5
 
 max_kun_readings = reduce(generic_get_max(kanji_extract.get_all_kun_readings), iter, 0)
 print("---> max kun count:", max_kun_readings)
@@ -119,33 +128,25 @@ max_meaning = reduce(generic_get_max(kanji_extract.get_all_meanings), iter, 0)
 print("---> max meaning count:", max_meaning)
 # 16
 
-print("---> Number of Words:", len(WORD_DETAILS.keys()))
-# ---> word count 4453
-
-
-# Verify if keyword is unique
-keyword_list = [
-    kanji_extract.get_keyword(KANJI_DATA[kanji], OWN_KEYWORDS_OVERRIDE) for kanji in KANJI_LIST
-]
-
-# KANJI_LIST WORD_DETAILS OWN_KEYWORDS_OVERRIDE KANJI_DATA OWN_PARTS_OVERRIDE
 print("---> Number of Kanjis:", len(KANJI_LIST))
 # 2427
 
-
+# Verify if keyword is unique
+keyword_list = [get_keyword(kanji) for kanji in KANJI_LIST]
 
 print("---> Unique Keywords:", len(set(keyword_list)))
-# Before the override -> Unique Keywords 2423
+# 2427
 
+# Find kanji with no keys
 no_keys = list(
     filter(
-        lambda x: kanji_extract.get_keyword(KANJI_DATA[x], OWN_KEYWORDS_OVERRIDE) is None,
+        lambda kanji: get_keyword(kanji) is None,
         KANJI_LIST
     )
 )
 
 print("---> No keywords:", no_keys)
-# Before the overrides -> No keywords: ['呟', '睨', '頷'] 
+# []
 
 print("..........")
 print("ONYOMI")
