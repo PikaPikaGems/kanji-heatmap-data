@@ -90,7 +90,8 @@ The following output files should be generated in the `output` directory:
 - kanji_extended.json
 - kanji_main.json
 - phonetic.json
-- vocabulary.json
+- vocabulary_meaning.json
+- vocabulary_furigana.json
 
 Additionally the following files will be created by running the script above
 inthe `input` directory. This will not be part of the release file.
