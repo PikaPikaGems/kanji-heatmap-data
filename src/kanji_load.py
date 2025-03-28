@@ -50,8 +50,11 @@ def build_vocab_meaning_map(items, common_only=True, definition_count=3):
         if not all_kanji_words:
             continue
 
-        # Get the first common kanji text as the word
-        word = all_kanji_words[0]["text"]
+        # Get the first common kanji text as the word, preferably only japanese characters
+        word = next(
+            (x["text"] for x in all_kanji_words if utils.is_japanese_only(x["text"])),
+            all_kanji_words[0]["text"],
+        )
 
         # Process senses to get the definition
         definition_parts = []
