@@ -7,8 +7,9 @@ import sys
 import subprocess
 import constants as const
 
+
 def create_archive() -> bool:
-    
+
     archive_path = os.path.join(const.dir_releases, const.archive_file)
 
     for output_file in const.output_files:
@@ -25,6 +26,7 @@ def create_archive() -> bool:
     print(f"Successfully created archive: {archive_path}")
     return True
 
+
 def create_git_tag(version: str) -> bool:
     try:
         subprocess.run(["git", "--version"], check=True, capture_output=True)
@@ -34,7 +36,7 @@ def create_git_tag(version: str) -> bool:
             ["git", "tag", "-a", version, "-m", tag_message],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         subprocess.run(
@@ -62,8 +64,11 @@ def validate_version(version: str):
 
     return version
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Prepare release (archive output files, create/push tag)")
+    parser = argparse.ArgumentParser(
+        description="Prepare release (archive output files, create/push tag)"
+    )
     parser.add_argument(
         "version", type=validate_version, help="Version number (e.g. v0.9, 1.0.1)"
     )
@@ -77,6 +82,7 @@ def main():
     tag_success = create_git_tag(args.version)
 
     sys.exit(0 if tag_success else 1)
+
 
 if __name__ == "__main__":
     main()

@@ -13,6 +13,7 @@ OWN_KEYWORDS_OVERRIDE = kanji_load.load_keywords_override()
 # Helper functions
 # ****************
 
+
 def get_max_strokes(acc, iter):
     kanji = iter[1]
     kanji_info = KANJI_DATA[kanji]
@@ -23,6 +24,7 @@ def get_max_strokes(acc, iter):
             print("{:<2} {:<5}".format(kanji, new_acc))
         return new_acc
     return acc
+
 
 def generic_get_max(retrieve_data):
     def get_max(acc, iter):
@@ -38,6 +40,7 @@ def generic_get_max(retrieve_data):
 
     return get_max
 
+
 def get_reading_stats(get_readings):
     # number of possible readings
     def get_reading_set(acc, kanji):
@@ -45,64 +48,65 @@ def get_reading_stats(get_readings):
         items = get_readings(kanji_info) or []
         acc.update(items)
         return acc
-    
-    
+
     one_reading = list(
-        filter(
-            lambda x: len(get_readings(KANJI_DATA[x]) or []) == 1,
-            KANJI_LIST
-        )
+        filter(lambda x: len(get_readings(KANJI_DATA[x]) or []) == 1, KANJI_LIST)
     )
-    
+
     print("---> number of kanjis with one reading", len(one_reading))
-    
-    
+
     all_readings = reduce(get_reading_set, KANJI_LIST, set())
     print("---> All possible readings", len(list(all_readings)))
-    
+
     reading_counts = {}
     for kanji in KANJI_LIST:
         readings = get_readings(KANJI_DATA[kanji]) or []
         for reading in readings:
             reading_counts[reading] = reading_counts.get(reading, 0) + 1
-    
-    reading_counts_array = [ 
-        { 'reading': reading , 'count': count } for reading, count in reading_counts.items()
+
+    reading_counts_array = [
+        {"reading": reading, "count": count}
+        for reading, count in reading_counts.items()
     ]
-    
+
     unique_reading_count = len(reading_counts_array)
     print("---> unique_readings", unique_reading_count)
-    
-    multiple_on_count = len(list(filter(lambda x: x['count'] > 1, reading_counts_array)))
-    single_on_count = len(list(filter(lambda x: x['count'] <= 1, reading_counts_array)))
-    
-    print("---> reading with multiple kanjis:", multiple_on_count) 
-    print("---> reading with single kanji:", single_on_count) 
-    
+
+    multiple_on_count = len(
+        list(filter(lambda x: x["count"] > 1, reading_counts_array))
+    )
+    single_on_count = len(list(filter(lambda x: x["count"] <= 1, reading_counts_array)))
+
+    print("---> reading with multiple kanjis:", multiple_on_count)
+    print("---> reading with single kanji:", single_on_count)
+
     def sort_func(item):
-        return item['count']
-    
-    # An array of items { kanji, count, fraction, cum_use } now sorted by frequency, most frequent at the top 
+        return item["count"]
+
+    # An array of items { kanji, count, fraction, cum_use } now sorted by frequency, most frequent at the top
     reading_counts_array.sort(key=sort_func, reverse=True)
-    
-    
+
     # Top X readings
     top_x = 10
     # mapping count of reading
     print(f"---- Top {top_x} Readings ---")
-    print("{:<10} {:<15}".format('Reading','Count'))
+    print("{:<10} {:<15}".format("Reading", "Count"))
     for item in reading_counts_array[:top_x]:
-        print("{:<10} {:<15}".format(item['count'], item['reading']))
+        print("{:<10} {:<15}".format(item["count"], item["reading"]))
+
 
 def get_component_parts(kanji_info):
     return kanji_extract.get_component_parts(kanji_info, OWN_PARTS_OVERRIDE)
 
+
 def get_keyword(kanji):
     return kanji_extract.get_keyword(KANJI_DATA[kanji], OWN_KEYWORDS_OVERRIDE)
+
 
 def get_keyword_chars(kanji_info):
     kanji = kanji_info["kanji"]
     return get_keyword(kanji)
+
 
 # ****************
 # Inspect the Data
@@ -119,7 +123,7 @@ print("---> max dependencies count:", max_deps)
 # 8
 
 max_keyword_length = reduce(generic_get_max(get_keyword_chars), iter, 0)
-print("---> max keyword length:",max_keyword_length )
+print("---> max keyword length:", max_keyword_length)
 # 8
 
 max_on_readings = reduce(generic_get_max(kanji_extract.get_all_on_readings), iter, 0)
@@ -146,12 +150,7 @@ print("---> Unique Keywords:", len(set(keyword_list)))
 # 2427
 
 # Find kanji with no keys
-no_keys = list(
-    filter(
-        lambda kanji: get_keyword(kanji) is None,
-        KANJI_LIST
-    )
-)
+no_keys = list(filter(lambda kanji: get_keyword(kanji) is None, KANJI_LIST))
 
 print("---> No keywords:", no_keys)
 # []
@@ -165,4 +164,3 @@ print("..........")
 print("KUNYOMI")
 print("..........")
 get_reading_stats(kanji_extract.get_all_kun_readings)
-

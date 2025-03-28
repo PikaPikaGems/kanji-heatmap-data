@@ -1,4 +1,3 @@
-
 outfile_component_keyword = "component_keyword.json"
 outfile_cum_use = "cum_use.json"
 outfile_kanji_extended = "kanji_extended.json"

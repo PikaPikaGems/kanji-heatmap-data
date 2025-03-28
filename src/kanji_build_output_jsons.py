@@ -6,11 +6,13 @@ import kanji_load
 automated_all_words = kanji_load.load_automated_kanji_vocab()
 override_all_words = kanji_load.load_vocab_override()
 
+
 def get_words(kanji):
     automated_words = automated_all_words.get(kanji, [])
     override_words = override_all_words.get(kanji, [])
     kanji_words = (override_words + automated_words)[:2]
     return kanji_words
+
 
 # ***********************
 # Begin extracting kanji information
@@ -24,7 +26,7 @@ all_words = set(())
 
 kanji_data = kanji_load.load_aggregated_kanji_data()
 keyword_overrides = kanji_load.load_keywords_override()
-parts_overrides =  kanji_load.load_decomposition_override()
+parts_overrides = kanji_load.load_decomposition_override()
 
 for kanji in kanji_data.keys():
 
@@ -51,7 +53,7 @@ for kanji in kanji_data.keys():
         kanji_extract.get_all_on_readings(kanji_info) or [],
         kanji_extract.get_all_kun_readings(kanji_info) or [],
         kanji_extract.get_semantic_phonetic(kanji_info) or [],
-        kanji_words
+        kanji_words,
     ]
 
 # ***********************
@@ -60,7 +62,7 @@ for kanji in kanji_data.keys():
 kanji_load.dump_to_main_kanji_info(kanji_main_reformatted)
 kanji_load.dump_to_extended_kanji_info(kanji_extended_reformatted)
 
-print ("All sample words count:", len(all_words))
+print("All sample words count:", len(all_words))
 kanji_load.dump_all_vocab_furigana(all_words)
 kanji_load.dump_all_vocab_meanings(all_words)
 
