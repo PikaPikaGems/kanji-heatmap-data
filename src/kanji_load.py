@@ -4,13 +4,14 @@ import constants as const
 
 IN_MERGED_KANJI_PATH = os.path.join(const.dir_in, "merged_kanji.json")
 IN_KANJI_VOCAB_PATH = os.path.join(const.dir_in, "kanji_vocab.json")
+IN_VOCAB_FUGIGANA_PATH = os.path.join(const.dir_in, "vocab_furigana.json")
 IN_VOCAB_MEANING_PATH = os.path.join(const.dir_in, "vocab_meaning.json")
 IN_MISSING_COMPONENTS_PATH = os.path.join(const.dir_in, "missing_components.json")
 IN_PHONETIC_COMPONENTS_PATH = os.path.join(const.dir_in, "phonetic_components.json")
 IN_CUM_USE_PATH = os.path.join(const.dir_in, "cum_use.json")
 
 IN_ALL_VOCAB_FURIGANA_PATH = os.path.join(const.dir_in, "jmdict-furigana-map.json")
-IN_ALL_VOCAB_MEANING_JM_DICT_PATH = os.path.join(const.dir_in, "scriptin-jmdict-eng-common.json")
+IN_ALL_VOCAB_MEANING_JM_DICT_PATH = os.path.join(const.dir_in, "scriptin-jmdict-eng.json")
 MID_ALL_VOCAB_MEANING_PATH = os.path.join(const.dir_in, "jmdict-vocab-meaning.json")
 
 IN_KEYWORD_OVERRIDES_PATH = os.path.join(const.dir_overrides, "keywords.json")
@@ -22,25 +23,30 @@ OUT_KANJI_MAIN_PATH = os.path.join(const.dir_out, const.outfile_kanji_main)
 OUT_KANJI_EXTENDED_PATH = os.path.join(const.dir_out, const.outfile_kanji_extended)
 OUT_PART_KEYWORD_PATH = os.path.join(const.dir_out, const.outfile_component_keyword)
 OUT_PHONETIC_PATH = os.path.join(const.dir_out, const.outfile_phonetic)
-OUT_VOCAB_PATH = os.path.join(const.dir_out, const.outfile_vocabulary)
+
+OUT_VOCAB_MEANING_PATH =  os.path.join(const.dir_out, const.outfile_vocab_meaning)
+OUT_VOCAB_FURIGANA_PATH = os.path.join(const.dir_out, const.outfile_vocab_furigana)
+
 OUT_CUM_USE_PATH = os.path.join(const.dir_out, const.outfile_cum_use)
 
 # *********************************
 # { word: meaning }
 # *********************************
-def build_vocab_meaning_map(items):
+def build_vocab_meaning_map(items, common_only = True, definition_count = 3):
     words = items['words']
 
     result = {}
     
     for item in words:
         # Check if there's at least one common kanji element
-        common_kanji = [k for k in item.get('kanji', []) if k.get('common', False)]
-        if not common_kanji:
+        all_kanji_words = [k for k in item.get('kanji', [])]
+        if common_only:
+            all_kanji_words = [k for k in item.get('kanji', []) if k.get('common', False)]
+        if not all_kanji_words:
             continue
             
         # Get the first common kanji text as the word
-        word = common_kanji[0]['text']
+        word = all_kanji_words[0]['text']
         
         # Process senses to get the definition
         definition_parts = []
@@ -54,23 +60,25 @@ def build_vocab_meaning_map(items):
                         definition_parts.append(gloss['text'])
         
         if definition_parts:
-            definition = ', '.join(definition_parts)
+            definition = ', '.join(definition_parts[:definition_count])
             result[word] = definition
         
     return result
 
-def create_or_retrieve_vocab_meaning_map():
+def create_or_retrieve_vocab_meaning_map(refresh=False, common_only=True, definition_count=3):
 
     meanings = None
-    try:
-        meanings = utils.get_data_from_file(MID_ALL_VOCAB_MEANING_PATH)
-        return meanings
-    except:
-        print(f"Failed read file {MID_ALL_VOCAB_MEANING_PATH}.")
-        print(f"Will rebuild dictionary instead...")
+    
+    if not refresh:
+        try:
+            meanings = utils.get_data_from_file(MID_ALL_VOCAB_MEANING_PATH)
+            return meanings
+        except:
+            print(f"Failed read file {MID_ALL_VOCAB_MEANING_PATH}.")
+            print(f"Will rebuild dictionary instead...")
 
     items = utils.get_data_from_file(IN_ALL_VOCAB_MEANING_JM_DICT_PATH)
-    meanings = build_vocab_meaning_map(items)
+    meanings = build_vocab_meaning_map(items, common_only, definition_count)
     utils.dump_json(MID_ALL_VOCAB_MEANING_PATH, meanings)
     return meanings
     
@@ -138,34 +146,51 @@ def dump_cum_use():
 def dump_to_main_kanji_info(data):
     utils.dump_json(OUT_KANJI_MAIN_PATH , data)
 
+
 def dump_to_extended_kanji_info(data):
     utils.dump_json(OUT_KANJI_EXTENDED_PATH , data)
 
-def dump_word_details(all_words):
-    print ("All sample words count:", len(all_words))
 
+
+# *********************************
+# Functions to dump word details in particular
+# *********************************
+def dump_all_vocab_furigana(all_words):
+ 
     furigana_source = utils.get_data_from_file(IN_ALL_VOCAB_FURIGANA_PATH)
+    furigana_source_custom = utils.get_data_from_file(IN_VOCAB_FUGIGANA_PATH)
+
     vocab_furigana = {}
 
+    count_not_in_default_furigana_src = 0
+
     for word in all_words:
-        furigana_deep = furigana_source.get(word, None)
 
-        if not furigana_deep:
-            raise Exception("Decomposition Not Found", word)
-        
-        furigana_keys = [x for x in furigana_deep.keys()]
+        furigana = furigana_source_custom.get(word, None)
 
-        if not furigana_keys:
-            raise Exception("Decomposition Not Found", word)
+        if not furigana:
+            count_not_in_default_furigana_src+=1
+            furigana_deep = furigana_source.get(word, None)
+            if not furigana_deep:
+                raise Exception("Decomposition Not Found", word)
+            furigana_keys = [x for x in furigana_deep.keys()]
+
+            if not furigana_keys:
+                raise Exception("Decomposition Not Found", word)
         
-        # get the first pronounciation available
-        key = furigana_keys[0]
-        furigana = furigana_deep[key]
+            # get the first pronounciation available
+            key = furigana_keys[0]
+            furigana = furigana_deep[key]
 
         vocab_furigana[word] = furigana 
+    print("total of not in default furigana_source:", count_not_in_default_furigana_src)
+
+    utils.dump_json(OUT_VOCAB_FURIGANA_PATH, vocab_furigana)
     
+
+def dump_all_vocab_meanings(all_words):
     vocab_meanings = {}
-    meaning_source_common = create_or_retrieve_vocab_meaning_map()
+    meaning_source_common = create_or_retrieve_vocab_meaning_map(refresh=True, common_only=True, definition_count=3)
     meaning_source_custom = utils.get_data_from_file(IN_VOCAB_MEANING_PATH)
 
     count_common_source_only = 0
@@ -181,24 +206,14 @@ def dump_word_details(all_words):
             count_custom_source_only+=1
 
         meaning = meaning1 or meaning2
-        if len(meaning) == 0:
+        if not meaning:
             raise Exception("Word meaning Not Found", word)
         
         vocab_meanings[word] = meaning
 
-    WORD_DETAILS = {}
-    for word in all_words: 
-        WORD_DETAILS[word] = [
-            vocab_meanings[word],
-            vocab_furigana[word],
-        ]
-    
-    
-
     print("in common meaning source only:", count_common_source_only)
     print("in custom meaning source only:", count_custom_source_only)
-    utils.dump_json(OUT_VOCAB_PATH, WORD_DETAILS)
-
+    utils.dump_json(OUT_VOCAB_MEANING_PATH, vocab_meanings)
 
 
 

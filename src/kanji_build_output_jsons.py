@@ -55,11 +55,14 @@ for kanji in kanji_data.keys():
     ]
 
 # ***********************
-# Dump extracted kanji information
+# Dump extracted information
 # ***********************
 kanji_load.dump_to_main_kanji_info(kanji_main_reformatted)
 kanji_load.dump_to_extended_kanji_info(kanji_extended_reformatted)
-kanji_load.dump_word_details(all_words)
+
+print ("All sample words count:", len(all_words))
+kanji_load.dump_all_vocab_furigana(all_words)
+kanji_load.dump_all_vocab_meanings(all_words)
 
 # ***********************
 # Dump other reformatted data

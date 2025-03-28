@@ -11,67 +11,6 @@ python --version
 # Python 3.13.2
 ```
 
-#### Input Files
-
-Download aggregated kanji information from [Kanji Data Releases][pika-data]
-
-```bash
-curl --output-dir input -OL https://github.com/PikaPikaGems/kanji-data-releases/releases/latest/download/kanji-data.tar.gz
-tar -xzf ./input/kanji-data.tar.gz -C ./input/
-rm ./input/kanji-data.tar.gz
-```
-
-Download the map of vocabulary to its components from [JMdict Furigana Map][pika-furi]
-
-```bash
-curl --output-dir input -OL https://github.com/PikaPikaGems/jmdict-furigana-map/releases/latest/download/jmdict-furigana-map.json.tar.gz
-tar -xzf ./input/jmdict-furigana-map.json.tar.gz -C ./input/
-rm ./input/jmdict-furigana-map.json.tar.gz
-```
-
-Download and prepare the the Simplified JMdict JSON file from [Jmdict Simplified][jmdict-simplified]
-
-```
-curl --output-dir input -OL https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1%2B20250324123350/jmdict-eng-common-3.6.1+20250324123350.json.tgz
-tar -xzf ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz -C ./input/
-mv input/jmdict-eng-common-3.6.1.json input/scriptin-jmdict-eng-common.json
-
-```
-
-Remove the files which you don't need anymore, to reduce clutter
-
-```
-rm ./input/kanji-data.tar.gz
-rm ./input/jmdict-furigana-map.json.tar.gz
-rm ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz
-```
-
-This leave the `input` directory with the following files:
-
-**From [Kanji Data Releases][pika-data]**
-
-```
-cum_use.json
-kanji_vocab.json
-merged_kanji.json
-missing_components.json
-phonetic_components.json
-vocab_furigana.json
-vocab_meaning.json
-```
-
-**From: [JMdict Furigana Map][pika-furi]**
-
-```
-mdict-furigana-map.json
-```
-
-**From [Jmdict Simplified][jmdict-simplified]**
-
-```
-scriptin-jmdict-eng-common.json
-```
-
 ### Overrides
 
 Edit the following files to specify the values you want to override
@@ -80,6 +19,62 @@ Edit the following files to specify the values you want to override
 kanji_parts.json
 kanji_vocab.json
 keywords.json
+```
+
+#### Input Files
+
+Download aggregated kanji information from [Kanji Data Releases][pika-data]
+
+```bash
+curl --output-dir input -OL https://github.com/PikaPikaGems/kanji-data-releases/releases/latest/download/kanji-data.tar.gz
+tar -xzf ./input/kanji-data.tar.gz -C ./input/
+```
+
+Download the map of vocabulary to its components from [JMdict Furigana Map][pika-furi]
+
+```bash
+curl --output-dir input -OL https://github.com/PikaPikaGems/jmdict-furigana-map/releases/latest/download/jmdict-furigana-map.json.tar.gz
+tar -xzf ./input/jmdict-furigana-map.json.tar.gz -C ./input/
+```
+
+Download and prepare the the Simplified JMdict JSON file from [Jmdict Simplified][jmdict-simplified]
+
+```
+# if all words
+curl --output-dir input -OL https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1%2B20250324123350/jmdict-eng-3.6.1+20250324123350.json.tgz
+tar -xzf ./input/jmdict-eng-3.6.1+20250324123350.json.tgz -C ./input/
+mv input/jmdict-eng-3.6.1.json input/scriptin-jmdict-eng.json
+
+# If common words only
+curl --output-dir input -OL https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1%2B20250324123350/jmdict-eng-common-3.6.1+20250324123350.json.tgz
+tar -xzf ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz -C ./input/
+mv input/jmdict-eng-common-3.6.1.json input/scriptin-jmdict-eng.json
+
+```
+
+Remove the files which you don't need anymore, to reduce clutter
+
+```
+rm ./input/kanji-data.tar.gz
+rm ./input/jmdict-furigana-map.json.tar.gz
+
+# depending on what you chose
+rm ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz
+rm ./input/jmdict-eng-3.6.1+20250324123350.json.tgz
+```
+
+This leave the `input` directory with the following files:
+
+```
+cum_use.json
+jmdict-furigana-map.json # From: JMdict Furigana Map
+kanji_vocab.json
+merged_kanji.json
+missing_components.json
+phonetic_components.json
+scriptin-jmdict-eng.json # From: Jmdict Simplified
+vocab_furigana.json
+vocab_meaning.json
 ```
 
 ### Transform Data
