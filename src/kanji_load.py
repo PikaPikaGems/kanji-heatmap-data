@@ -19,7 +19,9 @@ MID_ALL_VOCAB_MEANING_PATH = os.path.join(const.dir_in, "jmdict-vocab-meaning.js
 IN_KEYWORD_OVERRIDES_PATH = os.path.join(const.dir_overrides, "keywords.json")
 IN_KANJI_PARTS_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_parts.json")
 IN_VOCAB_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_vocab.json")
-
+IN_VOCAB_FURIGANA_OVERRIDES_PATH = os.path.join(
+    const.dir_overrides, "vocab_furigana.json"
+)
 
 OUT_KANJI_MAIN_PATH = os.path.join(const.dir_out, const.outfile_kanji_main)
 OUT_KANJI_EXTENDED_PATH = os.path.join(const.dir_out, const.outfile_kanji_extended)
@@ -173,6 +175,9 @@ def dump_all_vocab_furigana(all_words):
 
     furigana_source = utils.get_data_from_file(IN_ALL_VOCAB_FURIGANA_PATH)
     furigana_source_custom = utils.get_data_from_file(IN_VOCAB_FUGIGANA_PATH)
+    furigana_source_overrides = utils.get_data_from_file(
+        IN_VOCAB_FURIGANA_OVERRIDES_PATH
+    )
 
     vocab_furigana = {}
 
@@ -180,7 +185,9 @@ def dump_all_vocab_furigana(all_words):
 
     for word in all_words:
 
-        furigana = furigana_source_custom.get(word, None)
+        furigana = furigana_source_overrides.get(
+            word, furigana_source_custom.get(word, None)
+        )
 
         if not furigana:
             count_not_in_default_furigana_src += 1
