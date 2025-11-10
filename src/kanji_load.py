@@ -22,6 +22,9 @@ IN_VOCAB_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_vocab.json")
 IN_VOCAB_FURIGANA_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_furigana.json"
 )
+IN_VOCAB_MEANING_OVERRIDES_PATH = os.path.join(
+    const.dir_overrides, "vocab_meaning.json"
+)
 
 OUT_KANJI_MAIN_PATH = os.path.join(const.dir_out, const.outfile_kanji_main)
 OUT_KANJI_EXTENDED_PATH = os.path.join(const.dir_out, const.outfile_kanji_extended)
@@ -214,7 +217,13 @@ def dump_all_vocab_meanings(all_words):
     meaning_source_common = create_or_retrieve_vocab_meaning_map(
         refresh=True, common_only=True, definition_count=3
     )
-    meaning_source_custom = utils.get_data_from_file(IN_VOCAB_MEANING_PATH)
+    meaning_source_custom: dict[str, str] = utils.get_data_from_file(
+        IN_VOCAB_MEANING_PATH
+    )
+    meaning_source_overrides: dict[str, str] = utils.get_data_from_file(
+        IN_VOCAB_MEANING_OVERRIDES_PATH
+    )
+    meaning_source_custom.update(meaning_source_overrides)
 
     count_common_source_only = 0
     count_custom_source_only = 0
