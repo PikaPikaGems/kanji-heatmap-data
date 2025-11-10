@@ -13,12 +13,14 @@ python --version
 
 ### Overrides
 
-Edit the following files to specify the values you want to override
+Edit the following files to specify the values you want to override:
 
 ```
 kanji_parts.json
 kanji_vocab.json
 keywords.json
+vocab_furigana.json
+vocab_meaning.json
 ```
 
 #### Input Files
@@ -37,7 +39,7 @@ curl --output-dir input -OL https://github.com/PikaPikaGems/jmdict-furigana-map/
 tar -xzf ./input/jmdict-furigana-map.json.tar.gz -C ./input/
 ```
 
-Download and prepare the the Simplified JMdict JSON file from [Jmdict Simplified][jmdict-simplified]
+Download and prepare the Simplified JMdict JSON file from [Jmdict Simplified][jmdict-simplified]
 
 ```
 # if all words
@@ -63,7 +65,7 @@ rm ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz
 rm ./input/jmdict-eng-3.6.1+20250324123350.json.tgz
 ```
 
-This leave the `input` directory with the following files:
+This leaves the `input` directory with the following files:
 
 ```
 cum_use.json
@@ -93,8 +95,8 @@ The following output files should be generated in the `output` directory:
 - vocabulary_meaning.json
 - vocabulary_furigana.json
 
-Additionally the following files will be created by running the script above
-inthe `input` directory. This will not be part of the release file.
+Additionally, the following files will be created by running the script above
+in the `input` directory. This will not be part of the release file.
 
 ```
 jmdict-vocab-meaning.json
