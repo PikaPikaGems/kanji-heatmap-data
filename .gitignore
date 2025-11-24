@@ -5,4 +5,6 @@
 /releases/*
 !/releases/.keep
 
+temp/
+
 __pycache__/
