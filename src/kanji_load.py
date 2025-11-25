@@ -1,6 +1,7 @@
 import utils
 import os
 import constants as const
+from typing import Any
 
 IN_MERGED_KANJI_PATH = os.path.join(const.dir_in, "merged_kanji.json")
 IN_KANJI_VOCAB_PATH = os.path.join(const.dir_in, "kanji_vocab.json")
@@ -16,6 +17,9 @@ IN_ALL_VOCAB_MEANING_JM_DICT_PATH = os.path.join(
 )
 MID_ALL_VOCAB_MEANING_PATH = os.path.join(const.dir_in, "jmdict-vocab-meaning.json")
 
+IN_KANJI_TO_REMOVE_OVERRIDES_PATH = os.path.join(
+    const.dir_overrides, "kanji_to_remove.json"
+)
 IN_KEYWORD_OVERRIDES_PATH = os.path.join(const.dir_overrides, "keywords.json")
 IN_KANJI_PARTS_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_parts.json")
 IN_VOCAB_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_vocab.json")
@@ -115,10 +119,25 @@ def load_vocab_override():
 
 
 def load_aggregated_kanji_data():
-    kanji_data = utils.get_data_from_file(IN_MERGED_KANJI_PATH)
+    kanji_data: dict[str, dict[Any, Any]] = utils.get_data_from_file(
+        IN_MERGED_KANJI_PATH
+    )
     # We just put the kanji as part of the value of the dictionary sfor quick access
     for kanji in kanji_data.keys():
         kanji_data[kanji]["kanji"] = kanji
+
+    return kanji_data
+
+
+def load_filtered_kanji_data():
+    kanji_data = load_aggregated_kanji_data()
+
+    kanji_to_remove_data: dict[str, list[str]] = utils.get_data_from_file(
+        IN_KANJI_TO_REMOVE_OVERRIDES_PATH
+    )
+
+    for kanji in kanji_to_remove_data["data"]:
+        kanji_data.pop(kanji)
 
     return kanji_data
 
@@ -136,10 +155,9 @@ def dump_phonetic_components():
     utils.compress_json(IN_PHONETIC_COMPONENTS_PATH, OUT_PHONETIC_PATH)
 
 
-def dump_part_keyword_with_overrides():
+def dump_part_keyword_with_overrides(kanji_data: dict[str, Any]):
     additional_keywords = utils.get_data_from_file(IN_MISSING_COMPONENTS_PATH)
     own_keywords_override = load_keywords_override()
-    kanji_data = load_aggregated_kanji_data()
 
     for part, keyword in own_keywords_override.items():
         if kanji_data.get(part, None):

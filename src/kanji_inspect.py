@@ -4,7 +4,7 @@ from functools import reduce
 import kanji_extract
 import kanji_load
 
-KANJI_DATA = kanji_load.load_aggregated_kanji_data()
+KANJI_DATA = kanji_load.load_filtered_kanji_data()
 KANJI_LIST = KANJI_DATA.keys()
 OWN_PARTS_OVERRIDE = kanji_load.load_decomposition_override()
 OWN_KEYWORDS_OVERRIDE = kanji_load.load_keywords_override()

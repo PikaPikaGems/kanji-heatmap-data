@@ -17,6 +17,7 @@ Edit the following files to specify the values you want to override:
 
 ```
 kanji_parts.json
+kanji_to_remove.json
 kanji_vocab.json
 keywords.json
 vocab_furigana.json

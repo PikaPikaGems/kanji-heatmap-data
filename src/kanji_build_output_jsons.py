@@ -38,7 +38,7 @@ kanji_main_reformatted = {}
 kanji_extended_reformatted = {}
 all_words = set(())
 
-kanji_data = kanji_load.load_aggregated_kanji_data()
+kanji_data = kanji_load.load_filtered_kanji_data()
 keyword_overrides = kanji_load.load_keywords_override()
 parts_overrides = kanji_load.load_decomposition_override()
 
@@ -85,6 +85,6 @@ kanji_load.dump_all_vocab_meanings(all_words)
 # ***********************
 kanji_load.dump_phonetic_components()
 kanji_load.dump_cum_use()
-kanji_load.dump_part_keyword_with_overrides()
+kanji_load.dump_part_keyword_with_overrides(kanji_data)
 
 print("Done.")

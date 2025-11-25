@@ -130,7 +130,7 @@ def find_all_meanings():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         print("Usage: ./src/uncommon_vocab_meaning.py /path/to/dictionary.json")
 
     dictionary_path = Path(sys.argv[1])
