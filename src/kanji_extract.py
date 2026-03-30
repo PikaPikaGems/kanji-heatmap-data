@@ -211,7 +211,11 @@ def get_semantic_phonetic(kanji_info):
     return phonetic
 
 
-def get_ranks(kanji_info, NUMBER_DATA_NOT_FOUND_VAL):
+def get_kklc_index(kanji_info, kklc_data, NUMBER_DATA_NOT_FOUND_VAL):
+    return kklc_data.get(kanji_info["kanji"], None) or NUMBER_DATA_NOT_FOUND_VAL
+
+
+def get_ranks(kanji_info, NUMBER_DATA_NOT_FOUND_VAL, jiten_data=None, jpdb_data=None):
     all_ = kanji_info.get("frequency", {})
 
     def dig_1224(source_key):
@@ -278,6 +282,10 @@ def get_ranks(kanji_info, NUMBER_DATA_NOT_FOUND_VAL):
     # 5 殊 r: 1352 1361 1361
     # 6 緻 r: 2500 2460 None
 
+    kanji = kanji_info["kanji"]
+    rank_jiten = (jiten_data or {}).get(kanji, None) or NUMBER_DATA_NOT_FOUND_VAL
+    rank_jpdb = (jpdb_data or {}).get(kanji, None) or NUMBER_DATA_NOT_FOUND_VAL
+
     freqs = [
         rank_netflix,
         rank_twitter,
@@ -296,6 +304,8 @@ def get_ranks(kanji_info, NUMBER_DATA_NOT_FOUND_VAL):
         rank_bunka,
         rank_kd,
         rank_jisho,
+        rank_jiten,
+        rank_jpdb,
     ]
 
     has_ranks = list(filter(lambda x: x != -1, freqs))

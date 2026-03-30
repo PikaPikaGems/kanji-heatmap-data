@@ -41,6 +41,10 @@ all_words = set(())
 kanji_data = kanji_load.load_filtered_kanji_data()
 keyword_overrides = kanji_load.load_keywords_override()
 parts_overrides = kanji_load.load_decomposition_override()
+jiten_frequency = kanji_load.load_jiten_frequency()
+jpdb_frequency = kanji_load.load_jpdb_frequency()
+kklc_order = kanji_load.load_kklc_order()
+
 
 for kanji in kanji_data.keys():
 
@@ -51,7 +55,7 @@ for kanji in kanji_data.keys():
         kanji_extract.get_main_on_reading(kanji_info) or "",
         kanji_extract.get_main_kun_reading(kanji_info) or "",
         kanji_extract.get_jlpt(kanji_info) or NO_NUM_DATA,
-        kanji_extract.get_ranks(kanji_info, NO_NUM_DATA),
+        kanji_extract.get_ranks(kanji_info, NO_NUM_DATA, jiten_frequency, jpdb_frequency),
     ]
 
     kanji_words = get_words(kanji)
@@ -68,6 +72,7 @@ for kanji in kanji_data.keys():
         kanji_extract.get_all_kun_readings(kanji_info) or [],
         kanji_extract.get_semantic_phonetic(kanji_info) or [],
         kanji_words,
+        kanji_extract.get_kklc_index(kanji_info, kklc_order, NO_NUM_DATA),
     ]
 
 # ***********************
