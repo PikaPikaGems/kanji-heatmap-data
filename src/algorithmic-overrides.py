@@ -23,11 +23,11 @@ Generates overrides/keywords-algo.json
 Pipeline (low → high priority):
   base input data → kanji_main.json → keywords-algo.json → keywords.json (manual)
 
-For each kanji we prefer the simplest available keyword:
-  Priority 1: candidates from raw/kanji-keywords-j.json
-  Priority 2: candidates from raw/kanji-keywords-w.json
-  Priority 3: candidates from raw/kanji-keywords-k.json (sort by word length)
-  Priority 4: current keyword from output/kanji_main.json
+For each kanji we prefer the simplest meaningful available keyword:
+  - candidates from raw/kanji-keywords-j.json
+  - candidates from raw/kanji-keywords-w.json
+  - candidates from raw/kanji-keywords-k.json (sort by word length)
+  - current keyword from output/kanji_main.json
 
 A greedy uniqueness pass (sorted by fewest candidates first) ensures no two kanji
 share the same keyword in the algo output. Manual overrides (keywords.json) are
@@ -39,7 +39,11 @@ Run from the project root: python3 src/algorithmic-overrides.py
 import json
 import re
 import os
+import random
 
+# Seed with a specific integer
+random.seed(42)
+USE_RANDOMNESS = False
 
 def resolve_path(path):
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -96,7 +100,9 @@ def task1_better_kanji_keywords():
         pw1 = pw[:1]
         pw2 = pw[1:]
         sortedRest = sorted(pk2 + pw2, key=lambda word: len(word))
-        pre_candidates = pj + pk1 + pw1 + sortedRest
+        priority_options = pj + pk1 + pw1
+        shuffled = random.sample(priority_options,len(priority_options)) if USE_RANDOMNESS else priority_options
+        pre_candidates = shuffled + sortedRest
         candidates = []
         for c in pre_candidates:
             if c not in candidates:
