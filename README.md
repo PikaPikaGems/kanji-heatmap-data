@@ -124,7 +124,6 @@ The input data comes from:
 2. [Kanji Data Releases][pika-data] and [JMdict Furigana Map][pika-furi],
    both under [CC BY-SA 4.0][cc-by-sa-4].
 3. [Jiten Frequency](https://jiten.moe/other), [JPDB Frequency](https://github.com/Kuuuube/yomitan-dictionaries/blob/main/data/jpdbv2_kanji_frequency_2026-02-09.csv), [KKLC Order](https://github.com/vadasambar/kanji_order/blob/master/final_order.txt)
-4. Anki Decks: KKLC 7200 [1](https://ankiweb.net/shared/info/1624275678) + [2](https://ankiweb.net/shared/info/1468618470), KKLC 2300 [1](https://ankiweb.net/shared/info/1798787384) + [2](https://ankiweb.net/shared/info/1564742924) + [3](https://ankiweb.net/shared/info/779483253), [KIC](https://ankiweb.net/shared/info/1996057559). Anki Deck Authors: [☕️ ChemMixer](https://ko-fi.com/chemmixer), [u/alb404](https://reddit.com/u/alb404)
 
 ### JMdict and JMnedict
 
