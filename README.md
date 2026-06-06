@@ -109,6 +109,12 @@ jmdict-vocab-meaning.json
 ./src/kanji_inspect.py
 ```
 
+### Other Scripts
+
+```
+python3 src/build-japanese-study-words.py
+python3 src/algorithmic-kanji-vocab-overrides.py
+```
 ## Prepare release
 
 See `RELEASE.md`
