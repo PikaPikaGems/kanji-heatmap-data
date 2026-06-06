@@ -197,7 +197,7 @@ def main():
                 no_furigana_words.append(w)
                 no_furigana_seen.add(w)
 
-    os.makedirs(resolve_path('src/overrides'), exist_ok=True)
+    os.makedirs(resolve_path('overrides'), exist_ok=True)
 
     def write_json(rel_path, data):
         path = resolve_path(rel_path)
@@ -205,10 +205,10 @@ def main():
             json.dump(data, f, ensure_ascii=False, indent=4)
         print(f"Written: {path} ({len(data)} entries)")
 
-    write_json('src/overrides/kanji_vocab-algo.json', kanji_vocab_result)
-    write_json('src/overrides/vocab_meaning-algo.json', vocab_meaning_result)
-    write_json('src/overrides/vocab_reading-algo.json', vocab_reading_result)
-    write_json('src/overrides/vocab-with-no-furigana.json', no_furigana_words)
+    write_json('overrides/kanji_vocab-algo.json', kanji_vocab_result)
+    write_json('overrides/vocab_meaning-algo.json', vocab_meaning_result)
+    write_json('overrides/vocab_reading-algo.json', vocab_reading_result)
+    write_json('overrides/vocab-with-no-furigana.json', no_furigana_words)
 
     total = len(selected_all)
     without_vocab = [k for k in all_kanji if k not in kanji_vocab_result]
