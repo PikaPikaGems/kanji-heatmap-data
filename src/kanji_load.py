@@ -29,12 +29,15 @@ IN_KEYWORD_OVERRIDES_PATH = os.path.join(const.dir_overrides, "keywords.json")
 IN_KEYWORD_OVERRIDES_ALGO_PATH = os.path.join(const.dir_overrides, "keywords-algo.json")
 IN_KANJI_PARTS_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_parts.json")
 IN_VOCAB_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_vocab.json")
+IN_VOCAB_ALGO_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_vocab-algo.json")
 IN_VOCAB_FURIGANA_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_furigana.json"
 )
+IN_VOCAB_FURIGANA_ALGO_PATH = os.path.join(const.dir_overrides, "vocab_furigana-algo.json")
 IN_VOCAB_MEANING_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_meaning.json"
 )
+IN_VOCAB_MEANING_ALGO_PATH = os.path.join(const.dir_overrides, "vocab_meaning-algo.json")
 
 OUT_KANJI_MAIN_PATH = os.path.join(const.dir_out, const.outfile_kanji_main)
 OUT_KANJI_EXTENDED_PATH = os.path.join(const.dir_out, const.outfile_kanji_extended)
@@ -125,6 +128,10 @@ def load_decomposition_override():
 
 def load_vocab_override():
     return utils.get_data_from_file(IN_VOCAB_OVERRIDES_PATH)
+
+
+def load_vocab_algo_override():
+    return utils.get_data_from_file(IN_VOCAB_ALGO_OVERRIDES_PATH)
 
 
 def load_aggregated_kanji_data():
@@ -240,6 +247,7 @@ def dump_all_vocab_furigana(all_words):
     furigana_source_overrides = utils.get_data_from_file(
         IN_VOCAB_FURIGANA_OVERRIDES_PATH
     )
+    furigana_source_algo = utils.get_data_from_file(IN_VOCAB_FURIGANA_ALGO_PATH)
 
     vocab_furigana = {}
 
@@ -250,6 +258,9 @@ def dump_all_vocab_furigana(all_words):
         furigana = furigana_source_overrides.get(
             word, furigana_source_custom.get(word, None)
         )
+
+        if not furigana:
+            furigana = furigana_source_algo.get(word, None)
 
         if not furigana:
             count_not_in_default_furigana_src += 1
@@ -282,6 +293,9 @@ def dump_all_vocab_meanings(all_words):
     meaning_source_overrides: dict[str, str] = utils.get_data_from_file(
         IN_VOCAB_MEANING_OVERRIDES_PATH
     )
+    meaning_source_algo: dict[str, str] = utils.get_data_from_file(
+        IN_VOCAB_MEANING_ALGO_PATH
+    )
     meaning_source_custom.update(meaning_source_overrides)
 
     count_common_source_only = 0
@@ -296,7 +310,7 @@ def dump_all_vocab_meanings(all_words):
         if meaning2 and not meaning1:
             count_custom_source_only += 1
 
-        meaning = meaning1 or meaning2
+        meaning = meaning1 or meaning2 or meaning_source_algo.get(word, None)
         if not meaning:
             # raise Exception("Word meaning Not Found", word)
             print("Word meaning Not Found:", word)

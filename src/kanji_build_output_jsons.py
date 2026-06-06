@@ -4,16 +4,26 @@ import kanji_extract
 import kanji_load
 
 automated_all_words = kanji_load.load_automated_kanji_vocab()
+override_all_algo_words = kanji_load.load_vocab_algo_override()
 override_all_words = kanji_load.load_vocab_override()
 
 
 def get_words(kanji):
+    # Priority: manual override > algo override > automated
     automated_words = automated_all_words.get(kanji, [])
+    override_algo_words = override_all_algo_words.get(kanji, [])
     override_words = override_all_words.get(kanji, [])
 
     count = 2
     kanji_words = []
+
     for word in override_words:
+        if word not in kanji_words:
+            kanji_words.append(word)
+            if len(kanji_words) == count:
+                return kanji_words
+
+    for word in override_algo_words:
         if word not in kanji_words:
             kanji_words.append(word)
             if len(kanji_words) == count:
@@ -22,7 +32,7 @@ def get_words(kanji):
     needed = count - len(kanji_words)
     kanji_words = (
         kanji_words
-        # add needed words from automated_words not already in kanji_words
+        # add needed words from automated words not already in kanji_words
         + [w for w in automated_words if w not in kanji_words][:needed]
     )
     return kanji_words
@@ -82,6 +92,7 @@ kanji_load.dump_to_main_kanji_info(kanji_main_reformatted)
 kanji_load.dump_to_extended_kanji_info(kanji_extended_reformatted)
 
 print("All sample words count:", len(all_words))
+
 kanji_load.dump_all_vocab_furigana(all_words)
 kanji_load.dump_all_vocab_meanings(all_words)
 
