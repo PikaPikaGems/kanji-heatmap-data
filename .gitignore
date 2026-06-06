@@ -1,4 +1,6 @@
 /input/*
+/raw/kanji-words/v3/*
+/raw/kanji-textbook-words/*
 
 .DS_Store
 !/input/.keep
