@@ -119,6 +119,20 @@ def is_valid_candidate(word, reading, target_kanji):
     return True
 
 
+def is_valid_fallback_candidate(word, reading, target_kanji):
+    """Like is_valid_candidate but only requires the kanji to appear anywhere in the word."""
+    if not word or not reading or reading == "-" or "," in reading:
+        return False
+    if target_kanji not in word:
+        return False
+    if not is_all_japanese(word):
+        return False
+    kc = kanji_count(word)
+    if kc < 1 or kc > 2:
+        return False
+    return True
+
+
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
@@ -163,6 +177,25 @@ def load_textbook_candidates(kanji):
     return results
 
 
+def load_textbook_candidates_fallback(kanji):
+    """Relaxed: word only needs to contain the kanji, not start with it."""
+    path = _resolve(f"raw/kanji-textbook-words/{kanji}.json")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    inner = data.get(kanji, {})
+    results = []
+    for word, val in inner.items():
+        if not isinstance(val, list) or len(val) < 1:
+            continue
+        r = val[0] if len(val) >= 1 else ""
+        e = val[1] if len(val) >= 2 else ""
+        if is_valid_fallback_candidate(word, r, kanji):
+            results.append((word, r, TEXTBOOK_TAG, e))
+    return results
+
+
 OUTPUT_TEXTBOOK_TAG = "📖"
 
 
@@ -183,7 +216,13 @@ def select_word_for_kanji(kanji):
             all_candidates.append(entry)
 
     if not all_candidates:
-        return None
+        # (59): 宏雰紘稔輔肇亨喬槙峻蕉欣禎斐尭馨彬匡欽佑惇脩甫暉允瑛皓洸怜悌侃侑琳瑚瑳瑶詢洵倖誼諄晏莉晨碩熙燎燦滉蓉恕迪綸麟柾裟頌眸伶
+        fallback = load_textbook_candidates_fallback(kanji)
+        if not fallback:
+            return None
+        fallback.sort(key=lambda x: word_score(x[0], x[2]))
+        w, r, t, e = fallback[0]
+        return [w, r, e, OUTPUT_TEXTBOOK_TAG]
 
     all_candidates.sort(key=lambda x: word_score(x[0], x[2]))
     w, r, t, e = all_candidates[0]
@@ -217,7 +256,7 @@ def main():
         if entry:
             selected_flat.append(entry)
 
-    out_path = _resolve("overrides/kanji_study_keywords-algo.json")
+    out_path = _resolve("overrides/japanese_study_words-algo.json")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)

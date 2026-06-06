@@ -22,6 +22,7 @@ kanji_vocab.json
 keywords.json
 vocab_furigana.json
 vocab_meaning.json
+japanese_study_words.json
 ```
 
 #### Input Files
@@ -114,7 +115,18 @@ jmdict-vocab-meaning.json
 ```
 python3 src/build-japanese-study-words.py
 python3 src/algorithmic-kanji-vocab-overrides.py
+python3 src/generate-furigana-algo.py
 ```
+
+Note: These scripts rely on "./raw/kanji-textbook-words/*.json" and "./raw/kanji-words/v3/*.json". 
+These files come from the repos 
+- https://github.com/PikaPikaGems/textbook-japanese-words 
+- https://github.com/PikaPikaGems/japanese-word-ranks/
+- https://github.com/PikaPikaGems/japanese-word-frequency
+
+And may need additional dependencies such as "SudachiPy" and "Ginza". 
+See the comments of those scripts for more information.
+
 ## Prepare release
 
 See `RELEASE.md`
