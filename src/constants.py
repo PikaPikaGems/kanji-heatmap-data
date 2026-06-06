@@ -6,6 +6,7 @@ outfile_phonetic = "phonetic.json"
 outfile_vocab_meaning = "vocab_meaning.json"
 outfile_vocab_furigana = "vocab_furigana.json"
 
+dir_raw = "raw"
 dir_in = "input"
 dir_out = "output"
 dir_releases = "releases"

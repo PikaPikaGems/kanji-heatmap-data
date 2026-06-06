@@ -1,4 +1,6 @@
 /input/*
+
+.DS_Store
 !/input/.keep
 /output/*
 !/output/.keep

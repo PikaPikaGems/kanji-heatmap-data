@@ -1,3 +1,4 @@
+import csv
 import utils
 import os
 import constants as const
@@ -17,10 +18,15 @@ IN_ALL_VOCAB_MEANING_JM_DICT_PATH = os.path.join(
 )
 MID_ALL_VOCAB_MEANING_PATH = os.path.join(const.dir_in, "jmdict-vocab-meaning.json")
 
+IN_JITEN_FREQ_PATH = os.path.join(const.dir_raw, "JITEN_FREQUENCY.csv")
+IN_JPDB_FREQ_PATH = os.path.join(const.dir_raw, "JPDB_FREQUENCY_2026-02-09.csv")
+IN_KKLC_ORDER_PATH = os.path.join(const.dir_raw, "KKLC-ORDER.txt")
+
 IN_KANJI_TO_REMOVE_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "kanji_to_remove.json"
 )
 IN_KEYWORD_OVERRIDES_PATH = os.path.join(const.dir_overrides, "keywords.json")
+IN_KEYWORD_OVERRIDES_ALGO_PATH = os.path.join(const.dir_overrides, "keywords-algo.json")
 IN_KANJI_PARTS_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_parts.json")
 IN_VOCAB_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_vocab.json")
 IN_VOCAB_FURIGANA_OVERRIDES_PATH = os.path.join(
@@ -107,7 +113,10 @@ def create_or_retrieve_vocab_meaning_map(
 # Functions to load json files
 # *********************************
 def load_keywords_override():
-    return utils.get_data_from_file(IN_KEYWORD_OVERRIDES_PATH)
+    a = utils.get_data_from_file(IN_KEYWORD_OVERRIDES_ALGO_PATH)
+    b = utils.get_data_from_file(IN_KEYWORD_OVERRIDES_PATH)
+    result = {**a, **b}
+    return result
 
 
 def load_decomposition_override():
@@ -122,7 +131,7 @@ def load_aggregated_kanji_data():
     kanji_data: dict[str, dict[Any, Any]] = utils.get_data_from_file(
         IN_MERGED_KANJI_PATH
     )
-    # We just put the kanji as part of the value of the dictionary sfor quick access
+    # We just put the kanji as part of the value of the dictionary for quick access
     for kanji in kanji_data.keys():
         kanji_data[kanji]["kanji"] = kanji
 
@@ -144,6 +153,38 @@ def load_filtered_kanji_data():
 
 def load_automated_kanji_vocab():
     return utils.get_data_from_file(IN_KANJI_VOCAB_PATH)
+
+
+def load_jiten_frequency():
+    result = {}
+    with open(IN_JITEN_FREQ_PATH, encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            result[row["Kanji"]] = int(row["Rank"])
+    return result
+
+
+def load_jpdb_frequency():
+    result = {}
+    with open(IN_JPDB_FREQ_PATH, encoding="utf-8") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            try:
+               result[row[1]] = int(row[0])
+            except:
+               result[row[1]] = 50_000
+
+    return result
+
+
+def load_kklc_order():
+    result = {}
+    with open(IN_KKLC_ORDER_PATH, encoding="utf-8") as f:
+        for line in f:
+            parts = line.strip().split()
+            if len(parts) >= 4 and parts[0] == "Page":
+                result[parts[3]] = int(parts[2])
+    return result
 
 
 # *********************************
@@ -257,7 +298,9 @@ def dump_all_vocab_meanings(all_words):
 
         meaning = meaning1 or meaning2
         if not meaning:
-            raise Exception("Word meaning Not Found", word)
+            # raise Exception("Word meaning Not Found", word)
+            print("Word meaning Not Found:", word)
+            vocab_meanings[word] = word
 
         vocab_meanings[word] = meaning
 

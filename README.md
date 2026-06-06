@@ -123,6 +123,7 @@ The input data comes from:
    and used in conformance with the Group's [license](https://www.edrdg.org/edrdg/licence.html).
 2. [Kanji Data Releases][pika-data] and [JMdict Furigana Map][pika-furi],
    both under [CC BY-SA 4.0][cc-by-sa-4].
+3. [Jiten Frequency](https://jiten.moe/other), [JPDB Frequency](https://github.com/Kuuuube/yomitan-dictionaries/blob/main/data/jpdbv2_kanji_frequency_2026-02-09.csv), [KKLC Order](https://github.com/vadasambar/kanji_order/blob/master/final_order.txt)
 
 ### JMdict and JMnedict
 
