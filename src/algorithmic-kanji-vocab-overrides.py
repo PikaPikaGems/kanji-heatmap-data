@@ -9,12 +9,24 @@ Selection rules:
 - Prefer fewer kanji in word (minimum 1)
 - 2-3 chars ideal (no preference between them); 4 okay; 5 allowed; 6+ not allowed
 
-Source priority (tier → fewer kanji → length):
+Source priority (tier → fewer kanji → phrase penalty → length):
   1. v3 words tagged 🌱
   2. v3 words tagged ☘️
   3. v3 words tagged 🌷
   4. textbook words (raw/kanji-textbook-words/)
   5. v3 words tagged 📚 or other
+
+Deduplication: if a word appears in both v3 and textbook, keep whichever gives the
+better (lower) score — so a textbook word isn't unfairly penalised just because it
+also appears in v3 under a lower-priority tag.
+
+Second-word diversity: after the best word is chosen, the second pick adds a leading
+penalty equal to the number of kanji shared with the first word. This prevents two
+near-identical words (e.g. 烏賊 / 烏賊墨) from both being selected.
+
+Phrase penalty: words where a grammatical particle (て で に を が は も へ と) appears
+between two kanji sequences are marked as verbal phrases and penalised, so true
+compound words are preferred over phrases like 診て貰う.
 
 Sources:
   raw/kanji-words/v3/[kanji].json          → [{w, r, t, j?, k?, e}]
@@ -50,6 +62,8 @@ JAPANESE_RANGES = KANJI_RANGES + [
 
 TEXTBOOK_TAG = '__textbook__'
 
+PHRASE_PARTICLES = set('てでにをがはもへと')
+
 TAG_PRIORITY = {
     '🌱': 0,
     '☘️': 1,
@@ -79,14 +93,29 @@ def is_all_japanese(word):
     return bool(word) and all(is_japanese_char(ch) for ch in word)
 
 
+def has_phrase_bridge(word):
+    """True if a grammatical particle appears between two kanji sections."""
+    saw_kanji = False
+    saw_bridge = False
+    for ch in word:
+        if is_kanji_char(ch):
+            if saw_bridge:
+                return True
+            saw_kanji = True
+        elif saw_kanji and ch in PHRASE_PARTICLES:
+            saw_bridge = True
+    return False
+
+
 def word_score(word, tag):
     """Lower is better. Tuple for lexicographic comparison."""
     kc = kanji_count(word)
     n = len(word)
     ts = TAG_PRIORITY.get(tag, DEFAULT_TAG_PRIORITY)
     extra_kanji = kc - 1  # 0 = best (exactly 1 kanji)
+    phrase_penalty = 1 if has_phrase_bridge(word) else 0
     length_penalty = 0 if n <= 3 else (1 if n == 4 else 2)  # 2-3 ideal, 4 okay, 5 allowed
-    return (ts, extra_kanji, length_penalty)
+    return (ts, extra_kanji, phrase_penalty, length_penalty)
 
 
 def is_valid_candidate(word, reading):
@@ -141,19 +170,31 @@ def select_vocab_for_kanji(kanji):
     v3 = load_v3_candidates(kanji)
     textbook = load_textbook_candidates(kanji)
 
-    seen = set()
-    all_candidates = []
-    for entry in v3:
-        if entry[0] not in seen:
-            seen.add(entry[0])
-            all_candidates.append(entry)
-    for entry in textbook:
-        if entry[0] not in seen:
-            seen.add(entry[0])
-            all_candidates.append(entry)
+    # Keep best-scored entry per word across both sources.
+    best_by_word = {}
+    for entry in v3 + textbook:
+        w = entry[0]
+        if w not in best_by_word or word_score(w, entry[2]) < word_score(w, best_by_word[w][2]):
+            best_by_word[w] = entry
 
-    all_candidates.sort(key=lambda x: word_score(x[0], x[2]))
-    return all_candidates[:2]
+    all_candidates = sorted(best_by_word.values(), key=lambda x: word_score(x[0], x[2]))
+
+    if not all_candidates:
+        return []
+
+    first = all_candidates[0]
+    if len(all_candidates) == 1:
+        return [first]
+
+    # For the 2nd pick, add a leading penalty for kanji shared with the first word.
+    first_kanji = {ch for ch in first[0] if is_kanji_char(ch)}
+
+    def second_score(entry):
+        shared = len(first_kanji & {ch for ch in entry[0] if is_kanji_char(ch)})
+        return (shared,) + word_score(entry[0], entry[2])
+
+    second = min(all_candidates[1:], key=second_score)
+    return [first, second]
 
 
 def main():
