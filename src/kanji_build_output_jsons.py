@@ -90,6 +90,7 @@ for kanji in kanji_data.keys():
 # ***********************
 kanji_load.dump_to_main_kanji_info(kanji_main_reformatted)
 kanji_load.dump_to_extended_kanji_info(kanji_extended_reformatted)
+kanji_load.dump_kanji_representative_words()
 
 print("All sample words count:", len(all_words))
 

@@ -38,6 +38,12 @@ IN_VOCAB_MEANING_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_meaning.json"
 )
 IN_VOCAB_MEANING_ALGO_PATH = os.path.join(const.dir_overrides, "vocab_meaning-algo.json")
+IN_JAPANESE_STUDY_WORDS_ALGO_PATH = os.path.join(
+    const.dir_overrides, "japanese_study_words-algo.json"
+)
+IN_JAPANESE_STUDY_WORDS_PATH = os.path.join(
+    const.dir_overrides, "japanese_study_words.json"
+)
 
 OUT_KANJI_MAIN_PATH = os.path.join(const.dir_out, const.outfile_kanji_main)
 OUT_KANJI_EXTENDED_PATH = os.path.join(const.dir_out, const.outfile_kanji_extended)
@@ -48,6 +54,9 @@ OUT_VOCAB_MEANING_PATH = os.path.join(const.dir_out, const.outfile_vocab_meaning
 OUT_VOCAB_FURIGANA_PATH = os.path.join(const.dir_out, const.outfile_vocab_furigana)
 
 OUT_CUM_USE_PATH = os.path.join(const.dir_out, const.outfile_cum_use)
+OUT_KANJI_REPRESENTATIVE_WORDS_PATH = os.path.join(
+    const.dir_out, const.outfile_kanji_representative_words
+)
 
 
 # *********************************
@@ -235,6 +244,13 @@ def dump_to_main_kanji_info(data):
 
 def dump_to_extended_kanji_info(data):
     utils.dump_json(OUT_KANJI_EXTENDED_PATH, data)
+
+
+def dump_kanji_representative_words():
+    algo = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_ALGO_PATH)
+    manual = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_PATH)
+    merged = {**algo, **manual}
+    utils.dump_json(OUT_KANJI_REPRESENTATIVE_WORDS_PATH, merged)
 
 
 # *********************************
