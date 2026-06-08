@@ -111,12 +111,19 @@ jmdict-vocab-meaning.json
 ./src/kanji_inspect.py
 ```
 
+### Usful commands
+
+```
+$ head -n 20 raw/kanji-textbook-words/v3/<KANJI>.json
+$ head -n 20 raw/kanji-textbook-words/<KANJI>.json 
+```
 ### Other Scripts
 
 ```
-python3 src/build-japanese-study-vocab-overrides.py
-python3 src/algorithmic-kanji-vocab-overrides.py
-python3 src/generate-furigana-algo.py
+$ python3 src/build-japanese-study-vocab-overrides.py
+$ python3 src/algorithmic-kanji-vocab-overrides.py
+$ python3 src/generate-furigana-algo.py
+$ python3 src/inspect_vocab.py
 ```
 
 Note: These scripts rely on "./raw/kanji-textbook-words/*.json" and "./raw/kanji-words/v3/*.json". 
