@@ -6,7 +6,6 @@ Constraints:
   - Word must START with the target kanji (first character = kanji)
   - Max 2 kanji characters in the word
   - All characters must be Japanese (hiragana/katakana/kanji)
-  - Each kanji gets a unique word (guaranteed by the start-with constraint)
 
 Rule 1 – source priority (lower index wins):
   0. v3 tag 🌱
@@ -17,18 +16,35 @@ Rule 1 – source priority (lower index wins):
   5. v3 tag 🦉
 
 Rule 2 – word quality within a source tier (lower score wins):
-  0. single-character word  (the kanji itself)
-  1. word with exactly 1 kanji (all other chars are hiragana/katakana)
+  0. single-char OR 1-kanji word WITH english meaning  (single-char wins ties)
+  1. single-char OR 1-kanji word WITHOUT english meaning  (single-char wins ties)
   2. word with exactly 2 kanji  →  prefer shorter
 
+Fallback (no candidates match Rule 1/2 constraints):
+  - Relaxed search: word only needs to contain the kanji, not start with it
+  - Source: textbook words only
+
+Last-resort word fallback (no candidates at all):
+  - raw/ai-generated/japanese-study-words-ai.json  → {kanji: [word, reading, meaning, tag]}
+
+English meaning:
+  - Taken from the source entry if present
+  - Otherwise looked up in input/jmdict-vocab-meaning.json
+  - Otherwise looked up in input/scriptin-jmdict-eng.json (first sense, up to 3 glosses)
+  - Otherwise looked up in raw/ai-generated/vocab-meanings-ai.json (first element of value array)
+
 Sources:
-  raw/kanji-words/v3/[kanji].json        → [{w, r, t, j?, k?, e}]
-  raw/kanji-textbook-words/[kanji].json  → {kanji: {word: [reading, meaning]}}
+  raw/kanji-words/v3/[kanji].json                  → [{w, r, t, j?, k?, e}]
+  raw/kanji-textbook-words/[kanji].json            → {kanji: {word: [reading, meaning]}}
+  input/jmdict-vocab-meaning.json                  → {word: meaning}
+  input/scriptin-jmdict-eng.json                   → JMdict JSON (words[].kanji/kana/sense)
+  raw/ai-generated/vocab-meanings-ai.json          → {word: [meaning, frequency_label]}
+  raw/ai-generated/japanese-study-words-ai.json    → {kanji: [word, reading, meaning, tag]}
 
-Output: output/kanji_study_keywords-algo.json
-  { kanji: [word, reading, meaning] }   (null when no valid word found)
+Output: overrides/japanese_study_words-algo.json
+  { kanji: [word, reading, meaning, tag] }   (null when no valid word found)
 
-Run from project root: python3 src/build-japanese-study-words.py
+Run from project root: python3 src/build-japanese-study-vocab-overrides.py
 """
 
 import json
@@ -90,20 +106,29 @@ TAG_PRIORITY = {
 DEFAULT_TAG_PRIORITY = 4
 
 
-def word_score(word, tag):
+def word_score(word, tag, meaning=""):
     """Lower is better. Tuple for lexicographic comparison."""
     ts = TAG_PRIORITY.get(tag, DEFAULT_TAG_PRIORITY)
     n = len(word)
     kc = kanji_count(word)
 
     if n == 1:
-        word_type = 0  # single-char kanji — best
+        word_type = 0  # single-char kanji
     elif kc == 1:
         word_type = 1  # 1 kanji + kana only
     else:
         word_type = 2  # exactly 2 kanji (3+ are excluded)
 
-    return (ts, word_type, n)
+    # Types 0 and 1 share a tier: having a meaning beats no meaning; type 0 wins ties.
+    # Type 2 always ranks below types 0 and 1.
+    if word_type == 2:
+        quality = 2
+    elif meaning:
+        quality = 0
+    else:
+        quality = 1
+
+    return (ts, quality, word_type, n)
 
 
 def is_valid_candidate(word, reading, target_kanji):
@@ -220,11 +245,11 @@ def select_word_for_kanji(kanji):
         fallback = load_textbook_candidates_fallback(kanji)
         if not fallback:
             return None
-        fallback.sort(key=lambda x: word_score(x[0], x[2]))
+        fallback.sort(key=lambda x: word_score(x[0], x[2], x[3]))
         w, r, t, e = fallback[0]
         return [w, r, e, OUTPUT_TEXTBOOK_TAG]
 
-    all_candidates.sort(key=lambda x: word_score(x[0], x[2]))
+    all_candidates.sort(key=lambda x: word_score(x[0], x[2], x[3]))
     w, r, t, e = all_candidates[0]
     display_tag = OUTPUT_TEXTBOOK_TAG if t == TEXTBOOK_TAG else t
     return [w, r, e, display_tag]
@@ -243,14 +268,79 @@ def load_kanji_list():
     return [k for k in merged.keys() if k not in remove_set]
 
 
+def load_jmdict_meanings():
+    path = _resolve("input/jmdict-vocab-meaning.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_scriptin_meanings():
+    path = _resolve("input/scriptin-jmdict-eng.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    lookup = {}
+    for entry in data.get("words", []):
+        gloss_texts = []
+        for sense in entry.get("sense", []):
+            for g in sense.get("gloss", []):
+                if g.get("lang") == "eng" and g.get("text"):
+                    gloss_texts.append(g["text"])
+            if gloss_texts:
+                break
+        if not gloss_texts:
+            continue
+        meaning = ", ".join(gloss_texts[:3])
+        for k in entry.get("kanji", []):
+            t = k.get("text", "")
+            if t and t not in lookup:
+                lookup[t] = meaning
+        for k in entry.get("kana", []):
+            t = k.get("text", "")
+            if t and t not in lookup:
+                lookup[t] = meaning
+    return lookup
+
+
+def load_ai_meanings():
+    path = _resolve("raw/ai-generated/vocab-meanings-ai.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    return {word: val[0] for word, val in data.items() if isinstance(val, list) and val}
+
+
+def load_ai_words():
+    path = _resolve("raw/ai-generated/japanese-study-words-ai.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
 def main():
     all_kanji = load_kanji_list()
+    jmdict = load_jmdict_meanings()
+    scriptin = load_scriptin_meanings()
+    ai_meanings = load_ai_meanings()
+    ai_words = load_ai_words()
 
     result = {}
     selected_flat = []  # (word, kanji_count, tag_tier) for stats
 
     for kanji in all_kanji:
         entry = select_word_for_kanji(kanji)
+
+        if entry and not entry[2]:
+            entry[2] = jmdict.get(entry[0]) or scriptin.get(entry[0]) or ai_meanings.get(entry[0], "")
+
+        if entry is None:
+            entry = ai_words.get(kanji)
+
         result[kanji] = entry
 
         if entry:
@@ -284,8 +374,13 @@ def main():
 
     print(f"\n{'─'*44}")
     print(f"  Kanji processed:   {len(all_kanji)}")
+    no_meaning = sum(1 for v in result.values() if v is not None and not v[2])
+    no_reading = sum(1 for v in result.values() if v is not None and not v[1])
+
     print(f"  With word:         {with_word}")
     print(f"  Without word:      {without}")
+    print(f"  No meaning:        {no_meaning}")
+    print(f"  No reading:        {no_reading}")
 
     print(f"\n  Tag / source breakdown")
     for tag, label in tag_labels.items():
@@ -311,6 +406,13 @@ def main():
         no_vocab = [k for k, v in result.items() if v is None]
         print(f"\nNo-word kanji ({without}): {''.join(no_vocab)}")
 
+    print(f"")
+    no_meaning = [k for k, v in result.items() if v is not None and not v[2]]
+    print(f"No meaning kanji ({len(no_meaning)}): {''.join(no_meaning)}")
+
+    for k, v in result.items():
+        if v is not None and not v[2]:
+            print(k, v)
 
 if __name__ == "__main__":
     main()
