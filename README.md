@@ -113,7 +113,7 @@ jmdict-vocab-meaning.json
 ### Other Scripts
 
 ```
-python3 src/build-japanese-study-words.py
+python3 src/build-japanese-study-vocab-overrides.py
 python3 src/algorithmic-kanji-vocab-overrides.py
 python3 src/generate-furigana-algo.py
 ```
