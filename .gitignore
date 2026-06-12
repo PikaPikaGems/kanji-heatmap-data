@@ -9,6 +9,8 @@
 /releases/*
 !/releases/.keep
 
+/.venv/*
+
 temp/
 
 __pycache__/
