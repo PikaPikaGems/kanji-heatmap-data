@@ -1632,9 +1632,9 @@
     "☘️"
   ],
   "過": [
-    "過ぎ",
-    "すぎ",
-    "past, after, too (much)",
+    "過ぎる",
+    "すぎる",
+    "[vi] pass by; elapse; exceed, over-",
     "🌱"
   ],
   "験": [
@@ -1950,9 +1950,9 @@
     "🌱"
   ],
   "求": [
-    "求め",
-    "もとめ",
-    "request, appeal, claim",
+    "求める",
+    "もとめる",
+    "[vt] seek, pursue",
     "🌱"
   ],
   "頭": [
@@ -2310,9 +2310,9 @@
     "🌱"
   ],
   "比": [
-    "比べ",
-    "くらべ",
-    "contest, comparison, competition",
+    "比べる",
+    "くらべる",
+    "[vt] compare, contrast",
     "🌱"
   ],
   "満": [
@@ -3144,10 +3144,10 @@
     "🌱"
   ],
   "札": [
-    "札幌",
-    "さっぽろ",
-    "(city in Hokkaidō)",
-    "☘️"
+    "札束",
+    "さつたば",
+    "bundle of banknotes, stack of bills, large sum of money",
+    "✏️"
   ],
   "康": [
     "小康",
@@ -3852,9 +3852,9 @@
     "☘️"
   ],
   "極": [
-    "極く",
-    "ごく",
-    "quite, very",
+    "極めて",
+    "きわめて",
+    "extremely, very",
     "☘️"
   ],
   "史": [
@@ -5352,9 +5352,9 @@
     "🌱"
   ],
   "恐": [
-    "恐れ",
-    "おそれ",
-    "fear, horror, anxiety",
+    "恐れる",
+    "おそれる",
+    "[vt] fear; stand in awe",
     "☘️"
   ],
   "陽": [
@@ -5826,9 +5826,9 @@
     "☘️"
   ],
   "欠": [
-    "欠け",
-    "かけ",
-    "fragment, splinter, wane (of the Moon)",
+    "欠ける",
+    "かける",
+    "[vi] lack, be deficient, vacant; broken off",
     "🌷"
   ],
   "宝": [
@@ -6480,9 +6480,9 @@
     "🌱"
   ],
   "麻": [
-    "麻痺",
-    "まひ",
-    "paralysis",
+    "麻酔",
+    "ますい",
+    "anesthesia",
     "🌷"
   ],
   "濃": [
@@ -8868,9 +8868,9 @@
     "🌷"
   ],
   "痩": [
-    "痩せ",
-    "やせ",
-    "losing weight, slimming, lean person",
+    "痩せる",
+    "やせる",
+    "[vi] become thin",
     "☘️"
   ],
   "岳": [
@@ -9642,9 +9642,9 @@
     "🌷"
   ],
   "啓": [
-    "啓蒙",
-    "けいもう",
-    "する：to enlighten",
+    "啓発する",
+    "けいはつする",
+    "enlighten, develop, edify",
     "📖"
   ],
   "乃": [
@@ -9888,9 +9888,9 @@
     "🌷"
   ],
   "垂": [
-    "垂れ",
-    "たれ",
-    "sauce (esp. soy or mirin-based dipping sauce), hanging, something hanging (flap, lappet, etc.)",
+    "垂れる",
+    "たれる",
+    "[vi] hang down, dangle",
     "🌷"
   ],
   "隅": [
@@ -9900,9 +9900,9 @@
     "🌷"
   ],
   "汰": [
-    "淘汰",
-    "とうた",
-    "する：to select, to weed out, to screen, to sift",
+    "沙汰",
+    "さた",
+    "instructions; notice, tidings, rumor; affair",
     "📖"
   ],
   "枕": [
@@ -9912,10 +9912,10 @@
     "🌷"
   ],
   "胡": [
-    "胡椒",
-    "こしょう",
-    "pepper",
-    "☘️"
+    "胡麻",
+    "ごま",
+    "sesame seeds, sesame (Sesamum indicum)",
+    "✏️"
   ],
   "璧": [
     "完璧",
@@ -10656,10 +10656,10 @@
     "🌷"
   ],
   "喧": [
-    "喧嘩",
-    "けんか",
-    "quarrel, fight, squabble",
-    "☘️"
+    "喧騒",
+    "けんそう",
+    "tumult, great noise, clatter",
+    "✏️"
   ],
   "琴": [
     "琴",
@@ -10692,10 +10692,10 @@
     "🌷"
   ],
   "椎": [
-    "椎茸",
-    "しいたけ",
-    "Lentinula edodes [a mushroom]",
-    "🌷"
+    "椎骨",
+    "ついこつ",
+    "vertebra, vertebrae",
+    "✏️"
   ],
   "廻": [
     "廻り",
@@ -10726,12 +10726,6 @@
     "うたい",
     "Noh chanting",
     "📖"
-  ],
-  "桐": [
-    "桐蔭",
-    "とういん",
-    "Paulownia tree (kiri); a noble tree associated with the imperial family",
-    "☘️"
   ],
   "搬": [
     "搬送",
@@ -10774,6 +10768,12 @@
     "は",
     "edge (of a knife or sword), blade, prong (of an electrical plug)",
     "☘️"
+  ],
+  "斐": [
+    "甲斐",
+    "かい",
+    "result (that makes an act worthwhile), worth (in doing something), value",
+    "✏️"
   ],
   "猿": [
     "猿",
@@ -11328,9 +11328,9 @@
     "📖"
   ],
   "孔": [
-    "孔雀",
-    "くじゃく",
-    "peacock",
+    "孔子",
+    "こうし",
+    "Confucius",
     "📖"
   ],
   "妨": [
@@ -11670,10 +11670,10 @@
     "📖"
   ],
   "瓦": [
-    "瓦斯",
-    "ガス",
-    "gas [ateji]",
-    "☘️"
+    "瓦解",
+    "がかい",
+    "collapse, downfall",
+    "✏️"
   ],
   "悦": [
     "悦楽",
@@ -11886,9 +11886,9 @@
     "🌷"
   ],
   "卑": [
-    "卑怯",
-    "ひきょう",
-    "cowardly, craven, unfair",
+    "卑劣",
+    "ひれつ",
+    "mean, contemptible, despicable",
     "🌷"
   ],
   "忌": [
@@ -12053,12 +12053,6 @@
     "early evening",
     "📖"
   ],
-  "瑠": [
-    "瑠璃",
-    "るり",
-    "lapis lazuli (gem, blue)",
-    "📖"
-  ],
   "噛": [
     "噛む",
     "かむ",
@@ -12135,12 +12129,6 @@
     "綻び",
     "ほころび",
     "an open seam, a tear",
-    "📖"
-  ],
-  "璃": [
-    "玻璃",
-    "はり",
-    "crystal; glass",
     "📖"
   ],
   "墳": [
@@ -13104,10 +13092,10 @@
     "📖"
   ],
   "辣": [
-    "辣韮",
-    "らっきょう",
-    "Japanese shallot Allium chinense)",
-    "🌷"
+    "辣腕",
+    "らつわん",
+    "shrewdness, sharpness, astuteness",
+    "✏️"
   ],
   "畝": [
     "畝",
@@ -13439,6 +13427,12 @@
     "kasaya, monk's stole, wearing an article of clothing in the same manner as a kasaya (i.e. draped over one shoulder)",
     "🌷"
   ],
+  "裟": [
+    "大袈裟",
+    "おおげさ",
+    "exaggerated, overdone, overblown",
+    "✏️"
+  ],
   "渚": [
     "渚",
     "なぎさ",
@@ -13557,12 +13551,6 @@
     "洲",
     "す",
     "state (of the US, Australia, India, Germany, etc.), province (e.g. of Canada), county (e.g. of the UK)",
-    "📚"
-  ],
-  "怜": [
-    "怜悧",
-    "れいり",
-    "clever, sharp-witted, intelligent",
     "📚"
   ],
   "慧": [
@@ -13691,12 +13679,6 @@
     "triumphant return, returning in triumph",
     "📚"
   ],
-  "芙": [
-    "芙蓉",
-    "ふよう",
-    "cotton rose (Hibiscus mutabilis), Confederate rose, dixie rosemallow",
-    "📚"
-  ],
   "嵩": [
     "嵩",
     "かさ",
@@ -13707,12 +13689,6 @@
     "檀家",
     "だんか",
     "family which supports a temple, parishioner",
-    "📚"
-  ],
-  "絢": [
-    "絢爛",
-    "けんらん",
-    "gorgeous, brilliant, dazzling",
     "📚"
   ],
   "稜": [
@@ -13877,12 +13853,6 @@
     "Japan, Japanese-style",
     "📚"
   ],
-  "蕉": [
-    "芭蕉",
-    "ばしょう",
-    "banana plant; Japanese plantain",
-    "📚"
-  ],
   "椰": [
     "椰子",
     "やし",
@@ -13894,12 +13864,6 @@
     "ふくらむ",
     "[vi] swell (out), expand, get big [inflated]",
     "📖"
-  ],
-  "嵯": [
-    "嵯峨",
-    "さが",
-    "precipitous",
-    "📚"
   ],
   "蕗": [
     "蕗",
