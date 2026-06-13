@@ -13,4 +13,6 @@
 
 temp/
 
+generate-log.txt
+
 __pycache__/
