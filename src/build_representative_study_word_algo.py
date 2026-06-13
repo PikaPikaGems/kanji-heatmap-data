@@ -72,7 +72,7 @@ from sources import (
     textbook_candidates,
     TEXTBOOK_TAG,
 )
-from japanese import is_all_japanese, kanji_count
+from japanese import is_all_japanese, is_kanji_char, kanji_count
 
 # ---------------------------------------------------------------------------
 # Scoring / prioritisation
@@ -94,8 +94,25 @@ TAG_PRIORITY = {
 DEFAULT_TAG_PRIORITY = 5  # unknown tag → between 📚 and 🦉
 
 
-def word_score(word, tag):
-    """Lower is better. Tuple: (source_tier, word_type, length)."""
+# Kanji we ship (input/filtered_kanji.json); populated in main(). Used to prefer
+# study words whose every kanji ships, so a word doesn't drag in an unshipped
+# partner (e.g. 麻 → 麻痺[痺 unshipped]) when an all-shipped option exists.
+SHIPPED = set()
+
+
+def has_nonshipped_kanji(word):
+    """1 if `word` contains a kanji we don't ship, else 0 (sorts all-shipped first)."""
+    return 1 if any(is_kanji_char(c) and c not in SHIPPED for c in word) else 0
+
+
+def word_score(word, tag, meaning=""):
+    """Lower is better. Tuple: (tier, has_meaning, all_shipped, word_type, length).
+
+    has_meaning and all_shipped sit AFTER the source tier, so both only break ties
+    WITHIN a frequency tier — we never drop a tier to satisfy them. has_meaning comes
+    first so an all-shipped but meaningless name (椎名) can't beat a meaningful word
+    (椎茸); all_shipped then prefers an all-shipped partner among equals (麻痺 → 麻酔).
+    A kanji whose only same-tier word is unshipped keeps it (喧 stays 喧嘩)."""
     ts = TAG_PRIORITY.get(tag, DEFAULT_TAG_PRIORITY)
     n = len(word)
     kc = kanji_count(word)
@@ -107,7 +124,11 @@ def word_score(word, tag):
     else:
         word_type = 2  # exactly 2 kanji (3+ are excluded)
 
-    return (ts, word_type, n)
+    # no_meaning and all_shipped are LATE tiebreakers (after tier AND word_type), so
+    # they never override the single-kanji preference — they only choose among
+    # otherwise-equal words: prefer a meaningful one, then an all-shipped one.
+    no_meaning = 0 if meaning else 1
+    return (ts, word_type, no_meaning, has_nonshipped_kanji(word), n)
 
 
 def is_valid_candidate(word, reading, target_kanji):
@@ -187,7 +208,7 @@ def select_word_for_kanji(kanji, used_words=None):
             if TAG_PRIORITY.get(entry[2], DEFAULT_TAG_PRIORITY) < TAG_PRIORITY.get(existing[2], DEFAULT_TAG_PRIORITY):
                 all_candidates[idx] = entry
 
-    all_candidates.sort(key=lambda x: word_score(x[0], x[2]))
+    all_candidates.sort(key=lambda x: word_score(x[0], x[2], x[3]))
 
     # Try regular candidates (word starts with kanji), skip already-used words
     for w, r, t, e in all_candidates:
@@ -198,7 +219,7 @@ def select_word_for_kanji(kanji, used_words=None):
     # Fallback: relaxed search (kanji anywhere in word), textbook only, shorter words first
     # (59): 宏雰紘稔輔肇亨喬槙峻蕉欣禎斐尭馨彬匡欽佑惇脩甫暉允瑛皓洸怜悌侃侑琳瑚瑳瑶詢洵倖誼諄晏莉晨碩熙燎燦滉蓉恕迪綸麟柾裟頌眸伶
     fallback = load_textbook_candidates_fallback(kanji)
-    fallback.sort(key=lambda x: (len(x[0]), word_score(x[0], x[2])))
+    fallback.sort(key=lambda x: (len(x[0]), word_score(x[0], x[2], x[3])))
     for w, r, t, e in fallback:
         if w not in used_words:
             return [w, r, e, OUTPUT_TEXTBOOK_TAG]
@@ -254,6 +275,7 @@ def load_jmdict_readings():
 
 def main():
     all_kanji = load_kanji_list()
+    SHIPPED.update(all_kanji)  # enable the all-shipped study-word preference
     jmdict = load_jmdict_meanings()
     scriptin = load_scriptin_meanings()
     ai_meanings = load_ai_meanings()

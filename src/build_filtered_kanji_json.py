@@ -25,10 +25,8 @@ algorithmic-kanji-vocab, and the final build all read input/filtered_kanji.json.
 Run from the project root: python3 src/build_filtered_kanji_json.py
 """
 
-import json
 import os
 
-from sources import resolve_path
 import utils
 import kanji_load
 
@@ -37,15 +35,8 @@ import kanji_load
 JPDB_SENTINEL = 50_000
 
 
-def load_json(rel_path):
-    # Required inputs — fail loud if missing (no silent default).
-    with open(resolve_path(rel_path), encoding="utf-8") as f:
-        return json.load(f)
-
-
 def write_json(rel_path, data):
-    with open(resolve_path(rel_path), "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    utils.dump_json(rel_path, data, indent=2)
     print(f"Written: input/{os.path.basename(rel_path)} ({len(data)} kanji)")
 
 
@@ -97,10 +88,10 @@ def order_by_frequency(filtered, merged, original_order):
 
 
 def main():
-    merged = load_json("input/merged_kanji.json")
+    merged = utils.get_data_from_file("input/merged_kanji.json")
     all_kanjis = list(merged.keys())
 
-    to_remove = set(load_json("overrides/kanji_to_remove.json").get("data", []))
+    to_remove = set(utils.get_data_from_file("overrides/kanji_to_remove.json").get("data", []))
     filtered = [k for k in all_kanjis if k not in to_remove]
     filtered = order_by_frequency(filtered, merged, all_kanjis)
 

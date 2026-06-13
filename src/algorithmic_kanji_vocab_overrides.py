@@ -186,6 +186,17 @@ def has_phrase_bridge(word):
     return False
 
 
+# Kanji we ship (input/filtered_kanji.json); populated in main(). Sample words
+# whose every kanji ships are preferred, so a kanji's example doesn't drag in an
+# unshipped partner (玉 → 玉葱[葱 unshipped]) when an all-shipped option exists.
+SHIPPED = set()
+
+
+def has_nonshipped_kanji(word):
+    """1 if `word` contains a kanji we don't ship, else 0 (sorts all-shipped first)."""
+    return 1 if any(is_kanji_char(c) and c not in SHIPPED for c in word) else 0
+
+
 def word_score(word, tag, e="", r=""):
     """Lower is better. Tuple for lexicographic comparison."""
     kc = kanji_count(word)
@@ -195,10 +206,12 @@ def word_score(word, tag, e="", r=""):
     length_penalty = 0 if n <= 3 else (1 if n == 4 else 2)  # 2-3 ideal, 4 okay, 5 allowed
     no_reading_penalty = 0 if (r and r != '-') else 1
     no_meaning_penalty = 0 if e else 1
-    # Final tiebreaker: shorter wins. Only matters when everything above is equal
-    # (e.g. 🌱 続く [2] vs 🌱 続ける [3], both 1 kanji, both with reading+meaning),
-    # since the length_penalty band treats 2 and 3 chars as equally ideal.
-    return (ts, extra_kanji, length_penalty, no_reading_penalty, no_meaning_penalty, n)
+    # all_shipped (has_nonshipped) is a LATE tiebreaker — after tier, kanji-count,
+    # length, reading and meaning — so an all-shipped word is preferred only among
+    # otherwise-equal candidates (玉葱☘️ → 玉子☘️). A kanji whose only good word has an
+    # unshipped partner keeps it rather than dropping to a structurally worse word.
+    return (ts, extra_kanji, length_penalty, no_reading_penalty, no_meaning_penalty,
+            has_nonshipped_kanji(word), n)
 
 
 def is_valid_candidate(word, kanji):
@@ -504,6 +517,7 @@ def main():
     # build and keeps this script's kanji set identical to the other algo scripts'.
     with open(resolve_path('input/filtered_kanji.json'), encoding='utf-8') as f:
         all_kanji = json.load(f)
+    SHIPPED.update(all_kanji)  # enable the all-shipped sample-word preference
 
     with open(resolve_path('input/vocab_meaning.json'), encoding='utf-8') as f:
         existing_meanings = json.load(f)
