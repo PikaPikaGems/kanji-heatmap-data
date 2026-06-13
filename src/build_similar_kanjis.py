@@ -52,10 +52,13 @@ TRIVIAL_COMPONENTS = set("一丨丿丶乙亅丷")
 # Map radical-variant glyphs to one canonical form so the yagays decomposition
 # and the kanji_components.txt fallback share a vocabulary.
 VARIANT_NORMALIZE = {
-    "⺡": "氵", "⺘": "扌", "⺅": "亻", "⺾": "艹", "⻌": "辶", "⻍": "辶",
-    "⻎": "辶", "⺋": "乚", "⺉": "刂", "⺨": "犭", "⻏": "阝", "⻖": "阝",
-    "⺬": "示", "⺮": "竹", "⺳": "罒", "⺺": "聿", "訁": "言", "飠": "食",
-    "糹": "糸", "釒": "金", "⻊": "足",
+    "⺡": "氵", "⺘": "扌", "⺅": "亻", "⺾": "艹", "艸": "艹", "⻌": "辶",
+    "⻍": "辶", "⻎": "辶", "⺋": "乚", "⺉": "刂", "⺨": "犭", "⻏": "阝",
+    "⻖": "阝", "⺬": "示", "⺮": "竹", "⺳": "罒", "⺺": "聿", "訁": "言",
+    "飠": "食", "糹": "糸", "釒": "金", "⻊": "足",
+    # radical-supplement forms that look identical to a kanji/component but use a
+    # different codepoint — fold them in so e.g. 録/緑 (⺕) match and 受/愛 (⺤) match.
+    "⺕": "彐", "⺤": "爪", "⺗": "心", "⺌": "⺌", "⺍": "⺌", "⺦": "丬",
 }
 
 MAX_TOTAL = 10
@@ -110,7 +113,10 @@ def load_component_sets(target_kanjis):
     sets = {}
     for kanji in target_kanjis:
         raw = radical.get(kanji) or fallback.get(kanji) or [kanji]
-        sets[kanji] = set(_normalize(raw)) - TRIVIAL_COMPONENTS
+        # Include the kanji itself as a component: when it appears whole inside
+        # another kanji's decomposition (寺 in 時/詩/持, 化 in 花/貨), that shared
+        # whole-kanji component (rare → high IDF) makes them rank as similar.
+        sets[kanji] = (set(_normalize(raw)) - TRIVIAL_COMPONENTS) | {kanji}
     return sets
 
 
@@ -123,9 +129,12 @@ def build_similar_kanjis(target_kanjis, component_sets, positions):
     total = len(target_kanjis)
     weight = {c: math.log(total / df) for c, df in doc_freq.items()}
 
-    # Squared vector norm per kanji (denominator of the cosine).
+    # Squared vector norm per kanji (denominator of the cosine). The kanji's own
+    # self-component is excluded here: it lets a containing kanji match (寺→時) via
+    # the numerator, but counting its high IDF in the norm would otherwise inflate
+    # the denominator and drop a kanji's ordinary radical matches (花→華/芳/苗).
     norm_sq = {
-        k: sum(weight[c] ** 2 for c in parts) or 1e-9
+        k: sum(weight[c] ** 2 for c in parts if c != k) or 1e-9
         for k, parts in component_sets.items()
     }
 
