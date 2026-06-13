@@ -1,3 +1,40 @@
+
+# 1
+I think there is something wrong with your algorithm
+花 → 貨 靴 芯 華 苗 芳 芹 苦 著 蔦
+
+In your algorithm ou should take into consideration that when it is the main component 
+for example: these  椛 糀 硴 geniunely look more like 花 than the ones you picked, because
+ 花 is inside 椛 on the left side for example. 
+
+# 2
+
+ I geniunely want to bring back: 斐 because I did a quick check, it's really quite common 不甲斐 and 甲斐. and for 裟..  大袈裟 seems to be quite common.... 
+
+# 3
+So a fair "genuinely good everyday word" count is ~35... That's still a lot!
+How many are 🌱 and ☘️ ?
+
+# 4 
+> But because all-shipped is the absolute first key, it sometimes picks a worse all-shipped word over a good unshipped one
+
+This is really bad though. I don't want to pick a worse word. 
+
+Two questions
+1. Are there candidate kanjis that we can remove instead to minimize this problem? 
+2. Can you claude just handpick better word for these kanji? what are all the kanji affected by this anyway? 
+
+
+
+
+study assignments : 19
+sample assignments: 86
+TOTAL             : 105
+non-shipped occurrences by source: {'external': 100, 'removed': 9}
+distinct REMOVED kanji pulled in (5) — candidates to bring back: 惇憬斐蓉裟
+distinct EXTERNAL kanji pulled in (75) — no data, can't ship: 倆凰剌勒哈哥嘩堡壷寇峨幌幟怯悧愍托掣撰斯柑桔桶椒汀汲洒洩淘渟濘瀚爛狡狽猾玻瓜瓢痺瘤癌盒瞞箆紐芭茸葱蒙蔭薹藁藪蘇蜀蟻袁袱覯訥贖雀韮飴餡饉駕鮫鱈鱒鱮鴨黍鼠
+
+
 # Question 
 
 # 1
@@ -9,10 +46,39 @@ Not all are algo-written. only those with the suffix -algo.json are algo written
 Doesnt keyword_sources.py have a lot of overlap with algorithmic_overrides_keyword.py ? and need 
 deduplication?
 
-# TODOs
+# 3
 
-1. better similar-kanji algorithm given new raw input files 
-2. sort build_filter_kanji.json based on frequency data. (We have many frequency sources, how do we go about it? weighted average or something?)
+Why are there many changes in keywords-algo.json 
+
+# 4
+On sort build_filtered_kanji_json.py based on frequency data. (We have many frequency sources, how do we go about it? weighted average or something?)
+
+Note
+
+```
+    jiten_frequency = kanji_load.load_jiten_frequency()
+    jpdb_frequency = kanji_load.load_jpdb_frequency()
+    for kanji in kanji_data.keys():
+      kanji_extract.get_ranks(kanji_info, NO_NUM_DATA, jiten_frequency, jpdb_frequency),
+```
+
+# 5
+
+please better similar-kanji algorithm given new raw input files 
+modify build_similar_kanjis.py given the files in raw/structure-info/* folder and also raw/kanji_components.txt
+
+# 6 
+
+You mentioned that 
+
+> The non-shipped kanji come from 86 sample-word and 19 study-word assignments. They split into two groups: 1. Perfectly good everyday words — the target kanji's best example just happens to pair with a kanji you don't ship:  2. Genuinely poor picks — ateji, names, or obscure form
+
+Given this
+1. How many kanji in kanji_to_remove.json do you think should we bring back?
+2. Should we remove even more kanjis? 
+3. We should print these 19 study-word and 86 sample word so we can manually inspect
+4. Should we tweak the algorithm more to reduce these? 
+5. How many of the 105 sample vocabulary are good everyday words and how many are geniunely poor picks? what are they? 
 
 ## Note
 
@@ -167,147 +233,21 @@ COMMON 👽 均衡 40 entries in nadeshiko OR → 衡 → 衡 (くびき) [🦉]
 
 the algorithm should be if they're both in the v3 and textbook then the word gets whichever has the higher tag
 
+# About unknown kanji 
 
-# Output
------------
- Kanji processed:   2386
-  With word:         2382
-  Without word:      4
-  No meaning:        0
-  No reading:        0
+The single most important number: 100 of the 105 non-shipped partners are [external] kanji — characters not in merged_kanji.json at all (癌 飴 葱 痺 鼠 …). Those were never shippable; no amount of editing kanji_to_remove.json brings them back. Only 9 occurrences across 5 distinct removed kanji are [removed]: 惇 憬 斐 蓉 裟. 
 
-  Tag / source breakdown
-    🌱  v3: 746  (31.3%)
-    ☘️  v3: 588  (24.7%)
-    🌷  v3: 555  (23.3%)
-    📖  textbook: 341  (14.3%)
-    📚  v3: 114  (4.8%)
-    🤔  unknown: 0  (0.0%)  
-    🦉  v3: 38  (1.6%)  康涯鵬亮衡款郁玲槻帥泌孟綜榛惟渥毬啄穣笙匁椋昂叡莞耶捺絃衿凜玖梧勁阜璽貌璧坐
-  康 → 康二 (こうじ) [🦉] Health, ease, peace; comfort and well-being
-  涯 → 涯 (はて) [🦉] horizon
-  鵬 → 鵬 (おおとり) [🦉] peng (giant bird said to transform from a fish)
-  🚩 亮 → 亮一 (りょういち) [🦉] Bright, clear, luminous; intelligent; to illuminate or clarify
-  衡 → 衡 (くびき) [🦉] yoke
-  款 → 款 (かん) [🦉] title, heading, article
-  🚩 郁 → 郁子 (むべ) [🦉] Japanese staunton-vine (Stauntonia hexaphylla)
-  🚩 玲 → 玲瓏 (れいろう) [🦉] clear, translucent, brilliant
-  🚩 槻 → 槻 (けやき) [🦉] Japanese zelkova (Zelkova serrata)
-  帥 → 帥 (そち) [🦉] director of the Dazaifu
-  泌 → 泌尿 (ひにょう) [🦉] urination
-  🚩 孟 → 孟録 (まんろく) [🦉] First, eldest; the beginning of a season; used in classical names (Mencius)
-  綜 → 綜合 (そうごう) [🦉] synthesis, combination, integration
-  🚩 榛 → 榛 (はしばみ) [🦉] Asian hazel (Corylus heterophylla var. thunbergii), Siberian hazel
-  🚩 惟 → 惟 (これ) [🦉] this, this one
-  🚩 渥 → 渥美 (あつみ) [🦉] Moist, wet; grace, favor; generous; rich (of color or liquid)
-  🚩 毬 → 毬 (かさ) [🦉] ball (for sport, games, etc.)
-  啄 → 啄木 (たくぼく) [🦉] woodpecker
-  穣 → 穣 (じょう) [🦉] 10^28, ten octillion
-  🚩 笙 → 笙 (しょう) [🦉] traditional Japanese wind instrument resembling panpipes, free-reed instrument used in Japanese court music
-  匁 → 匁 (もんめ) [🦉] monme (unit of weight, 3.75 g)
-  🚩 椋 → 椋 (むくのき) [🦉] Aphananthe oriental elm (Aphananthe aspera), mukutree
-  昂 → 昂る (たかぶる) [🦉] to become aroused (of emotions, nerves, etc.), to become excited, to become stirred up
-  叡 → 叡山 (えいざん) [🦉] Wise, sagacious; imperial wisdom; used in reference to emperors
-  🚩 莞 → 莞 (ふとい) [🦉] softstem bulrush (Scirpus tabernaemontani)
-  🚩 耶 → 耶律 (やりつ) [🦉] Question particle (classical); used to transcribe foreign sounds; father (archaic)
-  捺 → 捺印 (なついん) [🦉] affixing a seal (to), putting one's seal (on)
-  絃 → 絃 (つる) [🦉] bowstring
-  🚩衿 → 衿子 (えりこ) [🦉] Collar, lapel of a garment; variant of 襟; used in names for elegance
-  凜 → 凜 (りん) [🦉] cold, frigid, bracing
-  玖 → 玖 (きゅう) [🦉] nine, 9
-  🚩 梧 → 梧桐 (あおぎり) [🦉] Chinese parasol-tree (Firmiana simplex), Chinese-bottletree, Japanese varnishtree
-  🚩 勁 → 勁草 (けいそう) [🦉] wind-resistant blade of grass, resistant idea (metaphorically)
-  阜 → 阜 (つかさ) [🦉] mound, hill
-  🚩 璽 → 璽 (じ) [🦉] emperor's seal
-  貌 → 貌 (かお) [🦉] face, visage
-  璧 → 璧 (へき) [🦉] ball, sphere, globe
-  🚩 坐 → 坐る (すわる) [🦉] to sit, to squat
+1. How many to bring back? Essentially 0–2. Only those 5 removed kanji appear in any example word, and most aren't good standalone ship candidates:
 
-  Word length
-    1 chars: 950  (39.9%)
-    2 chars: 1225  (51.4%)
-    3 chars: 187  (7.9%)
-    4 chars: 14  (0.6%)  亡片柔朗繰懐娠晃猟囚凸耀拶羨
+斐 — defensible: 甲斐 (かい, "worth", as in 生き甲斐/やり甲斐) is genuinely common.
+憬 — borderline: only 憧憬 (yearning).
+惇 (惇睦, a name), 蓉 (芙蓉, a flower), 裟 (袈裟, monk's stole) — not worth shipping standalone.
+But the cleaner fix isn't bring-back — it's picking a different example word (see #4 below). E.g. 甲 doesn't need 甲斐; it has 甲乙/装甲/甲板 (all shipped).
 
-  亡 → 亡くなる (なくなる) [🌱] [vi] die, pass away, breathe one’s last
-  片 → 片づける (かたづける) [☘️] to put in order, to tidy up, to clean up
-  柔 → 柔らかい (やわらかい) [☘️] soft
-  繰 → 繰り返す (くりかえす) [☘️] repeat, do over again
-  懐 → 懐かしい (なつかしい) [☘️] dear, beloved; long for, miss
-  羨 → 羨ましい (うらやましい) [☘️] envious, jealous; enviable
-  囚 → 囚われる (とらわれる) [🌷] to be caught, to be captured, to be taken prisoner
-  朗 → 朗らかな (ほがらかな) [📖] cheerful, bright
-  娠 → 妊娠する (にんしんする) [📖] become pregnant, conceive
-  晃 → 晃晃たる (こうこう煌煌たる) [📖] brilliant, bright, dazzling
-  猟 → 猟をする (りょうをする) [📖] hunt, shoot
-  凸 → 凸レンズ (とつレンズ) [📖] convex lens
-  耀 → 眩耀する (げんようする) [📖] shine dazzlingly
-  拶 → 挨拶する (あいさつする) [📖] greet, salute, present one's compliments
+2. Remove more? A cluster of target kanji are themselves rare and have no everyday word that avoids an external partner: 芙(芙蓉), 袈(袈裟), 嵯(嵯峨), 璃(玻璃), 蕉(芭蕉), 怜(怜悧), 絢(絢爛), 爾 (伯剌西爾=Brazil, 哈爾浜=Harbin — both ateji!), 倭(倭寇). These are removal candidates — but only if they're outside your must-ship target set; I won't remove without your say.
 
-    5 chars: 6  (0.3%)  則召恥盛駆慄
-  恥 → 恥ずかしい (はずかしい) [🌱] shy; ashamed; shameful
-  召 → 召し上がる (めしあがる) [☘️] [vt] eat, drink
-  盛 → 盛り上がる (もりあがる) [☘️] [vi] rise, swell; rouse, become excited
-  駆 → 駆けつける (かけつける) [☘️] to run to, to come running, to rush (someplace)
-  則 → 則を越える (のりをこえる) [📖] violate the laws of nature
-  慄 → 慄然とする (りつぜんとする) [📖] to be filled with horror, to be horrified
+4. Tweak the algorithm? Yes — this is the highest-leverage lever. Add an "all-shipped" preference: penalize candidate words containing a non-shipped kanji in both the sample- and study-word scoring. That would clear most of the 86 (玉→玉葱 has 水玉/目玉; 胃/肺→癌 have alternatives; 麻→麻痺 could be 麻薬/麻酔). Irreducible residue ≈ the ~10–15 kanji above that have no all-shipped word at all. I can implement this as a separate change if you want — flagging rather than doing it unprompted since it shifts vocab output and interacts with your manual overrides.
 
+5. Good everyday vs poor picks (my read, ~judgment): roughly ~70 good / ~35 poor. Clear poor picks (ateji / names / obscure): 墨西哥(Mexico), 伯剌西爾(Brazil), 哈爾浜(Harbin), 袁彦道, 弥勒, 玉蜀黍, 矢鱈, 箆蝶鮫, 怜悧狡猾, 嵯峨野線, 瓢鮎図, 稀覯本, 愍諒, 贖宥, 掛袱紗, 倭寇, 稜堡, 鴨茅, 茅渟, 槍鱮, 窮鼠噛猫, 鳳駕, 汀渚, 瓦斯, 浩瀚, 惇睦, 芙蓉峰. The rest are legitimate (麻痺, 椎茸, 胡椒, 喧嘩, 蜜柑, 桔梗, 紫蘇, 棺桶, 漏洩, 飢饉, 蟻塚, 駄洒落, 欺瞞, 杜撰, 鳳凰, 狼狽える…) where only the partner happens to be unshipped.
 
-  Kanji per word
-    1 kanji: 1614  (67.8%)
-    2 kanji: 766  (32.2%)
-    3 kanji: 2  (0.1%)  雰莉
-
-  雰 → 雰囲気 (ふんいき) [📚] atmosphere, mood, ambiance
-  莉 → 茉莉花 (まつりか) [📚] jasmine flower
-────────────────────────────────────────────
-
-No-word kanji (4): 牲肪蓉裟
-
-No meaning kanji (0): 
-
-  Words starting with kanji:     2342
-  Words NOT starting with kanji: 40
-
-Kanji whose study word does NOT start with it (40):
-  械績膚覧慮訟祉壌酬践娠穫轄迭剖蕉痢佑耀悌勺瑚璃誼莉耗恕麟汰賂粧拶戚蔽侶惧憬摯瘍錮
-  械 → 機械 (きかい) [📖] machine
-  績 → 成績 (せいせき) [📖] grades (school)
-  膚 → 皮膚 (ひふ) [📖] skin
-  覧 → 閲覧 (えつらん) [📖] する：to peruse, to inspect, to read
-  慮 → 遠慮 (えんりょ) [📖] reserve, refraining
-  訟 → 訴訟 (そしょう) [📖] lawsuit
-  祉 → 福祉 (ふくし) [📖] welfare, well-being
-  壌 → 土壌 (どじょう) [📖] soil
-  酬 → 報酬 (ほうしゅう) [📖] a reward, remuneration, a fee
-  践 → 実践 (じっせん) [📖] する：to put into practice
-  娠 → 妊娠する (にんしんする) [📖] become pregnant, conceive
-  穫 → 収穫 (しゅうかく) [📖] する：to harvest, to reap
-  轄 → 管轄 (かんかつ) [📖] control, jurisdiction
-  迭 → 更迭 (こうてつ) [📖] する：to make a switch (in the Cabinet, etc.)
-  剖 → 解剖 (かいぼう) [📖] する：to perform an autopsy, to dissect
-  痢 → 下痢 (げり) [📖] diarrhoea
-  耀 → 眩耀する (げんようする) [📖] shine dazzlingly
-  勺 → 一勺 (いっしゃく) [📖] 1 shaku (⅒ of a go 合)
-  璃 → 玻璃 (はり) [📖] crystal; glass
-  耗 → 消耗 (しょうもう) [📖] する：to consume [exhaust] (energy)
-  汰 → 淘汰 (とうた) [📖] する：to select, to weed out, to screen, to sift
-  賂 → 賄賂 (わいろ) [📖] bribe, corruption
-  粧 → 化粧 (けしょう) [📖] する：to makeup, to put on make-up
-  拶 → 挨拶する (あいさつする) [📖] greet, salute, present one's compliments
-  戚 → 親戚 (しんせき) [📖] relatives
-  蔽 → 隠蔽 (いんぺい) [📖] する：to hide, to conceal, to cover up
-  侶 → 僧侶 (そうりょ) [📖] (Buddhist) priest, bonze, monk
-  惧 → 危惧 (きぐ) [📖] する：to feel misgivings about, to be apprehensive about
-  憬 → 憧憬 (しょうけい) [📖] する：to yearn
-  摯 → 真摯な (しんしな) [📖] sincere
-  瘍 → 腫瘍 (しゅよう) [📖] tumour
-  錮 → 禁錮 (きんこ) [📖] imprisonment
-  蕉 → 芭蕉 (ばしょう) [📚] banana plant; Japanese plantain
-  佑 → 天佑 (てんゆう) [📚] divine blessing, providence, heavenly protection
-  悌 → 孝悌 (こうてい) [📚] filial piety and fraternal love
-  瑚 → 珊瑚 (さんご) [📚] coral
-  誼 → 交誼 (こうぎ) [📚] friendship, goodwill, friendly relations
-  莉 → 茉莉花 (まつりか) [📚] jasmine flower
-  恕 → 寛恕 (かんじょ) [📚] forgiveness, leniency, pardon
-  麟 → 麒麟 (きりん) [📚] giraffe; qilin (mythical creature)
+Now moving to #5 (similar-kanji rewrite). Marking #6's deliverable complete.
