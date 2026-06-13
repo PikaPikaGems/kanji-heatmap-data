@@ -65,6 +65,8 @@ flowchart LR
     aimean[("🟩 raw/ai-generated/vocab-meanings-ai.json")]
     aistudy[("🟩 raw/ai-generated/japanese-study-words-ai.json")]
     components[("🟩 raw/kanji_components.txt")]
+    structure[("🟩 raw/structure-info/yagays/* (radical + L/R, T/B)")]
+    jpdbfreq[("🟩 raw/JPDB_FREQUENCY_*.csv")]
     keywordsraw[("🟩 raw/kanji-keywords-{j,w,k}.json")]
     manual[("🟩 raw/manual-inspections.json")]
 
@@ -77,7 +79,10 @@ flowchart LR
     SS[build_similar_kanjis]
     S6[kanji_build_output_jsons]
 
-    %% intermediate overrides (algo-written)
+    %% intermediate files — all script-written: input/filtered_kanji.json, the
+    %% -algo.json overrides, and the external-dict cache. The hand-written
+    %% overrides/*.json (no -algo suffix) that take priority at build time are
+    %% authoritative and intentionally omitted from this view (see §3).
     filt[("🟦 input/filtered_kanji.json")]
     jsw[("🟦 japanese_study_words-algo")]
     kv[("🟦 kanji_vocab-algo")]
@@ -99,7 +104,9 @@ flowchart LR
 
     merged --> S1
     remove --> S1
+    jpdbfreq --> S1
     S1 --> filt
+    %% S1 also frequency-orders filtered_kanji.json: Google (in merged) → JPDB → Netflix
 
     filt --> S2
     v3 --> S2
@@ -134,6 +141,7 @@ flowchart LR
     SK --> kwalgo
 
     components --> SS
+    structure --> SS
     filt --> SS
     SS --> simout
 
@@ -235,20 +243,21 @@ flowchart TD
 ```
 
 ### `build_similar_kanjis.py`
-Visually similar kanji by shared components.
+Visually similar kanji by shared components (IDF-weighted, position-aware).
 
 ```mermaid
 flowchart TD
-    L[load components per kanji
-    minus trivial strokes] --> IDX[invert: component -> kanjis]
+    L[component set per kanji:
+    yagays kanji2radical, else kanji_components.txt;
+    normalise radical variants, drop trivial strokes] --> W[IDF-weight components
+    over the shipped set: rare component = high weight]
+    W --> IDX[invert: component -> kanjis]
     IDX --> K[for each kanji, sorted]
-    K --> G[for each of its components in sorted order,
-    take top-10 others by overlap ratio]
-    G --> M[merge, re-rank by overlap]
-    M --> F[keep overlap >= 0.5, cap 20]
+    K --> SC[score each candidate sharing a component:
+    weighted cosine of component vectors
+    + same-slot bonus from yagays L/R, T/B]
+    SC --> F[keep score >= 0.35, order most→least similar, cap 10]
     F --> OUT[(output/similar-kanjis.json)]
-    note["overlap = shared / min component-count;
-    iteration is sorted so output is deterministic"]
 ```
 
 ---
