@@ -1,12 +1,15 @@
 import csv
 import utils
 import os
+import sources
+import japanese
 import constants as const
 from typing import Any
 
 IN_MERGED_KANJI_PATH = os.path.join(const.dir_in, "merged_kanji.json")
+IN_FILTERED_KANJI_PATH = os.path.join(const.dir_in, "filtered_kanji.json")
 IN_KANJI_VOCAB_PATH = os.path.join(const.dir_in, "kanji_vocab.json")
-IN_VOCAB_FUGIGANA_PATH = os.path.join(const.dir_in, "vocab_furigana.json")
+IN_VOCAB_FURIGANA_PATH = os.path.join(const.dir_in, "vocab_furigana.json")
 IN_VOCAB_MEANING_PATH = os.path.join(const.dir_in, "vocab_meaning.json")
 IN_MISSING_COMPONENTS_PATH = os.path.join(const.dir_in, "missing_components.json")
 IN_PHONETIC_COMPONENTS_PATH = os.path.join(const.dir_in, "phonetic_components.json")
@@ -26,6 +29,9 @@ IN_KANJI_TO_REMOVE_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "kanji_to_remove.json"
 )
 IN_KEYWORD_OVERRIDES_PATH = os.path.join(const.dir_overrides, "keywords.json")
+IN_COMPONENT_KEYWORD_OVERRIDES_PATH = os.path.join(
+    const.dir_overrides, "component_keyword.json"
+)
 IN_KEYWORD_OVERRIDES_ALGO_PATH = os.path.join(const.dir_overrides, "keywords-algo.json")
 IN_KANJI_PARTS_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_parts.json")
 IN_VOCAB_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_vocab.json")
@@ -38,6 +44,8 @@ IN_VOCAB_MEANING_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_meaning.json"
 )
 IN_VOCAB_MEANING_ALGO_PATH = os.path.join(const.dir_overrides, "vocab_meaning-algo.json")
+IN_VOCAB_MEANING_EXTERNAL_DICT_PATH = os.path.join(const.dir_overrides, "vocab_meaning-external-dict.json")
+IN_VOCAB_MEANING_AI_PATH = os.path.join(const.dir_raw, "ai-generated", "vocab-meanings-ai.json")
 IN_JAPANESE_STUDY_WORDS_ALGO_PATH = os.path.join(
     const.dir_overrides, "japanese_study_words-algo.json"
 )
@@ -57,47 +65,38 @@ OUT_CUM_USE_PATH = os.path.join(const.dir_out, const.outfile_cum_use)
 OUT_KANJI_REPRESENTATIVE_WORDS_PATH = os.path.join(
     const.dir_out, const.outfile_kanji_representative_words
 )
+OUT_EXTRA_KANJI_KEYWORD_PATH = os.path.join(
+    const.dir_out, const.outfile_extra_kanji_keyword
+)
 
 
 # *********************************
 # { word: meaning }
 # *********************************
+def representative_word(item, common_only=True):
+    """The representative writing for a JMdict entry: the first all-Japanese kanji
+    form (restricted to common forms when common_only), else the first kanji form.
+    Returns None when the entry has no qualifying kanji form."""
+    kanji_forms = item.get("kanji", [])
+    if common_only:
+        kanji_forms = [k for k in kanji_forms if k.get("common", False)]
+    if not kanji_forms:
+        return None
+    return next(
+        (k["text"] for k in kanji_forms if japanese.is_all_japanese(k["text"])),
+        kanji_forms[0]["text"],
+    )
+
+
 def build_vocab_meaning_map(items, common_only=True, definition_count=3):
-    words = items["words"]
-
     result = {}
-
-    for item in words:
-        # Check if there's at least one common kanji element
-        all_kanji_words = [k for k in item.get("kanji", [])]
-        if common_only:
-            all_kanji_words = [
-                k for k in item.get("kanji", []) if k.get("common", False)
-            ]
-        if not all_kanji_words:
+    for item in items["words"]:
+        word = representative_word(item, common_only)
+        if word is None:
             continue
-
-        # Get the first common kanji text as the word, preferably only japanese characters
-        word = next(
-            (x["text"] for x in all_kanji_words if utils.is_japanese_only(x["text"])),
-            all_kanji_words[0]["text"],
-        )
-
-        # Process senses to get the definition
-        definition_parts = []
-
-        for sense in item.get("sense", []):
-            applies_to_kanji = sense.get("appliesToKanji", [])
-            # Check if applies to all kanji or specifically to our word
-            if "*" in applies_to_kanji or word in applies_to_kanji:
-                for gloss in sense.get("gloss", []):
-                    if gloss.get("lang") == "eng":
-                        definition_parts.append(gloss["text"])
-
-        if definition_parts:
-            definition = ", ".join(definition_parts[:definition_count])
+        definition = sources.jmdict_word_definition(item, word, definition_count)
+        if definition:
             result[word] = definition
-
     return result
 
 
@@ -111,7 +110,7 @@ def create_or_retrieve_vocab_meaning_map(
         try:
             meanings = utils.get_data_from_file(MID_ALL_VOCAB_MEANING_PATH)
             return meanings
-        except:
+        except (OSError, ValueError):  # missing file or malformed JSON
             print(f"Failed read file {MID_ALL_VOCAB_MEANING_PATH}.")
             print(f"Will rebuild dictionary instead...")
 
@@ -155,16 +154,12 @@ def load_aggregated_kanji_data():
 
 
 def load_filtered_kanji_data():
+    # input/filtered_kanji.json (built by src/build_filtered_kanji_json.py) is the
+    # canonical kanji set. We pull full kanji data from merged_kanji.json but keep
+    # only the kanji it lists — so "which kanji ship" lives in exactly one place.
     kanji_data = load_aggregated_kanji_data()
-
-    kanji_to_remove_data: dict[str, list[str]] = utils.get_data_from_file(
-        IN_KANJI_TO_REMOVE_OVERRIDES_PATH
-    )
-
-    for kanji in kanji_to_remove_data["data"]:
-        kanji_data.pop(kanji)
-
-    return kanji_data
+    filtered = set(utils.get_data_from_file(IN_FILTERED_KANJI_PATH))
+    return {k: v for k, v in kanji_data.items() if k in filtered}
 
 
 def load_automated_kanji_vocab():
@@ -185,10 +180,14 @@ def load_jpdb_frequency():
     with open(IN_JPDB_FREQ_PATH, encoding="utf-8") as f:
         reader = csv.reader(f)
         for row in reader:
+            if len(row) < 2:
+                continue
             try:
-               result[row[1]] = int(row[0])
-            except:
-               result[row[1]] = 50_000
+                result[row[1]] = int(row[0])
+            except ValueError:
+                # JPDB caps its list at 4000; ranks below that are written as the
+                # literal "4001+" (~1100 rare kanji). Give them a sentinel rank.
+                result[row[1]] = 50_000
 
     return result
 
@@ -213,6 +212,9 @@ def dump_phonetic_components():
 
 
 def dump_part_keyword_with_overrides(kanji_data: dict[str, Any]):
+    # Component keywords come from input/missing_components.json (external) plus the
+    # tracked overrides/component_keyword.json (hand-maintained), then any keyword
+    # override (keywords-algo / keywords.json) whose key is a non-shipped part.
     additional_keywords = utils.get_data_from_file(IN_MISSING_COMPONENTS_PATH)
     own_keywords_override = load_keywords_override()
 
@@ -222,7 +224,19 @@ def dump_part_keyword_with_overrides(kanji_data: dict[str, Any]):
 
         additional_keywords[part] = keyword
 
+    # Manual component-keyword overrides win (applied last).
+    component_overrides = utils.get_data_from_file(IN_COMPONENT_KEYWORD_OVERRIDES_PATH)
+    additional_keywords.update(component_overrides)
+
     utils.dump_json(OUT_PART_KEYWORD_PATH, additional_keywords)
+
+
+def dump_extra_kanji_keywords(extra_keywords):
+    """Keywords for non-shipped kanji that appear inside sample / study words, so the
+    frontend can label them even though they have no output/kanji_main.json entry.
+    Sourced from the raw keyword files (see keyword_sources); kanji with no keyword in
+    any source are omitted."""
+    utils.dump_json(OUT_EXTRA_KANJI_KEYWORD_PATH, extra_keywords)
 
 
 def dump_cum_use():
@@ -250,6 +264,18 @@ def dump_kanji_representative_words():
     algo = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_ALGO_PATH)
     manual = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_PATH)
     merged = {**algo, **manual}
+
+    word_to_kanjis = {}
+    for kanji, entry in merged.items():
+        if entry is not None:
+            word = entry[0]
+            word_to_kanjis.setdefault(word, []).append(kanji)
+    duplicates = {w: ks for w, ks in word_to_kanjis.items() if len(ks) > 1}
+    if duplicates:
+        raise ValueError(
+            f"Duplicate representative words found — each word must map to exactly one kanji: {duplicates}"
+        )
+
     utils.dump_json(OUT_KANJI_REPRESENTATIVE_WORDS_PATH, merged)
 
 
@@ -259,7 +285,7 @@ def dump_kanji_representative_words():
 def dump_all_vocab_furigana(all_words):
 
     furigana_source = utils.get_data_from_file(IN_ALL_VOCAB_FURIGANA_PATH)
-    furigana_source_custom = utils.get_data_from_file(IN_VOCAB_FUGIGANA_PATH)
+    furigana_source_custom = utils.get_data_from_file(IN_VOCAB_FURIGANA_PATH)
     furigana_source_overrides = utils.get_data_from_file(
         IN_VOCAB_FURIGANA_OVERRIDES_PATH
     )
@@ -312,10 +338,23 @@ def dump_all_vocab_meanings(all_words):
     meaning_source_algo: dict[str, str] = utils.get_data_from_file(
         IN_VOCAB_MEANING_ALGO_PATH
     )
+    meaning_source_external_dict: dict[str, str] = utils.get_data_from_file(
+        IN_VOCAB_MEANING_EXTERNAL_DICT_PATH
+    )
+    meaning_source_ai_raw = utils.get_data_from_file(IN_VOCAB_MEANING_AI_PATH)
+    meaning_source_ai = sources.ai_meaning_map(meaning_source_ai_raw)
     meaning_source_custom.update(meaning_source_overrides)
+
+    # Build word → kanji reverse map for diagnostics
+    word_to_kanji: dict[str, list[str]] = {}
+    for src_path in (IN_KANJI_VOCAB_PATH, IN_VOCAB_ALGO_OVERRIDES_PATH, IN_VOCAB_OVERRIDES_PATH):
+        for kanji, words in utils.get_data_from_file(src_path).items():
+            for w in words:
+                word_to_kanji.setdefault(w, []).append(kanji)
 
     count_common_source_only = 0
     count_custom_source_only = 0
+    not_found: list[str] = []
     for word in all_words:
         meaning1 = meaning_source_common.get(word, None)
         meaning2 = meaning_source_custom.get(word, None)
@@ -326,13 +365,28 @@ def dump_all_vocab_meanings(all_words):
         if meaning2 and not meaning1:
             count_custom_source_only += 1
 
-        meaning = meaning1 or meaning2 or meaning_source_algo.get(word, None)
+        meaning = sources.resolve_meaning(
+            word,
+            common=meaning_source_common,
+            custom=meaning_source_custom,
+            algo=meaning_source_algo,
+            external=meaning_source_external_dict,
+            ai=meaning_source_ai,
+        )
         if not meaning:
-            # raise Exception("Word meaning Not Found", word)
-            print("Word meaning Not Found:", word)
+            not_found.append(word)
             vocab_meanings[word] = word
+        else:
+            vocab_meanings[word] = meaning
 
-        vocab_meanings[word] = meaning
+    if not_found:
+        kanjis = "".join("".join(word_to_kanji.get(w, [])) for w in not_found)
+        print(f"Word meaning Not Found ({len(not_found)}): {kanjis}")
+
+        print("----- not found words -----")
+        for word in not_found:
+            print(f"{word_to_kanji.get(word, [])}: {word}")
+        print("----- not found words -----")
 
     print("in common meaning source only:", count_common_source_only)
     print("in custom meaning source only:", count_custom_source_only)

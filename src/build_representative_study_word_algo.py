@@ -46,66 +46,42 @@ English meaning (resolved after word selection):
   - Otherwise looked up in raw/ai-generated/vocab-meanings-ai.json (first element of value array)
 
 Sources:
+  input/filtered_kanji.json                        → [kanji]  (the kanji set to process)
   raw/kanji-words/v3/[kanji].json                  → [{w, r, t, j?, k?, e}]
   raw/kanji-textbook-words/[kanji].json            → {kanji: {word: [reading, meaning]}}
   input/jmdict-vocab-meaning.json                  → {word: meaning}
   input/scriptin-jmdict-eng.json                   → JMdict JSON (words[].kanji/kana/sense)
   raw/ai-generated/vocab-meanings-ai.json          → {word: [meaning, frequency_label]}
   raw/ai-generated/japanese-study-words-ai.json    → {kanji: [word, reading, meaning, tag]}
+  raw/manual-inspections.json                      → {replaceKanjiStudyWords: {kanji: word}}
+  input/jmdict-furigana-map.json                   → {word: {reading: segments}}  (override readings)
 
 Output: overrides/japanese_study_words-algo.json
   { kanji: [word, reading, meaning, tag] }   (null when no valid word found)
 
-Run from project root: python3 src/build-representative-study-word-algo.py
+Run from project root: python3 src/build_representative_study_word_algo.py
 """
 
-import json
-import os
 from collections import Counter
 
-# ---------------------------------------------------------------------------
-# Unicode helpers
-# ---------------------------------------------------------------------------
-
-KANJI_RANGES = [
-    (0x4E00, 0x9FFF),
-    (0x3400, 0x4DBF),
-    (0x20000, 0x2A6DF),
-    (0x2A700, 0x2B73F),
-    (0x2B740, 0x2B81F),
-    (0x2B820, 0x2CEAF),
-    (0x2CEB0, 0x2EBEF),
-]
-
-JAPANESE_RANGES = KANJI_RANGES + [
-    (0x3040, 0x309F),  # Hiragana
-    (0x30A0, 0x30FF),  # Katakana
-]
-
-
-def is_kanji_char(ch):
-    code = ord(ch)
-    return any(lo <= code <= hi for lo, hi in KANJI_RANGES)
-
-
-def is_japanese_char(ch):
-    code = ord(ch)
-    return any(lo <= code <= hi for lo, hi in JAPANESE_RANGES)
-
-
-def kanji_count(word):
-    return sum(1 for ch in word if is_kanji_char(ch))
-
-
-def is_all_japanese(word):
-    return bool(word) and all(is_japanese_char(ch) for ch in word)
-
+from sources import (
+    load_json,
+    write_json,
+    jmdict_entry_gloss,
+    v3_candidates,
+    textbook_candidates,
+    TEXTBOOK_TAG,
+)
+from japanese import is_all_japanese, kanji_count
 
 # ---------------------------------------------------------------------------
 # Scoring / prioritisation
 # ---------------------------------------------------------------------------
 
-TEXTBOOK_TAG = "__textbook__"
+# NOTE: word_score / is_valid_candidate here intentionally differ from the
+# same-named functions in algorithmic_kanji_vocab_overrides.py — this algorithm
+# requires the word to START with the kanji and scores by word-type, while the
+# sample-vocab algorithm only requires the kanji to appear anywhere.
 
 TAG_PRIORITY = {
     "🌱": 0,
@@ -165,66 +141,21 @@ def is_valid_fallback_candidate(word, reading, target_kanji):
 # Data loading
 # ---------------------------------------------------------------------------
 
-def _resolve(rel):
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(root, rel)
-
-
 def load_v3_candidates(kanji):
-    path = _resolve(f"raw/kanji-words/v3/{kanji}.json")
-    if not os.path.exists(path):
-        return []
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    results = []
-    for entry in data:
-        w = entry.get("w", "")
-        r = entry.get("r", "")
-        t = entry.get("t", "")
-        e = entry.get("e", "")
-        if is_valid_candidate(w, r, kanji):
-            results.append((w, r, t, e))
-    return results
+    return v3_candidates(kanji, lambda w, r: is_valid_candidate(w, r, kanji))
 
 
 def load_textbook_candidates(kanji):
-    path = _resolve(f"raw/kanji-textbook-words/{kanji}.json")
-    if not os.path.exists(path):
-        return []
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    inner = data.get(kanji, {})
-    results = []
-    for word, val in inner.items():
-        if not isinstance(val, list) or len(val) < 1:
-            continue
-        r = val[0] if len(val) >= 1 else ""
-        e = val[1] if len(val) >= 2 else ""
-        if is_valid_candidate(word, r, kanji):
-            results.append((word, r, TEXTBOOK_TAG, e))
-    return results
+    return textbook_candidates(kanji, lambda w, r: is_valid_candidate(w, r, kanji))
 
 
 def load_textbook_candidates_fallback(kanji):
     """Relaxed: word only needs to contain the kanji, not start with it."""
-    path = _resolve(f"raw/kanji-textbook-words/{kanji}.json")
-    if not os.path.exists(path):
-        return []
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    inner = data.get(kanji, {})
-    results = []
-    for word, val in inner.items():
-        if not isinstance(val, list) or len(val) < 1:
-            continue
-        r = val[0] if len(val) >= 1 else ""
-        e = val[1] if len(val) >= 2 else ""
-        if is_valid_fallback_candidate(word, r, kanji):
-            results.append((word, r, TEXTBOOK_TAG, e))
-    return results
+    return textbook_candidates(kanji, lambda w, r: is_valid_fallback_candidate(w, r, kanji))
 
 
 OUTPUT_TEXTBOOK_TAG = "📖"
+OVERRIDE_TAG = "✏️"  # manual study-word override (from raw/manual-inspections.json)
 
 
 def select_word_for_kanji(kanji, used_words=None):
@@ -280,83 +211,44 @@ def select_word_for_kanji(kanji, used_words=None):
 # ---------------------------------------------------------------------------
 
 def load_kanji_list():
-    with open(_resolve("input/merged_kanji.json"), encoding="utf-8") as f:
-        merged = json.load(f)
-    with open(_resolve("overrides/kanji_to_remove.json"), encoding="utf-8") as f:
-        to_remove = json.load(f)
-    remove_set = set(to_remove.get("data", []))
-    return [k for k in merged.keys() if k not in remove_set]
+    # input/filtered_kanji.json is the canonical kanji set (merged_kanji minus
+    # kanji_to_remove), produced by src/build_filtered_kanji_json.py.
+    return load_json("input/filtered_kanji.json", [])
 
 
 def load_jmdict_meanings():
-    path = _resolve("input/jmdict-vocab-meaning.json")
-    if not os.path.exists(path):
-        return {}
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    return load_json("input/jmdict-vocab-meaning.json", {})
 
 
 def load_scriptin_meanings():
-    path = _resolve("input/scriptin-jmdict-eng.json")
-    if not os.path.exists(path):
-        return {}
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+    data = load_json("input/scriptin-jmdict-eng.json", {})
     lookup = {}
     for entry in data.get("words", []):
-        gloss_texts = []
-        for sense in entry.get("sense", []):
-            for g in sense.get("gloss", []):
-                if g.get("lang") == "eng" and g.get("text"):
-                    gloss_texts.append(g["text"])
-            if gloss_texts:
-                break
-        if not gloss_texts:
-            continue
-        meaning = ", ".join(gloss_texts[:3])
-        for k in entry.get("kanji", []):
-            t = k.get("text", "")
+        for form in entry.get("kanji", []) + entry.get("kana", []):
+            t = form.get("text", "")
             if t and t not in lookup:
-                lookup[t] = meaning
-        for k in entry.get("kana", []):
-            t = k.get("text", "")
-            if t and t not in lookup:
-                lookup[t] = meaning
+                meaning = jmdict_entry_gloss(entry, t)  # appliesToKanji-aware per form
+                if meaning:
+                    lookup[t] = meaning
     return lookup
 
 
 def load_ai_meanings():
-    path = _resolve("raw/ai-generated/vocab-meanings-ai.json")
-    if not os.path.exists(path):
-        return {}
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+    data = load_json("raw/ai-generated/vocab-meanings-ai.json", {})
     return {word: val[0] for word, val in data.items() if isinstance(val, list) and val}
 
 
 def load_ai_words():
-    path = _resolve("raw/ai-generated/japanese-study-words-ai.json")
-    if not os.path.exists(path):
-        return {}
-    with open(path, encoding="utf-8") as f:
-        return json.load(f)
+    return load_json("raw/ai-generated/japanese-study-words-ai.json", {})
 
 
 def load_manual_replace_words():
-    path = _resolve("raw/manual-inspections.json")
-    if not os.path.exists(path):
-        return {}
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+    data = load_json("raw/manual-inspections.json", {})
     return {k: v.strip() for k, v in data.get("replaceKanjiStudyWords", {}).items()}
 
 
 def load_jmdict_readings():
-    path = _resolve("input/jmdict-furigana-map.json")
-    if not os.path.exists(path):
-        return {}
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+    data = load_json("input/jmdict-furigana-map.json", {})
     return {word: next(iter(readings)) for word, readings in data.items() if readings}
 
 
@@ -370,7 +262,6 @@ def main():
     jmdict_readings = load_jmdict_readings()
 
     result = {}
-    selected_flat = []  # (word, kanji_count, tag_tier) for stats
     used_words = set()  # enforces uniqueness across all kanjis
 
     for kanji in all_kanji:
@@ -388,10 +279,8 @@ def main():
 
         if entry:
             used_words.add(entry[0])
-            selected_flat.append(entry)
 
     # --- Apply manual word overrides from raw/manual-inspections.json ---
-    OVERRIDE_TAG = "✏️"
     for kanji, word in manual_words.items():
         if kanji not in result:
             continue
@@ -399,16 +288,32 @@ def main():
         meaning = jmdict.get(word) or scriptin.get(word) or ai_meanings.get(word, "")
         result[kanji] = [word, reading, meaning, OVERRIDE_TAG]
 
-    # Rebuild selected_flat after overrides so stats reflect final output
-    selected_flat = [v for v in result.values() if v is not None]
+    # Overrides are applied without the per-selection uniqueness check above, so a
+    # manual word can collide with one already chosen for another kanji. Fail loudly
+    # here (at the source) instead of downstream in kanji_load.
+    word_to_kanjis = {}
+    for kanji, entry in result.items():
+        if entry:
+            word_to_kanjis.setdefault(entry[0], []).append(kanji)
+    collisions = {w: ks for w, ks in word_to_kanjis.items() if len(ks) > 1}
+    if collisions:
+        raise ValueError(
+            "Duplicate representative study words after applying "
+            "replaceKanjiStudyWords from raw/manual-inspections.json — each word "
+            f"must map to exactly one kanji: {collisions}"
+        )
 
-    out_path = _resolve("overrides/japanese_study_words-algo.json")
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=2)
+    out_path = write_json("overrides/japanese_study_words-algo.json", result, indent=2)
     print(f"Written: {out_path}")
 
-    # --- Stats ---
+    print_report(result, all_kanji)
+
+
+def print_report(result, all_kanji):
+    """Print selection statistics: tier/length/kanji-count breakdowns plus anomaly
+    lists (no-word, no-meaning, not-starting-with-kanji, overlaps). Read-only over
+    `result` — it does not affect the written output file."""
+    selected_flat = [v for v in result.values() if v is not None]
     total = len(selected_flat)
     with_word = sum(1 for v in result.values() if v is not None)
     without   = sum(1 for v in result.values() if v is None)
@@ -438,7 +343,7 @@ def main():
 
     def print_entries(pairs):
         for k, v in sorted(pairs, key=lambda x: display_tag_priority.get(x[1][3], DEFAULT_TAG_PRIORITY)):
-            print(f"  {k} → {v[0]} ({v[1]}) [{v[3]}] {v[2]}")
+            print(f"{v[3]} {k} → {v[0]} ~ {v[1]} {v[2]}")
 
     tag_labels = {
         OVERRIDE_TAG: "✏️  manual",

@@ -6,6 +6,8 @@ outfile_phonetic = "phonetic.json"
 outfile_vocab_meaning = "vocab_meaning.json"
 outfile_vocab_furigana = "vocab_furigana.json"
 outfile_kanji_representative_words = "kanji_representative_words.json"
+outfile_similar_kanjis = "similar-kanjis.json"
+outfile_extra_kanji_keyword = "extra_kanji_keyword.json"
 
 dir_raw = "raw"
 dir_in = "input"
@@ -24,4 +26,6 @@ output_files = [
     outfile_vocab_meaning,
     outfile_vocab_furigana,
     outfile_kanji_representative_words,
+    outfile_similar_kanjis,
+    outfile_extra_kanji_keyword,
 ]

@@ -53,10 +53,14 @@ def get_reading_stats(get_readings):
         filter(lambda x: len(get_readings(KANJI_DATA[x]) or []) == 1, KANJI_LIST)
     )
 
-    print("---> number of kanjis with one reading", len(one_reading))
+    print("---> number of kanjis with one reading", len(one_reading), "\n kanjis that have exactly one reading (most have several)")
 
     all_readings = reduce(get_reading_set, KANJI_LIST, set())
-    print("---> All possible readings", len(list(all_readings)))
+    print(
+        "---> All possible readings",
+        len(list(all_readings)),
+        "\n distinct readings collected across all kanjis (set, so duplicates removed)",
+    )
 
     reading_counts = {}
     for kanji in KANJI_LIST:
@@ -70,15 +74,27 @@ def get_reading_stats(get_readings):
     ]
 
     unique_reading_count = len(reading_counts_array)
-    print("---> unique_readings", unique_reading_count)
+    print(
+        "---> unique_readings",
+        unique_reading_count,
+        "\n same count via dict — should match 'All possible readings' above",
+    )
 
     multiple_on_count = len(
         list(filter(lambda x: x["count"] > 1, reading_counts_array))
     )
     single_on_count = len(list(filter(lambda x: x["count"] <= 1, reading_counts_array)))
 
-    print("---> reading with multiple kanjis:", multiple_on_count)
-    print("---> reading with single kanji:", single_on_count)
+    print(
+        "---> reading with multiple kanjis:",
+        multiple_on_count,
+        "\n readings shared by 2+ kanjis",
+    )
+    print(
+        "---> reading with single kanji:",
+        single_on_count,
+        "\n readings that belong to exactly one kanji (multiple + single = unique_readings)",
+    )
 
     def sort_func(item):
         return item["count"]
@@ -112,55 +128,56 @@ def get_keyword_chars(kanji_info):
 # Inspect the Data
 # ****************
 
-iter = [x for x in enumerate(KANJI_LIST)]
-max_strokes = reduce(get_max_strokes, iter, 0)
-print("---> max strokes count:", max_strokes)
-# 29
+
+def main():
+    indexed_kanji = list(enumerate(KANJI_LIST))
+    max_strokes = reduce(get_max_strokes, indexed_kanji, 0)
+    print("---> max strokes count:", max_strokes)
+    # 29
+
+    max_deps = reduce(generic_get_max(get_component_parts), indexed_kanji, 0)
+    print("---> max dependencies count:", max_deps)
+    # 8
+
+    max_keyword_length = reduce(generic_get_max(get_keyword_chars), indexed_kanji, 0)
+    print("---> max keyword length:", max_keyword_length)
+    # 8
+
+    max_on_readings = reduce(generic_get_max(kanji_extract.get_all_on_readings), indexed_kanji, 0)
+    print("---> max onyomi count:", max_on_readings)
+    # 5
+
+    max_kun_readings = reduce(generic_get_max(kanji_extract.get_all_kun_readings), indexed_kanji, 0)
+    print("---> max kun count:", max_kun_readings)
+    # 21
+
+    max_meaning = reduce(generic_get_max(kanji_extract.get_all_meanings), indexed_kanji, 0)
+    print("---> max meaning count:", max_meaning)
+    # 16
+
+    print("---> Number of Kanjis:", len(KANJI_LIST))
+    # 2427
+
+    # Verify if keyword is unique
+    keyword_list = [get_keyword(kanji) for kanji in KANJI_LIST]
+    print("---> Unique Keywords:", len(set(keyword_list)))
+    # 2427
+
+    # Find kanji with no keys
+    no_keys = list(filter(lambda kanji: get_keyword(kanji) is None, KANJI_LIST))
+    print("---> No keywords:", no_keys)
+    # []
+
+    print("..........")
+    print("ONYOMI")
+    print("..........")
+    get_reading_stats(kanji_extract.get_all_on_readings)
+
+    print("..........")
+    print("KUNYOMI")
+    print("..........")
+    get_reading_stats(kanji_extract.get_all_kun_readings)
 
 
-max_deps = reduce(generic_get_max(get_component_parts), iter, 0)
-print("---> max dependencies count:", max_deps)
-# 8
-
-max_keyword_length = reduce(generic_get_max(get_keyword_chars), iter, 0)
-print("---> max keyword length:", max_keyword_length)
-# 8
-
-max_on_readings = reduce(generic_get_max(kanji_extract.get_all_on_readings), iter, 0)
-
-print("---> max onyomi count:", max_on_readings)
-# 5
-
-max_kun_readings = reduce(generic_get_max(kanji_extract.get_all_kun_readings), iter, 0)
-print("---> max kun count:", max_kun_readings)
-# 21
-
-max_meaning = reduce(generic_get_max(kanji_extract.get_all_meanings), iter, 0)
-
-print("---> max meaning count:", max_meaning)
-# 16
-
-print("---> Number of Kanjis:", len(KANJI_LIST))
-# 2427
-
-# Verify if keyword is unique
-keyword_list = [get_keyword(kanji) for kanji in KANJI_LIST]
-
-print("---> Unique Keywords:", len(set(keyword_list)))
-# 2427
-
-# Find kanji with no keys
-no_keys = list(filter(lambda kanji: get_keyword(kanji) is None, KANJI_LIST))
-
-print("---> No keywords:", no_keys)
-# []
-
-print("..........")
-print("ONYOMI")
-print("..........")
-get_reading_stats(kanji_extract.get_all_on_readings)
-
-print("..........")
-print("KUNYOMI")
-print("..........")
-get_reading_stats(kanji_extract.get_all_kun_readings)
+if __name__ == "__main__":
+    main()

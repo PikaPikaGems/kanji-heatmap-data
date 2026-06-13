@@ -1,13 +1,10 @@
 # Compares input/kanji_vocab.json against overrides/kanji_vocab-algo.json and reports
 # how many kanji/words were changed, listing each substitution (old word -> new word).
 
-import json
+from sources import load_json
 
-with open("input/kanji_vocab.json") as f:
-    original = json.load(f)
-
-with open("overrides/kanji_vocab-algo.json") as f:
-    overrides = json.load(f)
+original = load_json("input/kanji_vocab.json", {})
+overrides = load_json("overrides/kanji_vocab-algo.json", {})
 
 affected_kanji = 0
 affected_words = 0

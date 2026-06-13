@@ -1,54 +1,34 @@
-# Context
-# We use src/kanji_build_output_jsons.py to generate the final output json files given the json files from the /input and /overrides folder
-# The current kanji information we are storing in our output json can be improved (some are incorrect etc)
-# Write now we have overrides/ folder where we manually add information to override existing information
-# This is good but not every scalable. We want to generate new override json files algorithmically
-# That will be override existing data (we keep the manually handcrafted (by a human) overrides, which we will use as the final overrides)
-# The goal of the following tasks is to algorithmically generate supplementary overrides files.
-
-# Task: Better Sample Vocabulary
-# output: overrides/kanji_vocab-algo.json
-
-# Task: More Trustworthy Furigana
-# output: overrides/vocab_furigana-algo.json
-
-# Task: Additional required vocab definitions from new kanji_vocab-algo.json
-# output overrides/vocab_meaning-algo.json
-
 #!/usr/bin/env python3
-f"""
+"""
 Task 1: Better Kanji Keywords
 Generates overrides/keywords-algo.json
 
 Pipeline (low → high priority):
-  base input data → kanji_main.json → keywords-algo.json → keywords.json (manual)
+  base input data → base keyword → keywords-algo.json → keywords.json (manual)
 
 For each kanji we prefer the simplest meaningful available keyword:
   - candidates from raw/kanji-keywords-j.json
   - candidates from raw/kanji-keywords-w.json
   - candidates from raw/kanji-keywords-k.json (sort by word length)
-  - current keyword from output/kanji_main.json
+  - the base keyword derived directly from input/merged_kanji.json
 
 A greedy uniqueness pass (sorted by fewest candidates first) ensures no two kanji
 share the same keyword in the algo output. Manual overrides (keywords.json) are
 reserved up-front so they don't create conflicts after being applied on top.
 
-Run from the project root: python3 src/algorithmic-overrides.py
+The "base keyword" is computed from input/merged_kanji.json with the SAME logic the
+final build uses (kanji_extract.get_keyword, no overrides), rather than read back
+from output/kanji_main.json. That removes the build → keywords-algo → build cycle:
+this script no longer depends on a prior build artifact.
+
+Run from the project root: python3 src/algorithmic_overrides_keywords.py
 """
 
 import json
 import re
-import os
-import random
 
-# Seed with a specific integer
-random.seed(42)
-USE_RANDOMNESS = False
-
-def resolve_path(path):
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(script_dir)
-    return os.path.join(project_root, path)
+import kanji_extract
+from sources import resolve_path, load_json
 
 
 def is_valid_keyword(phrase):
@@ -72,13 +52,21 @@ def task1_better_kanji_keywords():
     with open(resolve_path("raw/kanji-keywords-w.json"), encoding="utf-8") as f:
         keywords_w = json.load(f)
 
-    with open(resolve_path('output/kanji_main.json'), encoding='utf-8') as f:
-        kanji_main = json.load(f)  # {kanji: [keyword, on, kun, jlpt, ranks]}
-
     with open(resolve_path('overrides/keywords.json'), encoding='utf-8') as f:
         manual_overrides = json.load(f)  # {kanji: "keyword"} — highest priority
 
-    all_kanji = list(kanji_main.keys())
+    # Canonical kanji set + raw kanji data (no build artifact dependency).
+    all_kanji = load_json('input/filtered_kanji.json', [])
+    merged = load_json('input/merged_kanji.json', {})
+
+    def base_keyword(kanji):
+        """The keyword the build would derive for `kanji` from raw data, with no
+        overrides applied — the non-circular replacement for kanji_main[kanji][0]."""
+        info = dict(merged.get(kanji, {}))
+        info['kanji'] = kanji
+        return kanji_extract.get_keyword(info, {}) or ''
+
+    base_keywords = {k: base_keyword(k) for k in all_kanji}
 
     # Reserve keywords claimed by manual overrides so we don't assign them to other kanji
     # (after manual overrides are applied on top, those kanji will use the manual value,
@@ -99,16 +87,15 @@ def task1_better_kanji_keywords():
         pw = keywords_w.get(kanji, [])
         pw1 = pw[:1]
         pw2 = pw[1:]
-        sortedRest = sorted(pk2 + pw2, key=lambda word: len(word))
+        sorted_rest = sorted(pk2 + pw2, key=lambda word: len(word))
         priority_options = pj + pk1 + pw1
-        shuffled = random.sample(priority_options,len(priority_options)) if USE_RANDOMNESS else priority_options
-        pre_candidates = shuffled + sortedRest
+        pre_candidates = priority_options + sorted_rest
         candidates = []
         for c in pre_candidates:
             if c not in candidates:
                 candidates.append(c)
 
-        current = (kanji_main[kanji][0] or '').strip().lower()
+        current = (base_keywords[kanji] or '').strip().lower()
         if current and is_valid_keyword(current) and current not in candidates:
             candidates.append(current)
 
@@ -122,24 +109,24 @@ def task1_better_kanji_keywords():
     used_keywords = set(reserved_by_manual)  # pre-block manual-override keywords
     result = {}
 
-    inspectJson = {}
+    inspect_json = {}
 
-    def updateInspectJson(kanji, previous, current, candidates, isManual):
-        info = "✍️" if isManual else ""
+    def update_inspect_json(kanji, previous, current, candidates, is_manual):
+        info = "✍️" if is_manual else ""
         count = len(candidates)
         if previous == current:
             return
 
         if len(candidates) <= 1:
-            inspectJson[kanji] = f"{info} {current} ← {previous}"
+            inspect_json[kanji] = f"{info} {current} ← {previous}"
             return
 
-        all = ",".join(candidates)
+        joined = ",".join(candidates)
 
-        inspectJson[kanji] = f"{count}{info}: {current} ← {previous} ← {all}"
+        inspect_json[kanji] = f"{count}{info}: {current} ← {previous} ← {joined}"
 
     for kanji in sorted_kanji:
-        previous = kanji_main[kanji][0]
+        previous = base_keywords[kanji]
         candidates = candidate_map[kanji]
         # candidates = sorted(candidate_map[kanji], key=lambda word: len(word))
 
@@ -147,7 +134,7 @@ def task1_better_kanji_keywords():
         # override will take precedence in the build pipeline regardless.
         if kanji in manual_overrides.keys():
             candidate = manual_overrides[kanji]
-            updateInspectJson(kanji, previous, candidate, candidates, True)
+            update_inspect_json(kanji, previous, candidate, candidates, True)
             result[kanji] = candidate
             continue
 
@@ -155,7 +142,7 @@ def task1_better_kanji_keywords():
             if candidate not in used_keywords:
                 used_keywords.add(candidate)
                 result[kanji] = candidate
-                updateInspectJson(kanji, previous, candidate, candidates, False)
+                update_inspect_json(kanji, previous, candidate, candidates, False)
                 break
 
     # Restore original kanji order for readability
@@ -163,7 +150,7 @@ def task1_better_kanji_keywords():
 
     # Stats
     unassigned = [k for k in all_kanji if k not in result and k not in manual_overrides]
-    changed = [k for k in ordered_result if kanji_main[k][0] != ordered_result[k]]
+    changed = [k for k in ordered_result if base_keywords[k] != ordered_result[k]]
     ordered_changed = {k: result[k] for k in changed}
     print(f"Total kanji:                  {len(all_kanji)}")
     print(f"Covered by manual overrides:  {len(manual_overrides)}")
@@ -187,17 +174,17 @@ def task1_better_kanji_keywords():
         print("\n\nUnassigned kanji (no valid candidate found — need manual review):")
         for k in unassigned:
             keywords = keywords_k.get(k, keywords_j.get(k, 'NULL'))
-            print(f"  {k}  current={kanji_main[k][0]!r}  raw={keywords!r}")
+            print(f"  {k}  current={base_keywords[k]!r}  raw={keywords!r}")
 
     out_path = resolve_path('overrides/keywords-algo.json')
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(ordered_changed, f, ensure_ascii=False, indent=4)
     print(f"\nOutput written to: {out_path}")
 
-    out_path = resolve_path("overrides/debug-keywords.json")
-    ordered_inspectJson = {k: inspectJson[k] for k in all_kanji if k in inspectJson}
+    out_path = resolve_path("debug/debug-keywords.json")
+    ordered_inspect_json = {k: inspect_json[k] for k in all_kanji if k in inspect_json}
     with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(ordered_inspectJson, f, ensure_ascii=False, indent=4)
+        json.dump(ordered_inspect_json, f, ensure_ascii=False, indent=4)
     print(f"\nOutput written to: {out_path}")
 
 if __name__ == '__main__':
