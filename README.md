@@ -11,6 +11,16 @@ python --version
 # Python 3.13.2
 ```
 
+Set up a virtual environment to avoid conflicts with global packages:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+./setup.sh
+```
+
+`setup.sh` runs `pip install -r requirements.txt` and applies a one-time patch to GiNZA's config (ginza 5.2.0 ships with `split_mode = null` which newer versions of confection reject).
+
 ### Overrides
 
 Edit the following files to specify the values you want to override:
@@ -20,6 +30,7 @@ kanji_parts.json
 kanji_to_remove.json
 kanji_vocab.json
 keywords.json
+component_keyword.json   # keywords for components / non-shipped kanji used in decompositions
 vocab_furigana.json
 vocab_meaning.json
 japanese_study_words.json
@@ -81,10 +92,25 @@ vocab_furigana.json
 vocab_meaning.json
 ```
 
+Note: Some scripts rely on `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`.
+These files come from the repos which may or may not be public as of writing:
+- https://github.com/PikaPikaGems/textbook-japanese-words
+- https://github.com/PikaPikaGems/japanese-word-ranks/
+- https://github.com/PikaPikaGems/japanese-word-frequency
+
+
 ### Transform Data
 
 ```bash
-./src/kanji_build_output_jsons.py
+./generate.sh
+```
+
+Or just the final build step (requires `input/filtered_kanji.json`, produced by
+`build_filtered_kanji_json.py` — the first pipeline step):
+
+```bash
+python3 src/build_filtered_kanji_json.py   # if input/filtered_kanji.json is missing
+python3 src/kanji_build_output_jsons.py
 ```
 
 The following output files should be generated in the `output` directory:
@@ -94,9 +120,11 @@ The following output files should be generated in the `output` directory:
 - kanji_extended.json
 - kanji_main.json
 - phonetic.json
-- vocabulary_meaning.json
-- vocabulary_furigana.json
+- vocab_meaning.json
+- vocab_furigana.json
 - kanji_representative_words.json
+- similar-kanjis.json
+- extra_kanji_keyword.json   # keywords for non-shipped kanji that appear inside sample/study words
 
 Additionally, the following files will be created by running the script above
 in the `input` directory. This will not be part of the release file.
@@ -119,21 +147,44 @@ $ head -n 20 raw/kanji-textbook-words/<KANJI>.json
 ```
 ### Other Scripts
 
-```
-$ python3 src/build-japanese-study-vocab-overrides.py
-$ python3 src/algorithmic-kanji-vocab-overrides.py
-$ python3 src/generate-furigana-algo.py
-$ python3 src/inspect_vocab.py
+Run all generation steps at once:
+
+```bash
+./generate.sh
 ```
 
-Note: These scripts rely on "./raw/kanji-textbook-words/*.json" and "./raw/kanji-words/v3/*.json". 
-These files come from the repos 
-- https://github.com/PikaPikaGems/textbook-japanese-words 
-- https://github.com/PikaPikaGems/japanese-word-ranks/
-- https://github.com/PikaPikaGems/japanese-word-frequency
+Or individually, in order:
 
-And may need additional dependencies such as "SudachiPy" and "Ginza". 
-See the comments of those scripts for more information.
+```
+$ python3 src/build_filtered_kanji_json.py
+$ python3 src/build_representative_study_word_algo.py
+$ python3 src/algorithmic_kanji_vocab_overrides.py
+$ python3 src/generate_furigana_algo.py
+$ python3 src/algorithmic_overrides_keywords.py
+$ python3 src/build_similar_kanjis.py
+$ python3 src/kanji_build_output_jsons.py
+$ ./src/kanji_inspect.py
+```
+
+`fetch_missing_vocab_meanings.py` is intentionally NOT part of `generate.sh`: it makes
+live network calls (Jotoba/Jisho) to refresh `overrides/vocab_meaning-external-dict.json`,
+which would make the build non-deterministic. That cache is committed; run it by hand
+only when new words need external meanings:
+
+```
+$ python3 src/fetch_missing_vocab_meanings.py   # manual, network
+```
+
+## Notes 
+
+```
+Given the new sample vocabulary, 
+Results:
+  jsw_algo: 54
+  Jotoba:   182
+  Jisho:    50
+  Missing:  32
+```
 
 ## Prepare release
 
@@ -150,6 +201,7 @@ The input data comes from:
 2. [Kanji Data Releases][pika-data] and [JMdict Furigana Map][pika-furi],
    both under [CC BY-SA 4.0][cc-by-sa-4].
 3. [Jiten Frequency](https://jiten.moe/other), [JPDB Frequency](https://github.com/Kuuuube/yomitan-dictionaries/blob/main/data/jpdbv2_kanji_frequency_2026-02-09.csv), [KKLC Order](https://github.com/vadasambar/kanji_order/blob/master/final_order.txt)
+4. Kanji structure data used to generate similarity search can be found on /raw/structure-info/SOURCES.md.
 
 ### JMdict and JMnedict
 
