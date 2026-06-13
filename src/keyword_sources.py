@@ -31,28 +31,46 @@ def load_raw_keyword_sources():
     )
 
 
-def _first_valid(values):
+def _validated(values):
+    """Strip/lowercase each value and keep only valid keywords, preserving order."""
+    out = []
     for v in values:
         v = (str(v) if v is not None else '').strip().lower()
         if is_valid_keyword(v):
-            return v
-    return None
+            out.append(v)
+    return out
 
 
-def raw_keyword(kanji, keywords_j, keywords_w, keywords_k):
-    """Best keyword for `kanji` from the raw sources, priority j → k → w (matching
-    the top-priority order in algorithmic_overrides_keywords.py), or None.
+def raw_candidates(kanji, keywords_j, keywords_w, keywords_k):
+    """Ordered, de-duplicated keyword candidates for `kanji` from the raw sources.
+
+    Order: j → first k → first w → the remaining k/w candidates by length
+    (shortest first). This is the candidate priority the keyword algorithm's
+    greedy-uniqueness pass consumes; `raw_keyword` returns the first of these.
 
     keywords_k values are comma-separated strings; keywords_w values are lists.
     """
     j = (keywords_j.get(kanji, '') or '').strip().lower()
-    if is_valid_keyword(j):
-        return j
-    k = _first_valid((keywords_k.get(kanji, '') or '').split(','))
-    if k:
-        return k
-    w = keywords_w.get(kanji, [])
-    return _first_valid(w if isinstance(w, list) else [w])
+    pj = [j] if is_valid_keyword(j) else []
+
+    pk = _validated((keywords_k.get(kanji, '') or '').split(','))
+    w_raw = keywords_w.get(kanji, [])
+    pw = _validated(w_raw if isinstance(w_raw, list) else [w_raw])
+
+    sorted_rest = sorted(pk[1:] + pw[1:], key=len)
+    ordered = pj + pk[:1] + pw[:1] + sorted_rest
+
+    seen = []
+    for c in ordered:
+        if c not in seen:
+            seen.append(c)
+    return seen
+
+
+def raw_keyword(kanji, keywords_j, keywords_w, keywords_k):
+    """Best keyword for `kanji` from the raw sources, priority j → k → w, or None."""
+    candidates = raw_candidates(kanji, keywords_j, keywords_w, keywords_k)
+    return candidates[0] if candidates else None
 
 
 def base_keyword(kanji, merged_kanji):

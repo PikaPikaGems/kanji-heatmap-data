@@ -25,21 +25,9 @@ Run from the project root: python3 src/algorithmic_overrides_keywords.py
 """
 
 import json
-import re
 
-import kanji_extract
 from sources import resolve_path, load_json
-
-
-def is_valid_keyword(phrase):
-    """Valid: lowercase roman-alphabet word or phrase (letters and spaces only)."""
-    return bool(re.match(r'^[a-z]+( [a-z]+)*$', phrase.strip()))
-
-
-def parse_raw_candidates(raw_value):
-    """Split comma-separated raw string into valid lowercase candidates."""
-    parts = [p.strip().lower() for p in raw_value.split(',')]
-    return [p for p in parts if is_valid_keyword(p)]
+from keyword_sources import is_valid_keyword, base_keyword, raw_candidates
 
 
 def task1_better_kanji_keywords():
@@ -59,14 +47,9 @@ def task1_better_kanji_keywords():
     all_kanji = load_json('input/filtered_kanji.json', [])
     merged = load_json('input/merged_kanji.json', {})
 
-    def base_keyword(kanji):
-        """The keyword the build would derive for `kanji` from raw data, with no
-        overrides applied — the non-circular replacement for kanji_main[kanji][0]."""
-        info = dict(merged.get(kanji, {}))
-        info['kanji'] = kanji
-        return kanji_extract.get_keyword(info, {}) or ''
-
-    base_keywords = {k: base_keyword(k) for k in all_kanji}
+    # base_keyword(kanji, merged) is the keyword the build derives from raw data with
+    # no overrides applied — the non-circular replacement for kanji_main[kanji][0].
+    base_keywords = {k: (base_keyword(k, merged) or '') for k in all_kanji}
 
     # Reserve keywords claimed by manual overrides so we don't assign them to other kanji
     # (after manual overrides are applied on top, those kanji will use the manual value,
@@ -74,31 +57,14 @@ def task1_better_kanji_keywords():
     reserved_by_manual = set(v.lower().strip() for v in manual_overrides.values()
     if is_valid_keyword(v.lower().strip()))
 
-    # Build candidate list per kanji in priority order:
+    # Build candidate list per kanji in priority order (j → k → w → rest by length),
+    # then fall back to the base keyword.
     candidate_map = {}
     for kanji in all_kanji:
-
-        pj_keyword = (keywords_j.get(kanji, '') or '').strip().lower()
-        pj = [pj_keyword] if is_valid_keyword(pj_keyword) else []
-
-        pk = parse_raw_candidates(keywords_k.get(kanji, ''))
-        pk1 = pk[:1]
-        pk2 = pk[1:]
-        pw = keywords_w.get(kanji, [])
-        pw1 = pw[:1]
-        pw2 = pw[1:]
-        sorted_rest = sorted(pk2 + pw2, key=lambda word: len(word))
-        priority_options = pj + pk1 + pw1
-        pre_candidates = priority_options + sorted_rest
-        candidates = []
-        for c in pre_candidates:
-            if c not in candidates:
-                candidates.append(c)
-
+        candidates = raw_candidates(kanji, keywords_j, keywords_w, keywords_k)
         current = (base_keywords[kanji] or '').strip().lower()
         if current and is_valid_keyword(current) and current not in candidates:
             candidates.append(current)
-
         candidate_map[kanji] = candidates
 
     # Greedy unique assignment.
