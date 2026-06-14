@@ -102,7 +102,13 @@ These files come from the repos which may or may not be public as of writing:
 ### Transform Data
 
 ```bash
-./generate.sh
+./generate.sh # see generate-log.txt
+
+# optional: additional inspection
+# raw/ai-generate/*-ai.json 
+python3 ./src/inspect_nonshipped_words.py
+python3 ./src/inspect_removed_kanji.py
+
 ```
 
 Or just the final build step (requires `input/filtered_kanji.json`, produced by
@@ -137,6 +143,12 @@ jmdict-vocab-meaning.json
 
 ```bash
 ./src/kanji_inspect.py
+
+# additional inspection
+# raw/ai-generate/*-ai.json 
+python3 ./src/inspect_nonshipped_words.py
+python3 ./src/inspect_removed_kanji.py
+
 ```
 
 ### Usful commands
