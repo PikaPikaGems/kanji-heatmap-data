@@ -105,7 +105,8 @@ These files come from the repos which may or may not be public as of writing:
 ./generate.sh # see generate-log.txt
 
 # optional: additional inspection
-# raw/ai-generate/*-ai.json 
+# review: raw/ai-generated/*-ai.json 
+# review: overrides/kanji_to_remove.json
 python3 ./src/inspect_nonshipped_words.py
 python3 ./src/inspect_removed_kanji.py
 
