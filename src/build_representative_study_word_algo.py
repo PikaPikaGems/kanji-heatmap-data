@@ -9,6 +9,12 @@ Constraints:
   - All characters must be Japanese (hiragana/katakana/kanji)
   - Each word is assigned to at most one kanji
 
+Special rule – single-kanji word with top tag wins outright:
+  If any candidate contains exactly one kanji (word_type 0 or 1, e.g. 行く) AND
+  carries a 🌱 or ☘️ tag, it is chosen immediately, bypassing all other scoring.
+  Within this group, 🌱 beats ☘️, then normal word scoring applies.
+  Applies before Rule 1 and Rule 2.
+
 Rule 1 – source priority (lower index wins):
   0. v3 tag 🌱
   1. v3 tag ☘️
@@ -207,6 +213,14 @@ def select_word_for_kanji(kanji, used_words=None):
             existing = all_candidates[idx]
             if TAG_PRIORITY.get(entry[2], DEFAULT_TAG_PRIORITY) < TAG_PRIORITY.get(existing[2], DEFAULT_TAG_PRIORITY):
                 all_candidates[idx] = entry
+
+    # Special rule: single-kanji word (kanji_count==1) with 🌱 or ☘️ wins outright
+    _TOP_TAGS = {"🌱", "☘️"}
+    priority = [x for x in all_candidates if kanji_count(x[0]) == 1 and x[2] in _TOP_TAGS and x[0] not in used_words]
+    if priority:
+        priority.sort(key=lambda x: word_score(x[0], x[2], x[3]))
+        w, r, t, e = priority[0]
+        return [w, r, e, t]
 
     all_candidates.sort(key=lambda x: word_score(x[0], x[2], x[3]))
 
