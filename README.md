@@ -102,13 +102,38 @@ These files come from the repos which may or may not be public as of writing:
 ### Transform Data
 
 ```bash
+# ----------------
+# Setup environment
+# ----------------
+
+# IMPORTANT: 
+# populate  `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`
+
+
+# python3 -m venv .venv
+# source .venv/bin/activate
+# ./setup.sh
+
+# ----------------
+# Transform Data Script
+# ----------------
+
+# See: notes/flowchart.md
 ./generate.sh # see generate-log.txt
 
-# optional: additional inspection
+# ----------------
+# Additional inspection
+# ----------------
+
+# review: build_representative_study_word_algo.py
+# review: algorithmic_kanji_vocab_overrides.py
 # review: raw/ai-generated/*-ai.json 
+# review: raw/manual-inspections.json
+
 # review: overrides/kanji_to_remove.json
-python3 ./src/inspect_nonshipped_words.py
 python3 ./src/inspect_removed_kanji.py
+
+python3 ./src/inspect_nonshipped_words.py
 
 ```
 
