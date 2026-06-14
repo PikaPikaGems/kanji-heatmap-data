@@ -11,9 +11,10 @@ Constraints:
 
 Special rule – single-kanji word with top tag wins outright:
   If any candidate contains exactly one kanji (word_type 0 or 1, e.g. 行く) AND
-  carries a 🌱 or ☘️ tag, it is chosen immediately, bypassing all other scoring.
-  Within this group, 🌱 beats ☘️, then normal word scoring applies.
+  carries a top tag, it is chosen immediately, bypassing all other scoring.
+  Within this group, normal word scoring applies (🌱 beats ☘️ beats 🌷).
   Applies before Rule 1 and Rule 2.
+  Top tags: 🌱 and ☘️ always; 🌷 only when INCLUDE_TULIP_IN_PRIORITY = True.
 
 Rule 1 – source priority (lower index wins):
   0. v3 tag 🌱
@@ -88,6 +89,10 @@ from japanese import is_all_japanese, is_kanji_char, kanji_count
 # same-named functions in algorithmic_kanji_vocab_overrides.py — this algorithm
 # requires the word to START with the kanji and scores by word-type, while the
 # sample-vocab algorithm only requires the kanji to appear anywhere.
+
+# Set to True to include 🌷 in the special rule (single-kanji word with a top
+# tag wins outright). False = only 🌱 and ☘️ qualify.
+INCLUDE_TULIP_IN_PRIORITY = True
 
 TAG_PRIORITY = {
     "🌱": 0,
@@ -214,8 +219,8 @@ def select_word_for_kanji(kanji, used_words=None):
             if TAG_PRIORITY.get(entry[2], DEFAULT_TAG_PRIORITY) < TAG_PRIORITY.get(existing[2], DEFAULT_TAG_PRIORITY):
                 all_candidates[idx] = entry
 
-    # Special rule: single-kanji word (kanji_count==1) with 🌱 or ☘️ wins outright
-    _TOP_TAGS = {"🌱", "☘️"}
+    # Special rule: single-kanji word (kanji_count==1) with top tag wins outright
+    _TOP_TAGS = {"🌱", "☘️", "🌷"} if INCLUDE_TULIP_IN_PRIORITY else {"🌱", "☘️"}
     priority = [x for x in all_candidates if kanji_count(x[0]) == 1 and x[2] in _TOP_TAGS and x[0] not in used_words]
     if priority:
         priority.sort(key=lambda x: word_score(x[0], x[2], x[3]))

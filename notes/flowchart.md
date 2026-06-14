@@ -201,7 +201,8 @@ flowchart TD
     K[for each kanji] --> C[collect v3 + textbook candidates
     that START with kanji, all-Japanese, 1-2 kanji]
     C --> SR{single-kanji word, kanji_count==1,
-    tagged 🌱 or ☘️ in candidates?}
+    tagged 🌱 or ☘️ — or 🌷 if
+    INCLUDE_TULIP_IN_PRIORITY=True?}
     SR -- yes --> PICK[pick best among them by word_score — bypasses Rule 1 and 2]
     SR -- no --> SC[score: source tier, then word-type, then length]
     SC --> U{best unused word?}
