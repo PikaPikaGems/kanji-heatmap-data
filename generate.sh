@@ -25,6 +25,9 @@ run python3 src/generate_furigana_algo.py
 run python3 src/algorithmic_overrides_keywords.py
 run python3 src/build_similar_kanjis.py
 run python3 src/kanji_build_output_jsons.py
+
+cp ./input/filtered_kanji.json ./output/filtered_kanji.json
+
 run ./src/kanji_inspect.py
 
 # NOTE: src/fetch_missing_vocab_meanings.py is intentionally NOT run here. It makes
