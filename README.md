@@ -135,6 +135,10 @@ python3 ./src/inspect_removed_kanji.py
 
 python3 ./src/inspect_nonshipped_words.py
 
+# review 
+# python3 src/diff_study_words.py
+# 137 entries would change if 🌷 is added to the special rule
+
 ```
 
 Or just the final build step (requires `input/filtered_kanji.json`, produced by
