@@ -9,6 +9,17 @@ between the sample-vocab and representative-word selection algorithms.
 import json
 import os
 
+# Default v3 word-pool subfolder under raw/kanji-words/. Callers can swap it for an
+# experimental sibling (e.g. "v3b") without touching the readers — mirrors the
+# folder switch the textbook reader exposes via TEXTBOOK_SUBDIR.
+V3_SUBDIR = "v3b" # v3b, v3
+
+# Default textbook word-pool folder under raw/. Callers can swap it for the full set
+# ("kanji-textbook-words") or an experimental sibling without touching the readers —
+# mirrors V3_SUBDIR / the v3 reader.
+# "kanji-textbook-words-min", "kanji-textbook-words-min"
+TEXTBOOK_SUBDIR = "kanji-textbook-words-min" 
+
 
 def resolve_path(rel_path):
     """Resolve a path relative to the project root (the parent of src/)."""
@@ -44,43 +55,45 @@ def write_json(rel_path, data, *, indent=None, separators=None, ensure_ascii=Fal
 TEXTBOOK_TAG = "__textbook__"
 
 
-def load_v3_entries(kanji):
-    """Raw (word, reading, tag, meaning) tuples from raw/kanji-words/v3/{kanji}.json."""
-    data = load_json(f"raw/kanji-words/v3/{kanji}.json", [])
+def load_v3_entries(kanji, subdir=V3_SUBDIR):
+    """Raw (word, reading, tag, meaning) tuples from raw/kanji-words/{subdir}/{kanji}.json.
+
+    subdir selects the v3 word pool ("v3" by default, "v3b" for an experimental set)."""
+    data = load_json(f"raw/kanji-words/{subdir}/{kanji}.json", [])
     return [
         (e.get("w", ""), e.get("r", ""), e.get("t", ""), e.get("e", ""))
         for e in data
     ]
 
 
-def v3_candidates(kanji, keep):
-    """v3 (word, reading, tag, meaning) tuples whose (word, reading) passes keep()."""
-    return [e for e in load_v3_entries(kanji) if keep(e[0], e[1])]
+def v3_candidates(kanji, keep, subdir=V3_SUBDIR):
+    """v3 (word, reading, tag, meaning) tuples whose (word, reading) passes keep().
+
+    subdir is forwarded to load_v3_entries to pick which v3 folder to read."""
+    return [e for e in load_v3_entries(kanji, subdir) if keep(e[0], e[1])]
 
 
-def textbook_candidates(kanji, keep, use_min=False):
+def textbook_candidates(kanji, keep, subdir=TEXTBOOK_SUBDIR):
     """Textbook (word, reading, TEXTBOOK_TAG, meaning) tuples passing keep().
 
     Each selection algorithm supplies its own `keep(word, reading)` predicate — the
     validity rules differ (representative-word requires the word to start with the
     kanji; sample-vocab only requires it to contain the kanji).
 
-    use_min selects the trimmed raw/kanji-textbook-words-min/ source instead of the
-    full raw/kanji-textbook-words/ source (see load_textbook_entries)."""
+    subdir selects which textbook folder under raw/ to read (see load_textbook_entries)."""
     return [
         (w, r, TEXTBOOK_TAG, e)
-        for w, r, e in load_textbook_entries(kanji, use_min)
+        for w, r, e in load_textbook_entries(kanji, subdir)
         if keep(w, r)
     ]
 
 
-def load_textbook_entries(kanji, use_min=False):
-    """Raw (word, reading, meaning) tuples from the textbook word source.
+def load_textbook_entries(kanji, subdir=TEXTBOOK_SUBDIR):
+    """Raw (word, reading, meaning) tuples from raw/{subdir}/{kanji}.json.
 
-    use_min=False → raw/kanji-textbook-words/{kanji}.json   (full)
-    use_min=True  → raw/kanji-textbook-words-min/{kanji}.json (trimmed)"""
-    base = "raw/kanji-textbook-words-min" if use_min else "raw/kanji-textbook-words"
-    data = load_json(f"{base}/{kanji}.json", {})
+    subdir selects the textbook word pool, e.g. "kanji-textbook-words-min" (trimmed)
+    or "kanji-textbook-words" (full)."""
+    data = load_json(f"raw/{subdir}/{kanji}.json", {})
     inner = data.get(kanji, {})
     entries = []
     for word, val in inner.items():

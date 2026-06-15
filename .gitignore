@@ -20,5 +20,6 @@
 temp/
 
 generate-log.txt
+generate-log-min.txt
 
 __pycache__/

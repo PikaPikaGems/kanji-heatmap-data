@@ -94,9 +94,12 @@ from japanese import is_all_japanese, is_kanji_char, kanji_count
 # tag wins outright). False = only 🌱 and ☘️ qualify.
 INCLUDE_TULIP_IN_PRIORITY = False
 
-# Textbook word source: False = raw/kanji-textbook-words/ (full),
-# True = raw/kanji-textbook-words-min/ (trimmed).
-USE_TEXT_BOOK_MIN = True
+# Strip a trailing する from 2-kanji verbal-noun headwords so the bare noun is the
+# representative word (督励する → 督励, 解剖する → 解剖) rather than the verb. This
+# only fires for 2-kanji stems — single-kanji する verbs (関する → 関, 察する → 察)
+# are left alone, since the bare kanji is a poor standalone word. The reading and
+# meaning re-resolve to the noun when available, falling back to the verb's.
+STRIP_SURU_VERBS = True
 
 TAG_PRIORITY = {
     "🌱": 0,
@@ -105,6 +108,7 @@ TAG_PRIORITY = {
     TEXTBOOK_TAG: 3,
     "📚": 4,
     "🦉": 6,
+    "🌶️": 6,
 }
 DEFAULT_TAG_PRIORITY = 5  # unknown tag → between 📚 and 🦉
 
@@ -182,12 +186,12 @@ def load_v3_candidates(kanji):
 
 
 def load_textbook_candidates(kanji):
-    return textbook_candidates(kanji, lambda w, r: is_valid_candidate(w, r, kanji), USE_TEXT_BOOK_MIN)
+    return textbook_candidates(kanji, lambda w, r: is_valid_candidate(w, r, kanji))
 
 
 def load_textbook_candidates_fallback(kanji):
     """Relaxed: word only needs to contain the kanji, not start with it."""
-    return textbook_candidates(kanji, lambda w, r: is_valid_fallback_candidate(w, r, kanji), USE_TEXT_BOOK_MIN)
+    return textbook_candidates(kanji, lambda w, r: is_valid_fallback_candidate(w, r, kanji))
 
 
 OUTPUT_TEXTBOOK_TAG = "📖"
@@ -296,6 +300,26 @@ def load_jmdict_readings():
     return {word: next(iter(readings)) for word, readings in data.items() if readings}
 
 
+def strip_suru_verb(entry, used_words, jmdict, scriptin, ai_meanings, jmdict_readings):
+    """Return `entry` with a 2-kanji 〜する headword reduced to its bare noun
+    (督励する → 督励), or `entry` unchanged when it isn't such a verb. Skips the strip
+    if the bare noun is already assigned to another kanji, so uniqueness is preserved.
+
+    entry is [word, reading, meaning, tag]; the tag (source band) is kept as-is.
+    """
+    word, reading, meaning, tag = entry
+    if not word.endswith("する"):
+        return entry
+    stem = word[:-2]
+    if kanji_count(stem) != 2:            # only 2-kanji verbal nouns; leave 関する → 関 alone
+        return entry
+    if stem in used_words:               # don't create a duplicate with another kanji's word
+        return entry
+    stem_reading = reading[:-2] if reading.endswith("する") else jmdict_readings.get(stem, reading)
+    stem_meaning = jmdict.get(stem) or scriptin.get(stem) or ai_meanings.get(stem) or meaning
+    return [stem, stem_reading, stem_meaning, tag]
+
+
 def main():
     all_kanji = load_kanji_list()
     SHIPPED.update(all_kanji)  # enable the all-shipped study-word preference
@@ -311,6 +335,9 @@ def main():
 
     for kanji in all_kanji:
         entry = select_word_for_kanji(kanji, used_words)
+
+        if STRIP_SURU_VERBS and entry:
+            entry = strip_suru_verb(entry, used_words, jmdict, scriptin, ai_meanings, jmdict_readings)
 
         if entry and not entry[2]:
             entry[2] = jmdict.get(entry[0]) or scriptin.get(entry[0]) or ai_meanings.get(entry[0], "")
@@ -383,7 +410,7 @@ def print_report(result, all_kanji):
 
     display_tag_priority = {
         OVERRIDE_TAG: 0, "🌱": 1, "☘️": 2, "🌷": 3,
-        OUTPUT_TEXTBOOK_TAG: 4, "📚": 5, "🦉": 7,
+        OUTPUT_TEXTBOOK_TAG: 4, "📚": 5, "🦉": 7, "🌶️": 7
     }
 
     def print_entries(pairs):
