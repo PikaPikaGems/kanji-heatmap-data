@@ -58,22 +58,29 @@ def v3_candidates(kanji, keep):
     return [e for e in load_v3_entries(kanji) if keep(e[0], e[1])]
 
 
-def textbook_candidates(kanji, keep):
+def textbook_candidates(kanji, keep, use_min=False):
     """Textbook (word, reading, TEXTBOOK_TAG, meaning) tuples passing keep().
 
     Each selection algorithm supplies its own `keep(word, reading)` predicate — the
     validity rules differ (representative-word requires the word to start with the
-    kanji; sample-vocab only requires it to contain the kanji)."""
+    kanji; sample-vocab only requires it to contain the kanji).
+
+    use_min selects the trimmed raw/kanji-textbook-words-min/ source instead of the
+    full raw/kanji-textbook-words/ source (see load_textbook_entries)."""
     return [
         (w, r, TEXTBOOK_TAG, e)
-        for w, r, e in load_textbook_entries(kanji)
+        for w, r, e in load_textbook_entries(kanji, use_min)
         if keep(w, r)
     ]
 
 
-def load_textbook_entries(kanji):
-    """Raw (word, reading, meaning) tuples from raw/kanji-textbook-words/{kanji}.json."""
-    data = load_json(f"raw/kanji-textbook-words/{kanji}.json", {})
+def load_textbook_entries(kanji, use_min=False):
+    """Raw (word, reading, meaning) tuples from the textbook word source.
+
+    use_min=False → raw/kanji-textbook-words/{kanji}.json   (full)
+    use_min=True  → raw/kanji-textbook-words-min/{kanji}.json (trimmed)"""
+    base = "raw/kanji-textbook-words-min" if use_min else "raw/kanji-textbook-words"
+    data = load_json(f"{base}/{kanji}.json", {})
     inner = data.get(kanji, {})
     entries = []
     for word, val in inner.items():

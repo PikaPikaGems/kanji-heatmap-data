@@ -57,7 +57,9 @@ flowchart LR
     merged[("🟩 input/merged_kanji.json")]
     remove[("🟩 overrides/kanji_to_remove.json")]
     v3[("🟩 raw/kanji-words/v3/*")]
-    textbook[("🟩 raw/kanji-textbook-words/*")]
+    textbook[("🟩 raw/kanji-textbook-words/* OR
+    raw/kanji-textbook-words-min/* — chosen per script
+    by USE_TEXT_BOOK_MIN")]
     jmdict[("🟩 input/scriptin-jmdict-eng.json")]
     furimap[("🟩 input/jmdict-furigana-map.json")]
     aiwords[("🟩 raw/ai-generated/sample-vocab-ai.json")]
@@ -199,7 +201,8 @@ One unique study word per kanji; the word must START with the kanji.
 ```mermaid
 flowchart TD
     K[for each kanji] --> C[collect v3 + textbook candidates
-    that START with kanji, all-Japanese, 1-2 kanji]
+    that START with kanji, all-Japanese, 1-2 kanji
+    textbook source: full or -min per USE_TEXT_BOOK_MIN]
     C --> SR{single-kanji word, kanji_count==1,
     tagged 🌱 or ☘️ — or 🌷 if
     INCLUDE_TULIP_IN_PRIORITY=True?}
@@ -230,7 +233,8 @@ flowchart TD
     in sample-vocab-ai.json?}
     OV -- yes --> RES[use override words] --> EMIT
     OV -- no --> C[collect v3 + textbook + existing + jmdict
-    candidates that have a meaning available]
+    candidates that have a meaning available
+    textbook source: full or -min per USE_TEXT_BOOK_MIN]
     C --> S1[first word = best score
     tier, extra-kanji, length, reading, meaning]
     S1 --> S2[second word = best score

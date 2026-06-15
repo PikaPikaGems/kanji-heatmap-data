@@ -99,6 +99,10 @@ OVERRIDE_TAG = '__override__'
 
 PHRASE_PARTICLES = set('てでにをがはもへと')
 
+# Textbook word source: False = raw/kanji-textbook-words/ (full),
+# True = raw/kanji-textbook-words-min/ (trimmed).
+USE_TEXT_BOOK_MIN = True
+
 TAG_PRIORITY = {
     OVERRIDE_TAG: -1,  # hand-curated picks (sample-vocab-ai.json): always win
     '🌱': 0,           # most frequent band — strictly preferred over ☘️
@@ -231,7 +235,7 @@ def load_v3_candidates(kanji):
 
 
 def load_textbook_candidates(kanji):
-    return textbook_candidates(kanji, lambda w, r: is_valid_candidate(w, kanji))
+    return textbook_candidates(kanji, lambda w, r: is_valid_candidate(w, kanji), USE_TEXT_BOOK_MIN)
 
 
 def load_existing_candidates(kanji, existing_kanji_vocab, existing_meanings):

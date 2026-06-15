@@ -92,7 +92,11 @@ from japanese import is_all_japanese, is_kanji_char, kanji_count
 
 # Set to True to include 🌷 in the special rule (single-kanji word with a top
 # tag wins outright). False = only 🌱 and ☘️ qualify.
-INCLUDE_TULIP_IN_PRIORITY = True
+INCLUDE_TULIP_IN_PRIORITY = False
+
+# Textbook word source: False = raw/kanji-textbook-words/ (full),
+# True = raw/kanji-textbook-words-min/ (trimmed).
+USE_TEXT_BOOK_MIN = True
 
 TAG_PRIORITY = {
     "🌱": 0,
@@ -178,12 +182,12 @@ def load_v3_candidates(kanji):
 
 
 def load_textbook_candidates(kanji):
-    return textbook_candidates(kanji, lambda w, r: is_valid_candidate(w, r, kanji))
+    return textbook_candidates(kanji, lambda w, r: is_valid_candidate(w, r, kanji), USE_TEXT_BOOK_MIN)
 
 
 def load_textbook_candidates_fallback(kanji):
     """Relaxed: word only needs to contain the kanji, not start with it."""
-    return textbook_candidates(kanji, lambda w, r: is_valid_fallback_candidate(w, r, kanji))
+    return textbook_candidates(kanji, lambda w, r: is_valid_fallback_candidate(w, r, kanji), USE_TEXT_BOOK_MIN)
 
 
 OUTPUT_TEXTBOOK_TAG = "📖"

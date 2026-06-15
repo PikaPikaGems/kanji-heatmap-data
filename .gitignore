@@ -1,6 +1,7 @@
 /input/*
 /raw/kanji-words/v3/*
 /raw/kanji-textbook-words/*
+/raw/kanji-textbook-words-min/*
 /debug/*
 !/debug/.keep
 
