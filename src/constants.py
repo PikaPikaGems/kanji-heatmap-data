@@ -8,7 +8,7 @@ outfile_vocab_furigana = "vocab_furigana.json"
 outfile_kanji_representative_words = "kanji_representative_words.json"
 outfile_similar_kanjis = "similar-kanjis.json"
 outfile_extra_kanji_keyword = "extra_kanji_keyword.json"
-
+outfile_kanji_list = "filtered_kanji.json"
 dir_raw = "raw"
 dir_in = "input"
 dir_out = "output"
@@ -28,4 +28,5 @@ output_files = [
     outfile_kanji_representative_words,
     outfile_similar_kanjis,
     outfile_extra_kanji_keyword,
+    outfile_kanji_list,
 ]
