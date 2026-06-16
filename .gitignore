@@ -19,7 +19,6 @@
 
 temp/
 
-generate-log.txt
-generate-log-min.txt
+generate-log*.txt
 
 __pycache__/
