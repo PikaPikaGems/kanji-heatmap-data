@@ -2,8 +2,11 @@
 set -e
 
 # Send all output (stdout + stderr) to a log file instead of the terminal.
-# To also watch it live, swap the line below for: exec > >(tee generate-log.txt) 2>&1
-exec > generate-log-min.txt 2>&1
+# Log file defaults to generate-log.txt; override with the GENERATE_LOG env var
+# (e.g. batch comparison runs that build several source combos).
+# To also watch it live, swap the line below for: exec > >(tee "$LOG_FILE") 2>&1
+LOG_FILE="${GENERATE_LOG:-generate-log.txt}"
+exec > "$LOG_FILE" 2>&1
 
 # Run a build step inside a clearly delimited banner so each script's output is
 # easy to locate in generate-log.txt (START header before it, END footer after).
