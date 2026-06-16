@@ -14,23 +14,21 @@ def get_all_generic(all_, all_source_keys):
         raw_others = all_.get(source_key, {}).get("others", [])
         return [word.strip().lower() for word in raw_others]
 
-    item_set = set(())
+    items = []
     for source_key in all_source_keys:
         main = dig_main(source_key)
-
         if main is not None:
-            item_set.update([main])
-        others = dig_others(source_key)
+            items.append(main)
+        items.extend(dig_others(source_key))
 
-        item_set.update(others)
+    # Dedup preserving first-occurrence (source-priority) order; drop empties.
+    # NOTE: this used to go through a set, whose per-run string-hash iteration
+    # order leaked into output/kanji_extended.json and made builds non-reproducible.
+    deduped = [w for w in dict.fromkeys(items) if w != ""]
 
-    item_set.discard("")
-
-    item_list = list(item_set)
-
-    if len(item_list) == 0:
+    if not deduped:
         return None
-    return item_list
+    return deduped
 
 
 def get_component_parts(kanji_info, overrides={}):

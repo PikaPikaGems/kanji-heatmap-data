@@ -1,4 +1,12 @@
 /input/*
+/raw/kanji-words/v3/*
+/raw/kanji-words/v3b/*
+/raw/kanji-textbook-words/*
+/raw/kanji-textbook-words-min/*
+/raw/freq-ranks/*
+
+/debug/*
+!/debug/.keep
 
 .DS_Store
 !/input/.keep
@@ -7,6 +15,10 @@
 /releases/*
 !/releases/.keep
 
+/.venv/*
+
 temp/
+
+generate-log*.txt
 
 __pycache__/

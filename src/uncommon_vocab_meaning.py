@@ -1,9 +1,22 @@
 #!/usr/bin/env python3
+"""
+Manual one-off helper for hand-filling meanings of obscure words.
+
+Given a full JMdict-simplified JSON file as its single argument, it looks up the
+English glosses (up to DEFINITION_COUNT) for the hardcoded WORDS_TO_FIND set —
+rare/uncommon words that the automated meaning sources miss — and prints them as
+ready-to-paste `"word": "meaning",` lines for overrides/vocab_meaning-external-dict.json
+(or the manual vocab_meaning overrides).
+
+Not part of the build pipeline; edit WORDS_TO_FIND and re-run as needed:
+  ./src/uncommon_vocab_meaning.py /path/to/jmdict-eng.json
+"""
 
 import sys
 from pathlib import Path
 from typing import Any
 import utils
+import sources
 
 DEFINITION_COUNT = 3
 WORDS_TO_FIND = set(
@@ -105,22 +118,8 @@ def build_global_lookups(words: list[dict[str, Any]]):
 
 
 def get_meaning(word: str) -> str:
-    id = word_to_id[word]
-    info = id_to_info[id]
-    definition_parts = []
-
-    for sense in info.get("sense", []):
-        applies_to_kanji = sense.get("appliesToKanji", [])
-        if "*" in applies_to_kanji or word in applies_to_kanji:
-            for gloss in sense.get("gloss", []):
-                if gloss.get("lang") == "eng":
-                    definition_parts.append(gloss["text"])
-
-    if definition_parts:
-        meaning = ", ".join(definition_parts[:DEFINITION_COUNT])
-        return meaning
-
-    return "undefined"
+    info = id_to_info[word_to_id[word]]
+    return sources.jmdict_word_definition(info, word, DEFINITION_COUNT) or "undefined"
 
 
 def find_all_meanings():

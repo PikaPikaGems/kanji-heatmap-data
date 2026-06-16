@@ -11,6 +11,16 @@ python --version
 # Python 3.13.2
 ```
 
+Set up a virtual environment to avoid conflicts with global packages:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+./setup.sh
+```
+
+`setup.sh` runs `pip install -r requirements.txt` and applies a one-time patch to GiNZA's config (ginza 5.2.0 ships with `split_mode = null` which newer versions of confection reject).
+
 ### Overrides
 
 Edit the following files to specify the values you want to override:
@@ -20,8 +30,10 @@ kanji_parts.json
 kanji_to_remove.json
 kanji_vocab.json
 keywords.json
+component_keyword.json   # keywords for components / non-shipped kanji used in decompositions
 vocab_furigana.json
 vocab_meaning.json
+japanese_study_words.json
 ```
 
 #### Input Files
@@ -80,10 +92,62 @@ vocab_furigana.json
 vocab_meaning.json
 ```
 
+Note: Some scripts rely folders such as  `./raw/kanji-textbook-words/*.json` (`kanji-text-book-words-min/`) and `./raw/kanji-words/v3/*.json` (`v3b/`) .
+These files come from the repos which may or may not be public as of writing:
+- https://github.com/PikaPikaGems/textbook-japanese-words
+- https://github.com/PikaPikaGems/japanese-word-ranks/
+- https://github.com/PikaPikaGems/japanese-word-frequency-archive
+- https://github.com/PikaPikaGems/jp-word-ranks-data
+
+
 ### Transform Data
 
 ```bash
-./src/kanji_build_output_jsons.py
+# ----------------
+# Setup environment
+# ----------------
+
+# IMPORTANT: 
+# populate  `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`
+
+
+# python3 -m venv .venv
+# source .venv/bin/activate
+# ./setup.sh
+
+# ----------------
+# Transform Data Script
+# ----------------
+
+# See: notes/flowchart.md
+./generate.sh # see generate-log.txt
+
+# ----------------
+# Additional inspection
+# ----------------
+
+# review: build_representative_study_word_algo.py
+# review: algorithmic_kanji_vocab_overrides.py
+# review: raw/ai-generated/*-ai.json 
+# review: raw/manual-inspections.json
+
+# review: overrides/kanji_to_remove.json
+python3 ./src/inspect_removed_kanji.py
+
+python3 ./src/inspect_nonshipped_words.py
+
+# review 
+# python3 src/diff_study_words.py
+# 137 entries would change if 🌷 is added to the special rule
+
+```
+
+Or just the final build step (requires `input/filtered_kanji.json`, produced by
+`build_filtered_kanji_json.py` — the first pipeline step):
+
+```bash
+python3 src/build_filtered_kanji_json.py   # if input/filtered_kanji.json is missing
+python3 src/kanji_build_output_jsons.py
 ```
 
 The following output files should be generated in the `output` directory:
@@ -93,8 +157,11 @@ The following output files should be generated in the `output` directory:
 - kanji_extended.json
 - kanji_main.json
 - phonetic.json
-- vocabulary_meaning.json
-- vocabulary_furigana.json
+- vocab_meaning.json
+- vocab_furigana.json
+- kanji_representative_words.json
+- similar-kanjis.json
+- extra_kanji_keyword.json   # keywords for non-shipped kanji that appear inside sample/study words
 
 Additionally, the following files will be created by running the script above
 in the `input` directory. This will not be part of the release file.
@@ -107,6 +174,125 @@ jmdict-vocab-meaning.json
 
 ```bash
 ./src/kanji_inspect.py
+
+# additional inspection
+# raw/ai-generate/*-ai.json 
+python3 ./src/inspect_nonshipped_words.py
+python3 ./src/inspect_removed_kanji.py
+
+```
+
+### Usful commands
+
+```
+$ head -n 20 raw/kanji-textbook-words/v3/<KANJI>.json
+$ head -n 20 raw/kanji-textbook-words/<KANJI>.json 
+```
+### Other Scripts
+
+Run all generation steps at once:
+
+```bash
+./generate.sh
+```
+
+Or individually, in order:
+
+```
+$ python3 src/build_filtered_kanji_json.py
+$ python3 src/build_representative_study_word_algo.py
+$ python3 src/algorithmic_kanji_vocab_overrides.py
+$ python3 src/generate_furigana_algo.py
+$ python3 src/algorithmic_overrides_keywords.py
+$ python3 src/build_similar_kanjis.py
+$ python3 src/kanji_build_output_jsons.py
+$ ./src/kanji_inspect.py
+```
+
+`fetch_missing_vocab_meanings.py` is intentionally NOT part of `generate.sh`: it makes
+live network calls (Jotoba/Jisho) to refresh `overrides/vocab_meaning-external-dict.json`,
+which would make the build non-deterministic. That cache is committed; run it by hand
+only when new words need external meanings:
+
+```
+$ python3 src/fetch_missing_vocab_meanings.py   # manual, network
+```
+
+### Switching word sources (comparison builds)
+
+The build draws words from two raw pools, each selectable by folder:
+
+- **v3 pool** — `raw/kanji-words/v3` or `raw/kanji-words/v3b`
+- **textbook pool** — `raw/kanji-textbook-words` (full) or `raw/kanji-textbook-words-min`
+
+The defaults live in [`src/sources.py`](src/sources.py) (`V3_SUBDIR`, `TEXTBOOK_SUBDIR`),
+but you don't need to edit that file to swap pools. Both read from **environment
+variables**, falling back to the defaults when unset. There is **no `.env` file** —
+set the vars inline on the command line, scoped to that single run:
+
+```bash
+# one-off build using the full textbook pool + the original v3 pool
+TEXTBOOK_SUBDIR=kanji-textbook-words V3_SUBDIR=v3 ./generate.sh
+```
+
+`generate.sh` also honours `GENERATE_LOG` to choose its log filename
+(default `generate-log.txt`), so different runs can each keep their own log.
+
+To build all four (textbook × v3) combinations in one go — each into its own
+`generate-log-<combo>.txt` for side-by-side inspection — run:
+
+```bash
+./bash-scripts/run-comparisons.sh
+```
+
+> Heads up: every run overwrites the `overrides/` and `output/` files in place,
+> so after the batch the working tree reflects only the **last** combo. The logs
+> are what's kept per-combo; the generated data is not snapshotted.
+
+#### Diffing two source combos
+
+To see exactly how the source choice changes the **representative study word per
+kanji** (`overrides/japanese_study_words-algo.json`, the output of
+`build_representative_study_word_algo.py`), use the diff driver:
+
+```bash
+./bash-scripts/diff-versions.sh                  # full per-kanji word/tier diff
+./bash-scripts/diff-versions.sh --word-only      # only kanji whose WORD changed
+./bash-scripts/diff-versions.sh --tier-only      # only kanji where just the TIER (tag) changed
+./bash-scripts/diff-versions.sh --kanji-count-shift   # 1-kanji words gained/lost, both directions
+```
+
+`diff-versions.sh` builds two fixed combos — **versionA** = `v3` + `kanji-textbook-words`,
+**versionB** = `v3b` + `kanji-textbook-words-min` — into `/tmp`, runs the diff, and
+restores your working `overrides/japanese_study_words-algo.json` afterward (the
+working tree is left untouched). Extra args are forwarded to the diff script.
+
+Under the hood it calls [`src/diff_study_words_versions.py`](src/diff_study_words_versions.py),
+which you can also run directly on any two build snapshots:
+
+```bash
+python3 src/diff_study_words_versions.py A.json B.json [--word-only|--tier-only|--kanji-count-shift]
+```
+
+Each file maps `{kanji: [word, reading, meaning, tag] | null}`; the **tier is the
+tag** (`🌱/☘️/🌷` v3 bands, `📖` textbook, `📚/🤔/🦉/🌶️` lower v3 bands, `✏️` manual).
+The per-kanji change format is `[kanji] versionAWord versionAWordTier -> versionBWord
+versionBWordTier`, with `∅` when a side has no word. `--kanji-count-shift` reports the
+kanji whose word gained or lost single-kanji (`kanji_count == 1`) status — the "1 kanji"
+row of the build's "Kanji per word" report — printing a compact one-line kanji string
+per direction followed by the per-kanji breakdown. In every mode the per-kanji listing
+goes to **stdout** and the summary to **stderr**, so you can `> file` the listing while
+still seeing the totals.
+
+## Notes 
+
+```
+Given the new sample vocabulary, 
+Results:
+  jsw_algo: 54
+  Jotoba:   182
+  Jisho:    50
+  Missing:  32
 ```
 
 ## Prepare release
@@ -124,6 +310,7 @@ The input data comes from:
 2. [Kanji Data Releases][pika-data] and [JMdict Furigana Map][pika-furi],
    both under [CC BY-SA 4.0][cc-by-sa-4].
 3. [Jiten Frequency](https://jiten.moe/other), [JPDB Frequency](https://github.com/Kuuuube/yomitan-dictionaries/blob/main/data/jpdbv2_kanji_frequency_2026-02-09.csv), [KKLC Order](https://github.com/vadasambar/kanji_order/blob/master/final_order.txt)
+4. Kanji structure data used to generate similarity search can be found on /raw/structure-info/SOURCES.md.
 
 ### JMdict and JMnedict
 
