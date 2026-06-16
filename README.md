@@ -249,6 +249,41 @@ To build all four (textbook × v3) combinations in one go — each into its own
 > so after the batch the working tree reflects only the **last** combo. The logs
 > are what's kept per-combo; the generated data is not snapshotted.
 
+#### Diffing two source combos
+
+To see exactly how the source choice changes the **representative study word per
+kanji** (`overrides/japanese_study_words-algo.json`, the output of
+`build_representative_study_word_algo.py`), use the diff driver:
+
+```bash
+./diff-versions.sh                  # full per-kanji word/tier diff
+./diff-versions.sh --word-only      # only kanji whose WORD changed
+./diff-versions.sh --tier-only      # only kanji where just the TIER (tag) changed
+./diff-versions.sh --kanji-count-shift   # 1-kanji words gained/lost, both directions
+```
+
+`diff-versions.sh` builds two fixed combos — **versionA** = `v3` + `kanji-textbook-words`,
+**versionB** = `v3b` + `kanji-textbook-words-min` — into `/tmp`, runs the diff, and
+restores your working `overrides/japanese_study_words-algo.json` afterward (the
+working tree is left untouched). Extra args are forwarded to the diff script.
+
+Under the hood it calls [`src/diff_study_words_versions.py`](src/diff_study_words_versions.py),
+which you can also run directly on any two build snapshots:
+
+```bash
+python3 src/diff_study_words_versions.py A.json B.json [--word-only|--tier-only|--kanji-count-shift]
+```
+
+Each file maps `{kanji: [word, reading, meaning, tag] | null}`; the **tier is the
+tag** (`🌱/☘️/🌷` v3 bands, `📖` textbook, `📚/🤔/🦉/🌶️` lower v3 bands, `✏️` manual).
+The per-kanji change format is `[kanji] versionAWord versionAWordTier -> versionBWord
+versionBWordTier`, with `∅` when a side has no word. `--kanji-count-shift` reports the
+kanji whose word gained or lost single-kanji (`kanji_count == 1`) status — the "1 kanji"
+row of the build's "Kanji per word" report — printing a compact one-line kanji string
+per direction followed by the per-kanji breakdown. In every mode the per-kanji listing
+goes to **stdout** and the summary to **stderr**, so you can `> file` the listing while
+still seeing the totals.
+
 ## Notes 
 
 ```
