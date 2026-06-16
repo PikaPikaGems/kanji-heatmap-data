@@ -13,13 +13,13 @@ import os
 # experimental sibling (e.g. "v3b") without touching the readers — mirrors the
 # folder switch the textbook reader exposes via TEXTBOOK_SUBDIR. Override per-run
 # with the V3_SUBDIR env var (e.g. for batch comparison builds).
-V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3")  # v3b, v3
+V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3b")  # v3b, v3
 
 # Default textbook word-pool folder under raw/. Callers can swap it for the full set
 # ("kanji-textbook-words") or an experimental sibling without touching the readers —
 # mirrors V3_SUBDIR / the v3 reader. Override per-run with the TEXTBOOK_SUBDIR env var.
 # "kanji-textbook-words", "kanji-textbook-words-min"
-TEXTBOOK_SUBDIR = os.environ.get("TEXTBOOK_SUBDIR", "kanji-textbook-words")
+TEXTBOOK_SUBDIR = os.environ.get("TEXTBOOK_SUBDIR", "kanji-textbook-words-min")
 
 
 def resolve_path(rel_path):
@@ -47,7 +47,9 @@ def write_json(rel_path, data, *, indent=None, separators=None, ensure_ascii=Fal
     full = resolve_path(rel_path)
     os.makedirs(os.path.dirname(full), exist_ok=True)
     with open(full, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=indent, separators=separators, ensure_ascii=ensure_ascii)
+        json.dump(
+            data, f, indent=indent, separators=separators, ensure_ascii=ensure_ascii
+        )
     return full
 
 
@@ -62,8 +64,7 @@ def load_v3_entries(kanji, subdir=V3_SUBDIR):
     subdir selects the v3 word pool ("v3" by default, "v3b" for an experimental set)."""
     data = load_json(f"raw/kanji-words/{subdir}/{kanji}.json", [])
     return [
-        (e.get("w", ""), e.get("r", ""), e.get("t", ""), e.get("e", ""))
-        for e in data
+        (e.get("w", ""), e.get("r", ""), e.get("t", ""), e.get("e", "")) for e in data
     ]
 
 
@@ -81,7 +82,8 @@ def textbook_candidates(kanji, keep, subdir=TEXTBOOK_SUBDIR):
     validity rules differ (representative-word requires the word to start with the
     kanji; sample-vocab only requires it to contain the kanji).
 
-    subdir selects which textbook folder under raw/ to read (see load_textbook_entries)."""
+    subdir selects which textbook folder under raw/ to read (see load_textbook_entries).
+    """
     return [
         (w, r, TEXTBOOK_TAG, e)
         for w, r, e in load_textbook_entries(kanji, subdir)
@@ -107,8 +109,11 @@ def load_textbook_entries(kanji, subdir=TEXTBOOK_SUBDIR):
 
 
 def _english_glosses(sense):
-    return [g["text"] for g in sense.get("gloss", [])
-            if g.get("lang") == "eng" and g.get("text")]
+    return [
+        g["text"]
+        for g in sense.get("gloss", [])
+        if g.get("lang") == "eng" and g.get("text")
+    ]
 
 
 def jmdict_word_definition(entry, word, definition_count=3):
@@ -166,8 +171,17 @@ def jmdict_entry_gloss(entry, word=None, definition_count=3):
 #   jsw      japanese_study_words-algo meanings — gap-filler
 
 
-def resolve_meaning(word, *, common=None, custom=None, algo=None,
-                    external=None, ai=None, jmdict_full=None, jsw=None):
+def resolve_meaning(
+    word,
+    *,
+    common=None,
+    custom=None,
+    algo=None,
+    external=None,
+    ai=None,
+    jmdict_full=None,
+    jsw=None,
+):
     """First available meaning for `word` across the given source maps, in the fixed
     precedence above. Each argument is a {word: meaning} dict or None. Returns None
     when no source has a (non-empty) meaning."""
