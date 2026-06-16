@@ -425,6 +425,7 @@ def print_report(result, all_kanji):
         OUTPUT_TEXTBOOK_TAG: "📖  textbook",
         "📚": "📚  v3",
         "🦉": "🦉  v3",
+        "🌶️": "🌶️  v3",
     }
 
     print(f"\n{'─'*44}")

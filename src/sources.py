@@ -11,14 +11,15 @@ import os
 
 # Default v3 word-pool subfolder under raw/kanji-words/. Callers can swap it for an
 # experimental sibling (e.g. "v3b") without touching the readers — mirrors the
-# folder switch the textbook reader exposes via TEXTBOOK_SUBDIR.
-V3_SUBDIR = "v3b" # v3b, v3
+# folder switch the textbook reader exposes via TEXTBOOK_SUBDIR. Override per-run
+# with the V3_SUBDIR env var (e.g. for batch comparison builds).
+V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3")  # v3b, v3
 
 # Default textbook word-pool folder under raw/. Callers can swap it for the full set
 # ("kanji-textbook-words") or an experimental sibling without touching the readers —
-# mirrors V3_SUBDIR / the v3 reader.
-# "kanji-textbook-words-min", "kanji-textbook-words-min"
-TEXTBOOK_SUBDIR = "kanji-textbook-words-min" 
+# mirrors V3_SUBDIR / the v3 reader. Override per-run with the TEXTBOOK_SUBDIR env var.
+# "kanji-textbook-words", "kanji-textbook-words-min"
+TEXTBOOK_SUBDIR = os.environ.get("TEXTBOOK_SUBDIR", "kanji-textbook-words")
 
 
 def resolve_path(rel_path):

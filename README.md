@@ -92,7 +92,7 @@ vocab_furigana.json
 vocab_meaning.json
 ```
 
-Note: Some scripts rely on `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`.
+Note: Some scripts rely folders such as  `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`.
 These files come from the repos which may or may not be public as of writing:
 - https://github.com/PikaPikaGems/textbook-japanese-words
 - https://github.com/PikaPikaGems/japanese-word-ranks/
@@ -216,6 +216,37 @@ only when new words need external meanings:
 ```
 $ python3 src/fetch_missing_vocab_meanings.py   # manual, network
 ```
+
+### Switching word sources (comparison builds)
+
+The build draws words from two raw pools, each selectable by folder:
+
+- **v3 pool** — `raw/kanji-words/v3` or `raw/kanji-words/v3b`
+- **textbook pool** — `raw/kanji-textbook-words` (full) or `raw/kanji-textbook-words-min`
+
+The defaults live in [`src/sources.py`](src/sources.py) (`V3_SUBDIR`, `TEXTBOOK_SUBDIR`),
+but you don't need to edit that file to swap pools. Both read from **environment
+variables**, falling back to the defaults when unset. There is **no `.env` file** —
+set the vars inline on the command line, scoped to that single run:
+
+```bash
+# one-off build using the full textbook pool + the original v3 pool
+TEXTBOOK_SUBDIR=kanji-textbook-words V3_SUBDIR=v3 ./generate.sh
+```
+
+`generate.sh` also honours `GENERATE_LOG` to choose its log filename
+(default `generate-log.txt`), so different runs can each keep their own log.
+
+To build all four (textbook × v3) combinations in one go — each into its own
+`generate-log-<combo>.txt` for side-by-side inspection — run:
+
+```bash
+./run-comparisons.sh
+```
+
+> Heads up: every run overwrites the `overrides/` and `output/` files in place,
+> so after the batch the working tree reflects only the **last** combo. The logs
+> are what's kept per-combo; the generated data is not snapshotted.
 
 ## Notes 
 

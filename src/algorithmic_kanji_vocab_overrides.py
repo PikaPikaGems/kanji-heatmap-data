@@ -139,8 +139,13 @@ def _fmt_tag(tag):
     # in (every other tag/medal is a single, uniform-width emoji). Remap them to
     # single-codepoint look-alikes (🍀 clover, 📝 memo) so all glyphs share one width.
     return {
-        '☘️': '🍀',
-        TEXTBOOK_TAG: '📖', EXISTING_TAG: '📋', JMDICT_TAG: '📕', OVERRIDE_TAG: '📝',
+        "☘️": "☘️ ",
+        "🌶️": "🌶️ ",
+        "✏️": "✏️ ",
+        TEXTBOOK_TAG: "📖",
+        EXISTING_TAG: "📋",
+        JMDICT_TAG: "📕",
+        OVERRIDE_TAG: "📝",
     }.get(tag, tag)
 
 
