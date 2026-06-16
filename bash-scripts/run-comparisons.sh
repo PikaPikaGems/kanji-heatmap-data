@@ -8,6 +8,10 @@
 # logs, which are kept per-combo.
 set -e
 
+# Run from the repo root so ./generate.sh and the relative paths it uses resolve
+# regardless of where this script (which lives in bash-scripts/) is invoked from.
+cd "$(dirname "$0")/.."
+
 run_combo() {
     local textbook="$1" v3="$2" name="$3"
     echo ">>> building $name (TEXTBOOK_SUBDIR=$textbook, V3_SUBDIR=$v3)"

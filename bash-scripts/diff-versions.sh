@@ -11,6 +11,10 @@
 # (e.g. --word-only, --tier-only).
 set -e
 
+# Run from the repo root so the relative paths below resolve regardless of where
+# this script (which lives in bash-scripts/) is invoked from.
+cd "$(dirname "$0")/.."
+
 OUT="overrides/japanese_study_words-algo.json"
 A="/tmp/jsw-versionA.json"
 B="/tmp/jsw-versionB.json"

@@ -242,7 +242,7 @@ To build all four (textbook × v3) combinations in one go — each into its own
 `generate-log-<combo>.txt` for side-by-side inspection — run:
 
 ```bash
-./run-comparisons.sh
+./bash-scripts/run-comparisons.sh
 ```
 
 > Heads up: every run overwrites the `overrides/` and `output/` files in place,
@@ -256,10 +256,10 @@ kanji** (`overrides/japanese_study_words-algo.json`, the output of
 `build_representative_study_word_algo.py`), use the diff driver:
 
 ```bash
-./diff-versions.sh                  # full per-kanji word/tier diff
-./diff-versions.sh --word-only      # only kanji whose WORD changed
-./diff-versions.sh --tier-only      # only kanji where just the TIER (tag) changed
-./diff-versions.sh --kanji-count-shift   # 1-kanji words gained/lost, both directions
+./bash-scripts/diff-versions.sh                  # full per-kanji word/tier diff
+./bash-scripts/diff-versions.sh --word-only      # only kanji whose WORD changed
+./bash-scripts/diff-versions.sh --tier-only      # only kanji where just the TIER (tag) changed
+./bash-scripts/diff-versions.sh --kanji-count-shift   # 1-kanji words gained/lost, both directions
 ```
 
 `diff-versions.sh` builds two fixed combos — **versionA** = `v3` + `kanji-textbook-words`,
