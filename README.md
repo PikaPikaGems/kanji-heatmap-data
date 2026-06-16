@@ -92,11 +92,12 @@ vocab_furigana.json
 vocab_meaning.json
 ```
 
-Note: Some scripts rely folders such as  `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`.
+Note: Some scripts rely folders such as  `./raw/kanji-textbook-words/*.json` (`kanji-text-book-words-min/`) and `./raw/kanji-words/v3/*.json` (`v3b/`) .
 These files come from the repos which may or may not be public as of writing:
 - https://github.com/PikaPikaGems/textbook-japanese-words
 - https://github.com/PikaPikaGems/japanese-word-ranks/
-- https://github.com/PikaPikaGems/japanese-word-frequency
+- https://github.com/PikaPikaGems/japanese-word-frequency-archive
+- https://github.com/PikaPikaGems/jp-word-ranks-data
 
 
 ### Transform Data

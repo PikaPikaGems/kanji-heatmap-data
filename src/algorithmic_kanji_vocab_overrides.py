@@ -638,15 +638,16 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
     # label = display-glyph + source + plain-language meaning (the v3 bands 🌱→🦉 run
     # most-frequent → rarest, tracked by the JLPT level in the source data).
     tier_labels = {
-        '🌱': '🌱  v3 — most frequent (core everyday words)',
-        '☘️': '🍀  v3 — very frequent',
-        '🌷': '🌷  v3 — frequent / common',
-        TEXTBOOK_TAG: '📖  textbook — from raw/kanji-textbook-words/',
-        '📚': '📚  v3 — less common',
-        '🦉': '🦉  v3 — rare (inflections, compounds, proper nouns)',
-        EXISTING_TAG: '📋  existing — current production word (fallback)',
-        JMDICT_TAG: '📕  jmdict — pulled from full JMdict (last resort)',
-        OVERRIDE_TAG: '📝  override — hand-curated pick',
+        "🌱": "🌱  v3 — most frequent (core everyday words)",
+        "☘️": "🍀  v3 — very frequent",
+        "🌷": "🌷  v3 — frequent / common",
+        TEXTBOOK_TAG: "📖  textbook — from raw/kanji-textbook-words/",
+        "📚": "📚  v3 — less common",
+        "🦉": "🦉  v3 — rare (inflections, compounds, proper nouns)",
+        "🌶️": "🌶️  v3 — niche, same tier as 🌶️ rare",
+        EXISTING_TAG: "📋  existing — current production word (fallback)",
+        JMDICT_TAG: "📕  jmdict — pulled from full JMdict (last resort)",
+        OVERRIDE_TAG: "📝  override — hand-curated pick",
     }
     from collections import Counter
 

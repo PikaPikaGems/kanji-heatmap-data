@@ -448,7 +448,7 @@ def print_report(result, all_kanji):
         n = tag_counts.get(tag, 0)
         pct = n / total * 100 if total else 0
         pairs = tag_groups.get(tag, [])
-        if tag == "🦉":
+        if tag == "🦉" or tag == "🌶️":
             print(f"    {label}: {n}  ({pct:.1f}%)  {kanji_compact(pairs)}")
             print_entries(pairs)
         else:
