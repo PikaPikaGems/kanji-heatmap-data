@@ -13,7 +13,7 @@ import os
 # experimental sibling (e.g. "v3b") without touching the readers — mirrors the
 # folder switch the textbook reader exposes via TEXTBOOK_SUBDIR. Override per-run
 # with the V3_SUBDIR env var (e.g. for batch comparison builds).
-V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3b")  # v3b, v3
+V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3c")  # v3b, v3
 
 # Default textbook word-pool folder under raw/. Callers can swap it for the full set
 # ("kanji-textbook-words") or an experimental sibling without touching the readers —
