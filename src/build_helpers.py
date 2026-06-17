@@ -32,9 +32,14 @@ def get_words(kanji, override_words, override_algo_words, automated_words, count
                 return kanji_words
 
     needed = count - len(kanji_words)
-    return kanji_words + [
-        w for w in automated_words.get(kanji, []) if w not in kanji_words
-    ][:needed]
+    return (
+        kanji_words
+        + [
+            w
+            for w in automated_words.get(kanji, [])
+            if w not in kanji_words and kanji in w
+        ][:needed]
+    )
 
 
 def furigana_stats(kanji_extended, kanji_data, vocab_furigana):
