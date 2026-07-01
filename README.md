@@ -19,8 +19,6 @@ source .venv/bin/activate
 ./setup.sh
 ```
 
-`setup.sh` runs `pip install -r requirements.txt` and applies a one-time patch to GiNZA's config (ginza 5.2.0 ships with `split_mode = null` which newer versions of confection reject).
-
 ### Overrides
 
 Edit the following files to specify the values you want to override:
