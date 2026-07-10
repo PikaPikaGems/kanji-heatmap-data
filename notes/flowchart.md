@@ -23,8 +23,7 @@ flowchart TD
     B --> C[algorithmic_kanji_vocab_overrides.py]
     C --> D[generate_furigana_algo.py]
     D --> E[algorithmic_overrides_keywords.py]
-    E --> F[build_similar_kanjis.py]
-    F --> G[kanji_build_output_jsons.py]
+    E --> G[kanji_build_output_jsons.py]
     G --> H[kanji_inspect.py — stats only]
 
     A -.writes.-> a1[(input/filtered_kanji.json
@@ -37,7 +36,6 @@ flowchart TD
     D -.writes.-> d1[(overrides/vocab_furigana-algo.json)]
     E -.writes.-> e1[(overrides/keywords-algo.json
     debug/debug-keywords.json)]
-    F -.writes.-> f1[(output/similar-kanjis.json)]
     G -.writes.-> g1[(output/kanji_main.json, kanji_extended.json,
     component_keyword.json, extra_kanji_keyword.json, phonetic.json,
     cum_use.json, vocab_meaning.json, vocab_furigana.json,
@@ -46,6 +44,10 @@ flowchart TD
 
 `src/fetch_missing_vocab_meanings.py` is a separate MANUAL tool (it makes live network
 calls). It is not part of `generate.sh`; see §5.
+
+`output/similar-kanjis.json` is a static artifact: its generator
+(`build_similar_kanjis.py`) has been removed from the repo, but the file still ships
+in the release tarball (listed in `constants.output_files`).
 
 ---
 
@@ -63,11 +65,8 @@ flowchart LR
     jmdict[("🟩 input/scriptin-jmdict-eng.json")]
     furimap[("🟩 input/jmdict-furigana-map.json")]
     aiwords[("🟩 raw/ai-generated/sample-vocab-ai.json")]
-    aifuri[("🟩 raw/ai-generated/vocab-furigana-ai.json")]
     aimean[("🟩 raw/ai-generated/vocab-meanings-ai.json")]
     aistudy[("🟩 raw/ai-generated/japanese-study-words-ai.json")]
-    components[("🟩 raw/kanji_components.txt")]
-    structure[("🟩 raw/structure-info/yagays/* (radical + L/R, T/B)")]
     jpdbfreq[("🟩 raw/JPDB_FREQUENCY_*.csv")]
     keywordsraw[("🟩 raw/kanji-keywords-{j,w,k}.json")]
     manual[("🟩 raw/manual-inspections.json")]
@@ -78,7 +77,6 @@ flowchart LR
     S3[algorithmic_kanji_vocab_overrides]
     S4[generate_furigana_algo]
     SK[algorithmic_overrides_keywords]
-    SS[build_similar_kanjis]
     S6[kanji_build_output_jsons]
 
     %% intermediate files — all script-written: input/filtered_kanji.json, the
@@ -102,7 +100,6 @@ flowchart LR
     outvf[("🟧 output/vocab_furigana")]
     outvm[("🟧 output/vocab_meaning")]
     compkw[("🟧 output/component_keyword")]
-    simout[("🟧 output/similar-kanjis")]
 
     merged --> S1
     remove --> S1
@@ -132,8 +129,8 @@ flowchart LR
     S3 --> kv & vm & vr & nofuri
 
     nofuri --> S4
-    aifuri --> S4
     furimap --> S4
+    jmdict --> S4
     vr --> S4
     S4 --> vf
 
@@ -141,11 +138,6 @@ flowchart LR
     keywordsraw --> SK
     filt --> SK
     SK --> kwalgo
-
-    components --> SS
-    structure --> SS
-    filt --> SS
-    SS --> simout
 
     %% final build
     filt --> S6
@@ -193,7 +185,7 @@ At build time the final build prefers manual overrides over the `-algo` files.
 
 ---
 
-## 4. The three selection algorithms (per-kanji logic)
+## 4. The two selection algorithms (per-kanji logic)
 
 ### `build_representative_study_word_algo.py`
 One unique study word per kanji; the word must START with the kanji.
@@ -248,24 +240,6 @@ flowchart TD
     ALT --> EMIT[emit 1-2 words]
     EMIT --> W[(kanji_vocab-algo + vocab_meaning-algo
     + vocab_reading-algo + vocab-with-no-furigana)]
-```
-
-### `build_similar_kanjis.py`
-Visually similar kanji by shared components (IDF-weighted, position-aware).
-
-```mermaid
-flowchart TD
-    L[component set per kanji:
-    yagays kanji2radical, else kanji_components.txt;
-    normalise radical variants, drop trivial strokes] --> W[IDF-weight components
-    over the shipped set: rare component = high weight]
-    W --> IDX[invert: component -> kanjis]
-    IDX --> K[for each kanji, sorted]
-    K --> SC[score each candidate sharing a component:
-    weighted cosine of component vectors
-    + same-slot bonus from yagays L/R, T/B]
-    SC --> F[keep score >= 0.35, order most→least similar, cap 10]
-    F --> OUT[(output/similar-kanjis.json)]
 ```
 
 ---

@@ -4,19 +4,11 @@
 
 ### Requirements
 
-Python 3.x:
+Python 3.x (standard library only — no packages to install):
 
 ```bash
 python --version
 # Python 3.13.2
-```
-
-Set up a virtual environment to avoid conflicts with global packages:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-./setup.sh
 ```
 
 ### Overrides
@@ -101,16 +93,8 @@ These files come from the repos which may or may not be public as of writing:
 ### Transform Data
 
 ```bash
-# ----------------
-# Setup environment
-# ----------------
-
 # IMPORTANT: 
 # populate  `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`
-
-# python3 -m venv .venv
-# source .venv/bin/activate
-# ./setup.sh
 
 # ----------------
 # Transform Data Script
