@@ -137,11 +137,6 @@ jmdict-vocab-meaning.json
 ```bash
 ./src/kanji_inspect.py
 
-# additional inspection
-# raw/ai-generate/*-ai.json 
-python3 ./src/inspect_nonshipped_words.py
-python3 ./src/inspect_removed_kanji.py
-
 $ head -n 20 raw/kanji-textbook-words/v3/<KANJI>.json
 $ head -n 20 raw/kanji-textbook-words/<KANJI>.json 
 ```
