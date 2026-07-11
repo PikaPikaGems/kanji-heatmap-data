@@ -76,7 +76,6 @@ from sources import (
     load_json,
     write_json,
     resolve_path,
-    jmdict_entry_gloss,
     textbook_candidates,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count
@@ -378,26 +377,6 @@ def load_kanji_list():
     # input/filtered_kanji.json is the canonical kanji set (merged_kanji minus
     # kanji_to_remove), produced by src/build_filtered_kanji_json.py.
     return load_json("input/filtered_kanji.json", [])
-
-
-# load_jmdict_meanings / load_scriptin_meanings are no longer used here (the
-# resolver replaced them) but build_representative_study_word_algo_alt.py still
-# imports them; they go away together with that script.
-def load_jmdict_meanings():
-    return load_json("input/jmdict-vocab-meaning.json", {})
-
-
-def load_scriptin_meanings():
-    data = load_json("input/scriptin-jmdict-eng.json", {})
-    lookup = {}
-    for entry in data.get("words", []):
-        for form in entry.get("kanji", []) + entry.get("kana", []):
-            t = form.get("text", "")
-            if t and t not in lookup:
-                meaning = jmdict_entry_gloss(entry, t)  # appliesToKanji-aware per form
-                if meaning:
-                    lookup[t] = meaning
-    return lookup
 
 
 def load_manual_replace_words():
