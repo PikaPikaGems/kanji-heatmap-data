@@ -43,19 +43,21 @@ Fallback (no candidates remain after applying constraints + uniqueness):
 
 Kanji with no candidates even after the relaxed search get null (no study word).
 
-English meaning (resolved after word selection):
-  - Taken from the source entry if present
-  - Otherwise looked up in input/jmdict-vocab-meaning.json
-  - Otherwise looked up in input/scriptin-jmdict-eng.json (first sense, up to 3 glosses)
+Reading + meaning (resolved AFTER word selection, via jmdict_resolver):
+  Both come from input/scriptin-jmdict-eng.json ONLY — the single source of
+  truth. The word pools' own r/e fields take part in candidate SELECTION but
+  never reach the output. The resolver returns up to 2 common readings joined
+  with ・ (空 → そら・から) and a short meaning whose [n] blocks align with the
+  split readings (see jmdict_resolver.py). Words JMdict doesn't know fall back
+  to the furigana map for a reading, get an empty meaning, and are reported.
 
 Sources:
   input/filtered_kanji.json                        → [kanji]  (the kanji set to process)
   raw/kanji-words/v3/[kanji].json                  → [{w, r, t, j?, k?, e}]
   raw/kanji-textbook-words/[kanji].json            → {kanji: {word: [reading, meaning]}}
-  input/jmdict-vocab-meaning.json                  → {word: meaning}
   input/scriptin-jmdict-eng.json                   → JMdict JSON (words[].kanji/kana/sense)
   raw/manual-inspections.json                      → {replaceKanjiStudyWords: {kanji: word}}
-  input/jmdict-furigana-map.json                   → {word: {reading: segments}}  (override readings)
+  input/jmdict-furigana-map.json                   → {word: {reading: segments}}  (fallback readings)
 
 Output: overrides/japanese_study_words-algo.json
   { kanji: [word, reading, meaning, tag] }   (null when no valid word found)
@@ -74,6 +76,7 @@ from sources import (
     TEXTBOOK_TAG,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count
+from jmdict_resolver import JmdictResolver
 
 # ---------------------------------------------------------------------------
 # Scoring / prioritisation
@@ -258,6 +261,9 @@ def load_kanji_list():
     return load_json("input/filtered_kanji.json", [])
 
 
+# load_jmdict_meanings / load_scriptin_meanings are no longer used here (the
+# resolver replaced them) but build_representative_study_word_algo_alt.py still
+# imports them; they go away together with that script.
 def load_jmdict_meanings():
     return load_json("input/jmdict-vocab-meaning.json", {})
 
@@ -285,12 +291,14 @@ def load_jmdict_readings():
     return {word: next(iter(readings)) for word, readings in data.items() if readings}
 
 
-def strip_suru_verb(entry, used_words, jmdict, scriptin, jmdict_readings):
+def strip_suru_verb(entry, used_words, resolver):
     """Return `entry` with a 2-kanji 〜する headword reduced to its bare noun
     (督励する → 督励), or `entry` unchanged when it isn't such a verb. Skips the strip
-    if the bare noun is already assigned to another kanji, so uniqueness is preserved.
+    if the bare noun is already assigned to another kanji (uniqueness), or when
+    JMdict doesn't know the bare noun (the verb form at least resolves).
 
-    entry is [word, reading, meaning, tag]; the tag (source band) is kept as-is.
+    entry is [word, reading, meaning, tag]; the tag (source band) is kept as-is;
+    reading/meaning are re-resolved by the caller.
     """
     word, reading, meaning, tag = entry
     if not word.endswith("する"):
@@ -300,43 +308,56 @@ def strip_suru_verb(entry, used_words, jmdict, scriptin, jmdict_readings):
         return entry
     if stem in used_words:               # don't create a duplicate with another kanji's word
         return entry
-    stem_reading = reading[:-2] if reading.endswith("する") else jmdict_readings.get(stem, reading)
-    stem_meaning = jmdict.get(stem) or scriptin.get(stem) or meaning
-    return [stem, stem_reading, stem_meaning, tag]
+    # Keep the verb only when JMdict knows it but not the stem — stripping would
+    # trade a resolvable word for an unresolvable one. When it knows neither
+    # (kyūjitai variants like 充塡する), still strip: the bare noun is the better
+    # unresolvable word.
+    if resolver.resolve(stem) is None and resolver.resolve(word) is not None:
+        return entry
+    return [stem, reading, meaning, tag]
 
 
 def main():
     all_kanji = load_kanji_list()
     SHIPPED.update(all_kanji)  # enable the all-shipped study-word preference
-    jmdict = load_jmdict_meanings()
-    scriptin = load_scriptin_meanings()
     manual_words = load_manual_replace_words()
     jmdict_readings = load_jmdict_readings()
+    resolver = JmdictResolver()
 
     result = {}
     used_words = set()  # enforces uniqueness across all kanjis
+    missing_jmdict = []  # selected words JMdict doesn't know (pool r/e never leaks)
+
+    def attach_reading_meaning(entry):
+        """Overwrite entry's reading/meaning from the resolver — the pools' own
+        r/e fields inform selection only and must never reach the output."""
+        resolved = resolver.resolve(entry[0])
+        if resolved:
+            entry[1] = resolved["reading"]
+            entry[2] = resolved["meaning"]
+        else:
+            entry[1] = jmdict_readings.get(entry[0], "")
+            entry[2] = ""
+            missing_jmdict.append(entry[0])
+        return entry
 
     for kanji in all_kanji:
         entry = select_word_for_kanji(kanji, used_words)
 
         if STRIP_SURU_VERBS and entry:
-            entry = strip_suru_verb(entry, used_words, jmdict, scriptin, jmdict_readings)
-
-        if entry and not entry[2]:
-            entry[2] = jmdict.get(entry[0]) or scriptin.get(entry[0]) or ""
-
-        result[kanji] = entry
+            entry = strip_suru_verb(entry, used_words, resolver)
 
         if entry:
+            entry = attach_reading_meaning(entry)
             used_words.add(entry[0])
+
+        result[kanji] = entry
 
     # --- Apply manual word overrides from raw/manual-inspections.json ---
     for kanji, word in manual_words.items():
         if kanji not in result:
             continue
-        reading = jmdict_readings.get(word, "")
-        meaning = jmdict.get(word) or scriptin.get(word) or ""
-        result[kanji] = [word, reading, meaning, OVERRIDE_TAG]
+        result[kanji] = attach_reading_meaning([word, "", "", OVERRIDE_TAG])
 
     # Overrides are applied without the per-selection uniqueness check above, so a
     # manual word can collide with one already chosen for another kanji. Fail loudly
@@ -357,6 +378,10 @@ def main():
     print(f"Written: {out_path}")
 
     print_report(result, all_kanji)
+
+    print(f"\n  Selected words missing from JMdict ({len(missing_jmdict)}):")
+    for word in missing_jmdict:
+        print(f"    {word}")
 
 
 def print_report(result, all_kanji):
