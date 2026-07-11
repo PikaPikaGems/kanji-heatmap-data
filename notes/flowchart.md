@@ -60,16 +60,19 @@ flowchart LR
     %% raw inputs
     merged[("🟩 input/merged_kanji.json")]
     remove[("🟩 overrides/kanji_to_remove.json")]
-    v3[("🟩 raw/kanji-words/v3c/* — chosen per run
-    by V3_SUBDIR")]
-    textbook[("🟩 raw/kanji-textbook-words/* OR
-    raw/kanji-textbook-words-min/* — chosen per script
-    by USE_TEXT_BOOK_MIN")]
+    freqranks[("🟩 raw/freq-ranks/*.tsv — per-corpus frequency
+    ranks + tier + JLPT; the word pool for BOTH
+    selection algorithms")]
+    textbook[("🟩 raw/kanji-textbook-words-min/*
+    (TEXTBOOK_SUBDIR env var; default -min)")]
     jmdict[("🟩 input/scriptin-jmdict-eng.json")]
+    hints[("🟩 overrides/resolver_hints.json — hand-edited
+    readingOrder/meanings corrections for jmdict_resolver")]
     furimap[("🟩 input/jmdict-furigana-map.json")]
     jpdbfreq[("🟩 raw/JPDB_FREQUENCY_*.csv")]
     keywordsraw[("🟩 raw/kanji-keywords-{j,w,k}.json")]
-    manual[("🟩 raw/manual-inspections.json")]
+    manual[("🟩 raw/manual-inspections.json —
+    incl. replaceKanjiStudyWords pins")]
 
     %% scripts
     S1[build_filtered_kanji_json]
@@ -106,17 +109,19 @@ flowchart LR
     %% S1 also frequency-orders filtered_kanji.json: Google (in merged) → JPDB → Netflix
 
     filt --> S2
-    v3 --> S2
+    freqranks --> S2
     textbook --> S2
     jmdict --> S2
+    hints --> S2
     manual --> S2
     furimap --> S2
     S2 --> jsw
 
     filt --> S3
-    v3 --> S3
+    freqranks --> S3
     textbook --> S3
     jmdict --> S3
+    hints --> S3
     furimap --> S3
     jsw --> S3
     S3 --> kv & vm & vr
@@ -178,28 +183,36 @@ At build time the final build prefers manual overrides over the `-algo` files.
 ## 4. The two selection algorithms (per-kanji logic)
 
 ### `build_representative_study_word_algo.py`
-One unique study word per kanji; the word must START with the kanji.
+One unique study word per kanji; the word must START with the kanji
+(textbook words merely CONTAINING it ride along with a stage penalty).
 
 ```mermaid
 flowchart TD
-    K[for each kanji] --> C[collect v3 + textbook candidates
-    that START with kanji, all-Japanese, 1-2 kanji
-    textbook source: full or -min per USE_TEXT_BOOK_MIN]
-    C --> SR{single-kanji word, kanji_count==1,
-    tagged 🌱 or ☘️ — or 🌷 if
-    INCLUDE_TULIP_IN_PRIORITY=True?}
-    SR -- yes --> PICK[pick best among them by word_score — bypasses Rule 1 and 2]
-    SR -- no --> SC[score: source tier, then word-type, then length]
-    SC --> U{best unused word?}
-    U -- yes --> PICK
-    U -- no candidates --> FB[relaxed: textbook word
-    CONTAINING kanji, shortest first]
-    FB --> U2{unused?}
-    U2 -- yes --> PICK
-    U2 -- no --> NONE[no study word — null entry]
-    PICK --> MEAN[resolve meaning:
-    entry -> jmdict -> scriptin]
-    MEAN --> MAN[apply manual replaceKanjiStudyWords]
+    K[for each kanji] --> C[collect candidates: freq-ranks kanji.tsv
+    + textbook-min + the bare kanji itself when JMdict
+    says it is a standalone word
+    all-Japanese, 1-2 kanji, unused]
+    C --> F[reject phrase fragments — resolver.is_phrase_fragment:
+    この人, 常に, 今も, 事になる]
+    F --> SC["score tuple (lower wins): validity → stage →
+    band → JLPT → class verb&lt;adj&lt;other → word-type → shipped → freq → len"]
+    SC --> SR{any single-kanji candidate in a
+    top band BASIC/COMMON that resolves standalone?}
+    SR -- "yes — special rule" --> BT{bare kanji ties the best
+    through band/JLPT/class?}
+    BT -- yes --> PICKBARE[pick the bare kanji: 一, 常, 誰]
+    BT -- no --> PICKONE[pick best single-kanji word: 高い, 語る]
+    SR -- no --> PICK[pick best-scored word]
+    PICK --> STRIP[strip trailing する/な from
+    2-kanji stems: 真摯な → 真摯]
+    PICKBARE --> RES
+    PICKONE --> RES
+    STRIP --> RES[reading + meaning from jmdict_resolver ONLY:
+    up to 2 readings ・-joined, sense blocks;
+    resolve_fallback for rare writings — ⚠️ often-kana marker;
+    pool r/e fields never reach the output]
+    RES --> MAN[apply manual replaceKanjiStudyWords ✏️
+    lenient resolve — the human picked the writing]
     MAN --> DUP{any word maps to 2 kanji?}
     DUP -- yes --> ERR[raise ValueError]
     DUP -- no --> OUT[(japanese_study_words-algo.json)]
@@ -210,9 +223,11 @@ Up to two SAMPLE words per kanji (kanji can appear anywhere), with reading diver
 
 ```mermaid
 flowchart TD
-    K[for each kanji] --> C[collect v3 + textbook + existing + jmdict
-    candidates that have a meaning available
-    textbook source: full or -min per TEXTBOOK_SUBDIR]
+    K[for each kanji] --> C[collect candidates: freq-ranks contains-anywhere
+    index over ALL raw/freq-ranks/*.tsv + textbook-min
+    + existing + jmdict fallbacks — must have a meaning
+    available and a dictionary reading; phrase fragments
+    rejected via resolver.is_phrase_fragment]
     C --> S1[first word = best score
     proper-noun demotion, then tier, extra-kanji, length, reading, meaning
     hand-curated picks live in overrides/kanji_vocab.json, applied at BUILD time]
@@ -226,8 +241,13 @@ flowchart TD
     RP -- no --> EMIT
     ALT --> EMIT[emit 1-2 words]
     EMIT --> W[(kanji_vocab-algo + vocab_meaning-algo
-    + vocab_reading-algo + vocab-with-no-furigana)]
+    + vocab_reading-algo)]
 ```
+
+Readings and meanings for the STUDY words come from `src/jmdict_resolver.py`
+(JMdict only — pool reading/meaning fields never reach the output). Per-word
+hand corrections for the resolver (leading reading, replacement meaning) live in
+`overrides/resolver_hints.json`, not in code.
 
 ---
 
