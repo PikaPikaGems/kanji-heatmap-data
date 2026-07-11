@@ -3,6 +3,7 @@
 from functools import reduce
 import kanji_extract
 import kanji_load
+import utils
 
 KANJI_DATA = kanji_load.load_filtered_kanji_data()
 KANJI_LIST = KANJI_DATA.keys()
@@ -167,6 +168,24 @@ def main():
     no_keys = list(filter(lambda kanji: get_keyword(kanji) is None, KANJI_LIST))
     print("---> No keywords:", no_keys)
     # []
+
+    # Verify japanese study words are unique: the number of kanji that have a
+    # study word must equal the number of distinct study words (1 word ↔ 1 kanji).
+    study_words = utils.get_data_from_file(
+        kanji_load.OUT_KANJI_REPRESENTATIVE_WORDS_PATH
+    )
+    assigned = [entry[0] for entry in study_words.values() if entry]
+    print("---> Kanji with a study word:", len(assigned))
+    print("---> Unique study words:", len(set(assigned)))
+    if len(assigned) == len(set(assigned)):
+        print("---> Study words are unique: OK")
+    else:
+        seen, dups = set(), []
+        for w in assigned:
+            if w in seen:
+                dups.append(w)
+            seen.add(w)
+        print("---> DUPLICATE STUDY WORDS (each must map to exactly one kanji!):", dups)
 
     print("..........")
     print("ONYOMI")

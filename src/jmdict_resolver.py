@@ -1,8 +1,8 @@
 """Single source of truth for study-word readings and meanings, from JMdict.
 
 Resolves a word (as written, e.g. 空 or 高い) to its common reading(s) and a short
-English meaning, using input/scriptin-jmdict-eng.json ONLY. Word pools (v3c,
-freq-ranks, textbook) supply candidate words and frequency tags; their own
+English meaning, using input/scriptin-jmdict-eng.json ONLY. Word pools
+(freq-ranks, textbook) supply candidate words and frequency tags; their own
 reading/meaning fields must never reach the output — this module replaces them.
 
 Readings (up to MAX_READINGS, most common first, joined with ・ U+30FB):
@@ -253,6 +253,14 @@ class JmdictResolver:
         }
 
 
+    def pos_profile(self, word):
+        """All partOfSpeech tags across the best reading's senses ([] when JMdict
+        doesn't know the word). Feed to classify_pos for report tallies."""
+        ranked = self.reading_candidates(word)
+        if not ranked:
+            return []
+        return [p for s in ranked[0]["senses"] for p in s.get("partOfSpeech", [])]
+
     # -- phrase-fragment detection -------------------------------------------
 
     def is_phrase_fragment(self, word):
@@ -383,6 +391,23 @@ class JmdictResolver:
                 "common": False,  # the writing is rare even when the word isn't
             }
         return None
+
+
+def classify_pos(pos_tags):
+    """Coarse POS bucket for report tallies: verb / i-adjective / na-adjective /
+    adjective (other) / noun / other. Priority mirrors _word_class — a word with
+    both verb and noun senses counts as a verb."""
+    if any(p.startswith(_VERB_POS_PREFIXES) for p in pos_tags):
+        return "verb"
+    if any(p in ("adj-i", "adj-ix") for p in pos_tags):
+        return "i-adjective"
+    if "adj-na" in pos_tags:
+        return "na-adjective"
+    if any(p in _ADJ_POS for p in pos_tags):
+        return "adjective (other)"
+    if any(p == "n" or p in ("n-adv", "n-t") for p in pos_tags):
+        return "noun"
+    return "other"
 
 
 def _word_class(candidate):

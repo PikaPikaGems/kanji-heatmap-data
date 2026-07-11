@@ -88,12 +88,13 @@ from sources import (
     write_json,
     resolve_path,
     textbook_candidates,
+    load_textbook_entries,
     freq_key,
     corpus_coverage,
     parse_rank,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count
-from jmdict_resolver import JmdictResolver, CLASS_OTHER
+from jmdict_resolver import JmdictResolver, CLASS_OTHER, classify_pos
 
 # ---------------------------------------------------------------------------
 # Scoring / prioritisation
@@ -122,7 +123,8 @@ DEFAULT_TIER_BAND = 5
 TEXTBOOK_BAND = 3
 
 # Emoji written into each entry's tag slot, by freq-ranks tier (🌱 most frequent
-# → 🦉 rarest) — same glyphs the v3 pool used, so the output stays comparable.
+# → 🦉 rarest) — glyphs kept stable across data-source migrations so old and new
+# outputs stay comparable.
 TIER_TAG = {
     "BASIC": "🌱", "COMMON": "☘️", "FLUENT": "🌷",
     "ADVANCED": "📚", "NICHE": "🌶️", "UNRANKED": "🦉",
@@ -458,7 +460,7 @@ def main():
     out_path = write_json("overrides/japanese_study_words-algo.json", result, indent=2)
     print(f"Written: {out_path}")
 
-    print_report(result, all_kanji)
+    print_report(result, all_kanji, resolver)
 
     print(f"\n  Selected words missing from JMdict ({len(missing_jmdict)}):")
     for word in missing_jmdict:
@@ -475,10 +477,11 @@ def main():
         print(f"    {v[3]} {k} → {v[0]} ~ {v[1]} {v[2][:60]}")
 
 
-def print_report(result, all_kanji):
-    """Print selection statistics: tier/length/kanji-count breakdowns plus anomaly
-    lists (no-word, no-meaning, not-starting-with-kanji, overlaps). Read-only over
-    `result` — it does not affect the written output file."""
+def print_report(result, all_kanji, resolver):
+    """Print selection statistics: tier/length/kanji-count/POS/JLPT breakdowns,
+    textbook overlap, plus anomaly lists (no-word, no-meaning,
+    not-starting-with-kanji, overlaps). Read-only over `result` — it does not
+    affect the written output file."""
     selected_flat = [v for v in result.values() if v is not None]
     total = len(selected_flat)
     with_word = sum(1 for v in result.values() if v is not None)
@@ -580,6 +583,65 @@ def print_report(result, all_kanji):
             print_entries(pairs)
         else:
             print(f"    {kc} kanji: {n}  ({pct:.1f}%)")
+
+    def stat_line(label, n, indent="    "):
+        print(f"{indent}{label}: {n}  ({n/total*100:.1f}%)" if total else f"{indent}{label}: 0")
+
+    # POS buckets over the study word's best JMdict reading (a word with both
+    # verb and noun senses counts as a verb — see classify_pos).
+    def pos_bucket(word):
+        tags = resolver.pos_profile(word)
+        return classify_pos(tags) if tags else "not in JMdict"
+
+    pos_counts = Counter(pos_bucket(w) for w in words)
+    adj_all = sum(pos_counts[b] for b in ("i-adjective", "na-adjective", "adjective (other)"))
+    print(f"\n  Word class (JMdict POS)")
+    stat_line("verb", pos_counts["verb"])
+    stat_line("adjective (all)", adj_all)
+    stat_line("i-adjective", pos_counts["i-adjective"], indent="      ")
+    stat_line("na-adjective", pos_counts["na-adjective"], indent="      ")
+    stat_line("other adjective", pos_counts["adjective (other)"], indent="      ")
+    stat_line("noun", pos_counts["noun"])
+    stat_line("other (adverbs, numerals, expressions…)", pos_counts["other"])
+    stat_line("not in JMdict", pos_counts["not in JMdict"])
+
+    # JLPT level from the freq-ranks row of the word itself (TSVs are keyed by
+    # the word's first character, so the lookup works for ✏️/📖 picks too).
+    rows_cache = {}
+    def jlpt_of(word):
+        first = word[0]
+        if first not in rows_cache:
+            rows_cache[first] = read_freq_rows(first)
+        for row in rows_cache[first]:
+            if row.get(COL_WORD) == word:
+                return parse_rank(row.get(COL_JLPT))
+        return None
+
+    jlpt_counts = Counter(jlpt_of(w) for w in words)
+    print(f"\n  JLPT level (freq-ranks jlpt_level)")
+    for level in (5, 4, 3, 2, 1):
+        stat_line(f"N{level}", jlpt_counts.get(level, 0))
+    stat_line("no JLPT tag", jlpt_counts.get(None, 0))
+
+    # Textbook overlap: 📖-tagged words came from the textbook pool alone; count
+    # how many words tagged from freq-ranks ALSO sit in their kanji's textbook pool.
+    tb_pool_cache = {}
+    def in_textbook_pool(kanji, word):
+        if kanji not in tb_pool_cache:
+            tb_pool_cache[kanji] = {w for w, _r, _e in load_textbook_entries(kanji)}
+        return word in tb_pool_cache[kanji]
+
+    overlap_counts = Counter(
+        v[3] for k, v in result.items()
+        if v is not None and v[3] != OUTPUT_TEXTBOOK_TAG and in_textbook_pool(k, v[0])
+    )
+    n_overlap = sum(overlap_counts.values())
+    print(f"\n  Textbook overlap")
+    stat_line("tagged 📖 (textbook was the only/best source)",
+              tag_counts.get(OUTPUT_TEXTBOOK_TAG, 0))
+    stat_line("tagged from another source but ALSO in the textbook pool", n_overlap)
+    for tag, n in overlap_counts.most_common():
+        stat_line(f"{tag}", n, indent="      ")
 
     print(f"{'─'*44}")
 
