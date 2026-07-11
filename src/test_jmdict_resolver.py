@@ -22,8 +22,8 @@ from sources import load_json
 GOLDEN_READINGS = {
     # multi-reading homographs (separate entries or kana siblings)
     "空": "そら・から",
-    "四": "よん・し",      # PREFERRED_FIRST_KANA (JMdict lists し first)
-    "七": "なな・しち",    # PREFERRED_FIRST_KANA
+    "四": "よん・し",      # readingOrder hint (JMdict lists し first)
+    "七": "なな・しち",    # readingOrder hint — overrides/resolver_hints.json
     "九": "きゅう・く",
     "入る": "はいる・いる",
     "前": "まえ・ぜん",

@@ -23,10 +23,10 @@ Readings (up to MAX_READINGS, most common first, joined with ・ U+30FB):
   ≥2 senses unless the first reading itself has just one (keeps 前 → まえ・ぜん
   and 毎 → ごと・まい but not 字 → じ・あざ), and the word must be its entry's
   LEADING kanji form — もと's entry lists 元 first with 本 as an alternative
-  writing, so もと belongs to 元 and never rides along on 本. PREFERRED_FIRST_KANA
-  patches the numerals where JMdict's flattened `common` boolean hides that
-  よん/なな lead (し/しち are avoided for superstition; no in-file signal
-  survives conversion).
+  writing, so もと belongs to 元 and never rides along on 本. The readingOrder
+  map in overrides/resolver_hints.json patches the numerals where JMdict's
+  flattened `common` boolean hides that よん/なな lead (し/しち are avoided for
+  superstition; no in-file signal survives conversion).
 
 Meanings (senses ordered as in JMdict; glosses joined ", "; capped ~150 chars):
   one reading   up to 2 senses joined with " · "  (語 → "word, term · language")
@@ -69,9 +69,12 @@ AFFIX_POS = {"pref", "suf", "n-pref", "n-suf", "ctr", "prt", "aux", "aux-v",
 # literary/archaic form (書/ふみ) — ranked below living readings.
 DEMOTE_MISC = {"form", "arch", "dated", "obs", "rare", "obsc", "poet"}
 
-# Words whose leading reading JMdict's flattened `common` flag gets wrong.
-# Keyed by the word as written; value must be one of the word's common kana.
-PREFERRED_FIRST_KANA = {"四": "よん", "七": "なな"}
+# Hand-maintained per-word corrections live OUTSIDE the code, in
+# overrides/resolver_hints.json:
+#   readingOrder  {word: kana} — which reading leads when JMdict's flattened
+#                 `common` flag gets it wrong (四: よん, 七: なな)
+#   meanings      {word: meaning} — full replacement for a generated meaning
+HINTS_PATH = "overrides/resolver_hints.json"
 
 # Appended to resolve_fallback meanings for usually-kana words (諄い, 亦, 於いて),
 # warning that the kanji writing shown is not how the word is normally written.
@@ -109,6 +112,9 @@ class JmdictResolver:
     def __init__(self, data=None):
         if data is None:
             data = load_json("input/scriptin-jmdict-eng.json", {})
+        hints = load_json(HINTS_PATH, {})
+        self._preferred_first_kana = hints.get("readingOrder", {})
+        self._meaning_overrides = hints.get("meanings", {})
         self._index = {}
         self._resolve_cache = {}  # selection scoring resolves the same words repeatedly
         for entry in data.get("words", []):
@@ -229,7 +235,7 @@ class JmdictResolver:
                   if c["common"] and not c["demoted"] and c["canonical"]
                   and (len(c["senses"]) >= 2 or len(first["senses"]) == 1)]
         picked = [first] + extras
-        preferred = PREFERRED_FIRST_KANA.get(word)
+        preferred = self._preferred_first_kana.get(word)
         if preferred:
             for i, c in enumerate(picked):
                 if c["kana"] == preferred and i != 0:
@@ -240,7 +246,7 @@ class JmdictResolver:
         return {
             "reading": "・".join(c["kana"] for c in picked),
             "readings": [c["kana"] for c in picked],
-            "meaning": _format_meaning(picked),
+            "meaning": self._meaning_overrides.get(word) or _format_meaning(picked),
             "standalone": first["standalone"],
             "word_class": _word_class(first),
             "common": first["common"],
@@ -362,9 +368,11 @@ class JmdictResolver:
                 continue
 
             candidate = {"kana": kana["text"], "senses": senses}
-            meaning = _format_meaning([candidate])
-            if usually_kana:
-                meaning += KANA_ONLY_MARKER
+            meaning = self._meaning_overrides.get(word)
+            if not meaning:
+                meaning = _format_meaning([candidate])
+                if usually_kana:
+                    meaning += KANA_ONLY_MARKER
             return {
                 "reading": kana["text"],
                 "readings": [kana["text"]],
