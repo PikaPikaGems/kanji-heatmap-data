@@ -26,6 +26,7 @@ run python3 src/build_representative_study_word_algo.py
 run python3 src/algorithmic_kanji_vocab_overrides.py
 run python3 src/generate_furigana_algo.py
 run python3 src/algorithmic_overrides_keywords.py
+run python3 src/build_similar_kanji.py
 run python3 src/kanji_build_output_jsons.py
 
 cp ./input/filtered_kanji.json ./output/filtered_kanji.json

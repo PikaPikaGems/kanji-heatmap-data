@@ -1,0 +1,3791 @@
+---
+distractors:
+- "\u4E00"
+- "\u4E0E"
+- "\u4E8C"
+- "\u4E94"
+- "\u5DE5"
+- "\u738B"
+participant_id: 18
+pivot: "\u4E09"
+selected:
+- "\u4E8C"
+---
+distractors:
+- "\u4E00"
+- "\u4E0B"
+- "\u571F"
+- "\u5CE0"
+- "\u6B62"
+- "\u6B63"
+participant_id: 18
+pivot: "\u4E0A"
+selected:
+- "\u4E0B"
+- "\u571F"
+---
+distractors:
+- "\u4E03"
+- "\u4E07"
+- "\u4E5F"
+- "\u53EF"
+- "\u76EE"
+- "\u8449"
+participant_id: 18
+pivot: "\u4E16"
+selected:
+- "\u4E5F"
+---
+distractors:
+- "\u4F4F"
+- "\u5168"
+- "\u7389"
+- "\u738B"
+- "\u751F"
+participant_id: 18
+pivot: "\u4E3B"
+selected:
+- "\u738B"
+- "\u751F"
+---
+distractors:
+- "\u4E07"
+- "\u4F9B"
+- "\u5270"
+- "\u6731"
+- "\u6771"
+- "\u679C"
+- "\u91CD"
+participant_id: 18
+pivot: "\u4E57"
+selected:
+- "\u6771"
+- "\u91CD"
+---
+distractors:
+- "\u4E0A"
+- "\u4E38"
+- "\u4E59"
+- "\u4EBA"
+- "\u529B"
+- "\u8ECC"
+- "\u96D1"
+participant_id: 18
+pivot: "\u4E5D"
+selected:
+- "\u529B"
+---
+distractors:
+- "\u4E09"
+- "\u4E92"
+- "\u4E9C"
+- "\u609F"
+- "\u6B63"
+- "\u7389"
+participant_id: 18
+pivot: "\u4E94"
+selected:
+- "\u4E09"
+---
+distractors:
+- "\u4EFB"
+- "\u4F73"
+- "\u4FF5"
+- "\u5728"
+- "\u58EB"
+- "\u58EE"
+participant_id: 18
+pivot: "\u4ED5"
+selected:
+- "\u4EFB"
+- "\u58EE"
+---
+distractors:
+- "\u4EBA"
+- "\u4F3C"
+- "\u5317"
+- "\u53E3"
+- "\u7ACB"
+participant_id: 18
+pivot: "\u4EE5"
+selected:
+- "\u4EBA"
+---
+distractors:
+- "\u4E3B"
+- "\u4EFB"
+- "\u5F80"
+- "\u67F1"
+participant_id: 18
+pivot: "\u4F4F"
+selected:
+- "\u4EFB"
+- "\u5F80"
+---
+distractors:
+- "\u5143"
+- "\u5148"
+- "\u5149"
+- "\u514B"
+- "\u53F2"
+- "\u6CC1"
+- "\u898B"
+participant_id: 18
+pivot: "\u5144"
+selected:
+- "\u5143"
+---
+distractors:
+- "\u4EA4"
+- "\u5143"
+- "\u516B"
+- "\u5927"
+- "\u604B"
+- "\u6587"
+- "\u6C34"
+- "\u7A74"
+participant_id: 18
+pivot: "\u516D"
+selected:
+- "\u6587"
+---
+distractors:
+- "\u4E00"
+- "\u4E0E"
+- "\u518D"
+- "\u5B89"
+- "\u673D"
+participant_id: 18
+pivot: "\u5199"
+selected:
+- "\u4E0E"
+---
+distractors:
+- "\u4E38"
+- "\u4E45"
+- "\u5404"
+- "\u540D"
+- "\u5C3D"
+- "\u7D42"
+participant_id: 18
+pivot: "\u51AC"
+selected:
+- "\u4E45"
+- "\u5404"
+---
+distractors:
+- "\u51F8"
+- "\u51F9"
+- "\u5C71"
+- "\u5E02"
+- "\u62D9"
+participant_id: 18
+pivot: "\u51FA"
+selected:
+- "\u5C71"
+---
+distractors:
+- "\u4E03"
+- "\u4E07"
+- "\u5200"
+- "\u521D"
+- "\u529F"
+- "\u574A"
+- "\u8650"
+participant_id: 18
+pivot: "\u5207"
+selected:
+- "\u5200"
+- "\u529F"
+---
+distractors:
+- "\u4E07"
+- "\u5200"
+- "\u529F"
+- "\u52A0"
+- "\u52C9"
+- "\u5927"
+participant_id: 18
+pivot: "\u529B"
+selected:
+- "\u5200"
+---
+distractors:
+- "\u514D"
+- "\u529B"
+- "\u52F2"
+- "\u9038"
+participant_id: 18
+pivot: "\u52C9"
+selected:
+- "\u514D"
+---
+distractors:
+- "\u5343"
+- "\u5E74"
+- "\u725B"
+- "\u8A31"
+participant_id: 18
+pivot: "\u5348"
+selected:
+- "\u725B"
+---
+distractors:
+- "\u53E3"
+- "\u5426"
+- "\u5DE6"
+- "\u77F3"
+- "\u820C"
+- "\u82E5"
+participant_id: 18
+pivot: "\u53F3"
+selected:
+- "\u77F3"
+---
+distractors:
+- "\u51AC"
+- "\u53E3"
+- "\u53F3"
+- "\u5404"
+- "\u9298"
+participant_id: 18
+pivot: "\u540D"
+selected:
+- "\u5404"
+---
+distractors:
+- "\u51F8"
+- "\u53E3"
+- "\u5B98"
+- "\u64CD"
+- "\u6676"
+participant_id: 18
+pivot: "\u54C1"
+selected:
+- "\u53E3"
+---
+distractors:
+- "\u5075"
+- "\u640D"
+- "\u8C9D"
+- "\u8CAC"
+- "\u8CB4"
+- "\u8CB7"
+- "\u8CC0"
+participant_id: 18
+pivot: "\u54E1"
+selected:
+- "\u8C9D"
+- "\u8CB7"
+---
+distractors:
+- "\u53E3"
+- "\u805E"
+- "\u9580"
+- "\u9593"
+- "\u95A3"
+participant_id: 18
+pivot: "\u554F"
+selected:
+- "\u9580"
+- "\u9593"
+---
+distractors:
+- "\u4E00"
+- "\u5927"
+- "\u592B"
+- "\u592E"
+- "\u706B"
+- "\u77E2"
+- "\u8695"
+participant_id: 18
+pivot: "\u5929"
+selected:
+- "\u592B"
+---
+distractors:
+- "\u4EBA"
+- "\u4F0F"
+- "\u516C"
+- "\u5927"
+- "\u72AC"
+- "\u99C4"
+participant_id: 18
+pivot: "\u592A"
+selected:
+- "\u5927"
+- "\u72AC"
+---
+distractors:
+- "\u5973"
+- "\u5974"
+- "\u598A"
+- "\u59B9"
+- "\u5B50"
+- "\u5B58"
+participant_id: 18
+pivot: "\u597D"
+selected:
+- "\u5973"
+- "\u5B50"
+---
+distractors:
+- "\u5473"
+- "\u59C9"
+- "\u672A"
+- "\u6731"
+- "\u6B8A"
+participant_id: 18
+pivot: "\u59B9"
+selected:
+- "\u5473"
+---
+distractors:
+- "\u585A"
+- "\u5AC1"
+- "\u5B89"
+- "\u5C4B"
+- "\u6771"
+participant_id: 18
+pivot: "\u5BB6"
+selected:
+- "\u5B89"
+---
+distractors:
+- "\u4EBA"
+- "\u5343"
+- "\u5C0F"
+- "\u5C71"
+- "\u5F15"
+- "\u8A13"
+- "\u9AEA"
+participant_id: 18
+pivot: "\u5DDD"
+selected:
+- "\u5C0F"
+---
+distractors:
+- "\u4FB5"
+- "\u5A66"
+- "\u5E1D"
+- "\u5E2F"
+- "\u6383"
+- "\u640D"
+- "\u6EDE"
+participant_id: 18
+pivot: "\u5E30"
+selected:
+- "\u4FB5"
+---
+distractors:
+- "\u4E39"
+- "\u5C40"
+- "\u5F13"
+- "\u5F15"
+- "\u5F25"
+- "\u5F37"
+- "\u6CB8"
+participant_id: 18
+pivot: "\u5F31"
+selected:
+- "\u5F13"
+- "\u5F15"
+---
+distractors:
+- "\u4EEE"
+- "\u4FCA"
+- "\u5F79"
+- "\u5F7C"
+- "\u5FA9"
+participant_id: 18
+pivot: "\u5F8C"
+selected:
+- "\u4FCA"
+---
+distractors:
+- "\u5343"
+- "\u5370"
+- "\u5B87"
+- "\u6211"
+- "\u6319"
+- "\u6BDB"
+- "\u725B"
+participant_id: 18
+pivot: "\u624B"
+selected:
+- "\u6BDB"
+---
+distractors:
+- "\u5B5D"
+- "\u653E"
+- "\u6570"
+- "\u81F4"
+- "\u8D66"
+participant_id: 18
+pivot: "\u6559"
+selected:
+- "\u5B5D"
+- "\u653E"
+---
+distractors:
+- "\u4E08"
+- "\u4EA4"
+- "\u592B"
+- "\u6589"
+- "\u7D0B"
+- "\u868A"
+- "\u8863"
+participant_id: 18
+pivot: "\u6587"
+selected:
+- "\u4E08"
+---
+distractors:
+- "\u6597"
+- "\u659C"
+- "\u65AD"
+- "\u79D1"
+- "\u7C73"
+- "\u7C8B"
+- "\u7CFE"
+participant_id: 18
+pivot: "\u6599"
+selected:
+- "\u79D1"
+---
+distractors:
+- "\u653E"
+- "\u65B9"
+- "\u65BD"
+- "\u65CB"
+- "\u65CF"
+participant_id: 18
+pivot: "\u65C5"
+selected:
+- "\u65CF"
+---
+distractors:
+- "\u65B9"
+- "\u65C5"
+- "\u65CB"
+- "\u77E2"
+participant_id: 18
+pivot: "\u65CF"
+selected:
+- "\u65C5"
+---
+distractors:
+- "\u4F46"
+- "\u5C3A"
+- "\u5C3D"
+- "\u5C40"
+- "\u5C4A"
+- "\u7532"
+- "\u99C5"
+participant_id: 18
+pivot: "\u663C"
+selected:
+- "\u5C3A"
+---
+distractors:
+- "\u4F8D"
+- "\u5BFA"
+- "\u5C01"
+- "\u5F85"
+- "\u6301"
+- "\u7279"
+- "\u91CC"
+participant_id: 18
+pivot: "\u6642"
+selected:
+- "\u5BFA"
+---
+distractors:
+- "\u5D29"
+- "\u65E5"
+- "\u7528"
+- "\u76EE"
+- "\u9AA8"
+participant_id: 18
+pivot: "\u6708"
+selected:
+- "\u65E5"
+- "\u76EE"
+---
+distractors:
+- "\u53F3"
+- "\u6708"
+- "\u80A9"
+- "\u8CC4"
+- "\u968F"
+- "\u9996"
+- "\u9AEA"
+participant_id: 18
+pivot: "\u6709"
+selected:
+- "\u53F3"
+---
+distractors:
+- "\u4E57"
+- "\u66F4"
+- "\u675F"
+- "\u68DF"
+- "\u69FD"
+- "\u8ECA"
+participant_id: 18
+pivot: "\u6771"
+selected:
+- "\u675F"
+- "\u8ECA"
+---
+distractors:
+- "\u6B62"
+- "\u738B"
+- "\u75C7"
+- "\u8A3C"
+participant_id: 18
+pivot: "\u6B63"
+selected:
+- "\u6B62"
+- "\u738B"
+---
+distractors:
+- "\u58EB"
+- "\u5999"
+- "\u5C11"
+- "\u6E09"
+- "\u8D70"
+participant_id: 18
+pivot: "\u6B69"
+selected:
+- "\u5C11"
+- "\u8D70"
+---
+distractors:
+- "\u4E45"
+- "\u4FAE"
+- "\u5F85"
+- "\u6709"
+- "\u6BCD"
+- "\u6D77"
+participant_id: 18
+pivot: "\u6BCE"
+selected:
+- "\u6BCD"
+---
+distractors:
+- "\u4E00"
+- "\u6C0F"
+- "\u7720"
+- "\u8C9D"
+participant_id: 18
+pivot: "\u6C11"
+selected:
+- "\u6C0F"
+---
+distractors:
+- "\u4E08"
+- "\u4EBA"
+- "\u5C3F"
+- "\u6728"
+- "\u6C37"
+participant_id: 18
+pivot: "\u6C34"
+selected:
+- "\u6728"
+---
+distractors:
+- "\u4FAE"
+- "\u6094"
+- "\u6BCD"
+- "\u6BCE"
+participant_id: 18
+pivot: "\u6D77"
+selected:
+- "\u6BCE"
+---
+distractors:
+- "\u5834"
+- "\u6613"
+- "\u6749"
+- "\u725B"
+- "\u7267"
+- "\u7272"
+- "\u7279"
+participant_id: 18
+pivot: "\u7269"
+selected:
+- "\u7279"
+---
+distractors:
+- "\u4E3B"
+- "\u59D3"
+- "\u7389"
+- "\u738B"
+participant_id: 18
+pivot: "\u751F"
+selected:
+- "\u738B"
+---
+distractors:
+- "\u5099"
+- "\u5468"
+- "\u6708"
+- "\u7532"
+- "\u7537"
+- "\u89D2"
+- "\u901A"
+participant_id: 18
+pivot: "\u7528"
+selected:
+- "\u6708"
+- "\u7532"
+---
+distractors:
+- "\u4E01"
+- "\u53EF"
+- "\u552F"
+- "\u6253"
+- "\u706F"
+- "\u7537"
+participant_id: 18
+pivot: "\u753A"
+selected:
+- "\u6253"
+- "\u706F"
+- "\u7537"
+---
+distractors:
+- "\u4F2F"
+- "\u65E5"
+- "\u65E8"
+- "\u7531"
+- "\u767E"
+- "\u81EA"
+participant_id: 18
+pivot: "\u767D"
+selected:
+- "\u65E5"
+- "\u81EA"
+---
+distractors:
+- "\u4E00"
+- "\u5BBF"
+- "\u767D"
+- "\u76EE"
+- "\u9801"
+participant_id: 18
+pivot: "\u767E"
+selected:
+- "\u767D"
+---
+distractors:
+- "\u5150"
+- "\u5177"
+- "\u76EE"
+- "\u76F4"
+- "\u7701"
+- "\u8336"
+- "\u8C9D"
+participant_id: 18
+pivot: "\u770C"
+selected:
+- "\u5177"
+- "\u8C9D"
+---
+distractors:
+- "\u5584"
+- "\u5DEE"
+- "\u770B"
+- "\u7F8E"
+- "\u8005"
+- "\u9996"
+participant_id: 18
+pivot: "\u7740"
+selected:
+- "\u5DEE"
+---
+distractors:
+- "\u52A0"
+- "\u5374"
+- "\u548C"
+- "\u75F4"
+- "\u77E9"
+- "\u77ED"
+participant_id: 18
+pivot: "\u77E5"
+selected:
+- "\u52A0"
+- "\u548C"
+---
+distractors:
+- "\u518A"
+- "\u5211"
+- "\u547C"
+- "\u7802"
+- "\u7815"
+- "\u958B"
+participant_id: 18
+pivot: "\u7814"
+selected:
+- "\u5211"
+---
+distractors:
+- "\u5408"
+- "\u7B26"
+- "\u7B52"
+- "\u7D66"
+- "\u8336"
+participant_id: 18
+pivot: "\u7B54"
+selected:
+- "\u5408"
+---
+distractors:
+- "\u6CCA"
+- "\u767D"
+- "\u7686"
+- "\u7FBD"
+- "\u7FCC"
+participant_id: 18
+pivot: "\u7FD2"
+selected:
+- "\u7FBD"
+---
+distractors:
+- "\u5B5D"
+- "\u62F7"
+- "\u8001"
+- "\u8005"
+participant_id: 18
+pivot: "\u8003"
+selected:
+- "\u5B5D"
+---
+distractors:
+- "\u554F"
+- "\u8033"
+- "\u9580"
+- "\u9593"
+participant_id: 18
+pivot: "\u805E"
+selected:
+- "\u554F"
+- "\u9580"
+- "\u9593"
+---
+distractors:
+- "\u514D"
+- "\u52FA"
+- "\u7D76"
+- "\u82AD"
+- "\u89D2"
+- "\u9091"
+participant_id: 18
+pivot: "\u8272"
+selected:
+- "\u514D"
+---
+distractors:
+- "\u51CD"
+- "\u697D"
+- "\u6A21"
+- "\u767D"
+- "\u83D3"
+- "\u83DC"
+- "\u8449"
+participant_id: 18
+pivot: "\u85AC"
+selected:
+- "\u697D"
+---
+distractors:
+- "\u4E21"
+- "\u4FA1"
+- "\u5339"
+- "\u56DB"
+- "\u7530"
+- "\u8981"
+- "\u9152"
+participant_id: 18
+pivot: "\u897F"
+selected:
+- "\u56DB"
+---
+distractors:
+- "\u5150"
+- "\u6606"
+- "\u773A"
+- "\u8996"
+- "\u8C9D"
+participant_id: 18
+pivot: "\u898B"
+selected:
+- "\u8C9D"
+---
+distractors:
+- "\u820C"
+- "\u8A54"
+- "\u8A5E"
+- "\u8A70"
+- "\u8A9E"
+participant_id: 18
+pivot: "\u8A71"
+selected:
+- "\u8A9E"
+---
+distractors:
+- "\u609F"
+- "\u8A00"
+- "\u8A5E"
+- "\u8A70"
+- "\u8A71"
+- "\u8AEE"
+participant_id: 18
+pivot: "\u8A9E"
+selected:
+- "\u8A00"
+- "\u8A71"
+---
+distractors:
+- "\u7832"
+- "\u8D70"
+- "\u8D74"
+- "\u8D85"
+participant_id: 18
+pivot: "\u8D77"
+selected:
+- "\u8D74"
+---
+distractors:
+- "\u4FC3"
+- "\u53E3"
+- "\u53F2"
+- "\u5B9A"
+- "\u81E3"
+- "\u8D70"
+- "\u8DEF"
+- "\u8DF3"
+participant_id: 18
+pivot: "\u8DB3"
+selected:
+- "\u5B9A"
+- "\u8D70"
+---
+distractors:
+- "\u65A4"
+- "\u8FBA"
+- "\u8FBC"
+- "\u8FCE"
+- "\u8FD4"
+- "\u8FF0"
+- "\u901D"
+participant_id: 18
+pivot: "\u8FD1"
+selected:
+- "\u65A4"
+- "\u8FD4"
+---
+distractors:
+- "\u5468"
+- "\u5F6B"
+- "\u8ABF"
+- "\u901A"
+- "\u9020"
+- "\u904E"
+participant_id: 18
+pivot: "\u9031"
+selected:
+- "\u5468"
+---
+distractors:
+- "\u63EE"
+- "\u901A"
+- "\u9023"
+- "\u9031"
+participant_id: 18
+pivot: "\u904B"
+selected:
+- "\u63EE"
+- "\u9023"
+---
+distractors:
+- "\u4FBF"
+- "\u52D5"
+- "\u5398"
+- "\u5782"
+- "\u8ECA"
+- "\u91CC"
+- "\u96EA"
+participant_id: 18
+pivot: "\u91CD"
+selected:
+- "\u8ECA"
+---
+distractors:
+- "\u4E88"
+- "\u7406"
+- "\u77DB"
+- "\u91CC"
+- "\u91DD"
+- "\u9ED2"
+participant_id: 18
+pivot: "\u91CE"
+selected:
+- "\u4E88"
+- "\u91CC"
+---
+distractors:
+- "\u6839"
+- "\u91D1"
+- "\u91DD"
+- "\u9243"
+- "\u92AD"
+- "\u932C"
+- "\u9396"
+participant_id: 18
+pivot: "\u9280"
+selected:
+- "\u6839"
+- "\u932C"
+---
+distractors:
+- "\u5192"
+- "\u554F"
+- "\u660E"
+- "\u805E"
+- "\u958B"
+- "\u9591"
+- "\u9593"
+participant_id: 18
+pivot: "\u9580"
+selected:
+- "\u554F"
+- "\u9593"
+---
+distractors:
+- "\u5143"
+- "\u51A0"
+- "\u5B8C"
+- "\u6669"
+- "\u8155"
+- "\u9632"
+participant_id: 18
+pivot: "\u9662"
+selected:
+- "\u5B8C"
+---
+distractors:
+- "\u6A29"
+- "\u7126"
+- "\u83D3"
+- "\u96BB"
+- "\u96BC"
+- "\u96D1"
+participant_id: 18
+pivot: "\u96C6"
+selected:
+- "\u96BC"
+---
+distractors:
+- "\u6614"
+- "\u6697"
+- "\u7ADC"
+- "\u7AE0"
+participant_id: 18
+pivot: "\u97F3"
+selected:
+- "\u6614"
+---
+distractors:
+- "\u5009"
+- "\u542B"
+- "\u5A18"
+- "\u826F"
+- "\u98E2"
+- "\u990A"
+participant_id: 18
+pivot: "\u98DF"
+selected:
+- "\u826F"
+---
+distractors:
+- "\u4EEE"
+- "\u53CD"
+- "\u7248"
+- "\u98E2"
+- "\u98F2"
+participant_id: 18
+pivot: "\u98EF"
+selected:
+- "\u98F2"
+---
+distractors:
+- "\u6B20"
+- "\u6B3A"
+- "\u6B3D"
+- "\u98DF"
+- "\u98E2"
+- "\u98EF"
+- "\u98FE"
+participant_id: 18
+pivot: "\u98F2"
+selected:
+- "\u98EF"
+---
+distractors:
+- "\u691C"
+- "\u967A"
+- "\u99D0"
+- "\u9A0E"
+- "\u9A12"
+participant_id: 18
+pivot: "\u9A13"
+selected:
+- "\u691C"
+- "\u9A12"
+---
+distractors:
+- "\u4E01"
+- "\u4E07"
+- "\u4E8C"
+- "\u4E92"
+- "\u5341"
+participant_id: 21
+pivot: "\u4E00"
+selected:
+- "\u4E8C"
+---
+distractors:
+- "\u4E00"
+- "\u4E0E"
+- "\u4E8C"
+- "\u4E94"
+- "\u5DE5"
+- "\u738B"
+participant_id: 21
+pivot: "\u4E09"
+selected:
+- "\u738B"
+---
+distractors:
+- "\u4E00"
+- "\u4E0B"
+- "\u571F"
+- "\u5CE0"
+- "\u6B62"
+- "\u6B63"
+participant_id: 21
+pivot: "\u4E0A"
+selected:
+- "\u571F"
+- "\u6B62"
+---
+distractors:
+- "\u4E03"
+- "\u4E07"
+- "\u4E5F"
+- "\u53EF"
+- "\u76EE"
+- "\u8449"
+participant_id: 21
+pivot: "\u4E16"
+selected:
+- "\u4E5F"
+---
+distractors:
+- "\u4F4F"
+- "\u5168"
+- "\u7389"
+- "\u738B"
+- "\u751F"
+participant_id: 21
+pivot: "\u4E3B"
+selected:
+- "\u4F4F"
+- "\u7389"
+- "\u738B"
+---
+distractors:
+- "\u4E07"
+- "\u4F9B"
+- "\u5270"
+- "\u6731"
+- "\u6771"
+- "\u679C"
+- "\u91CD"
+participant_id: 21
+pivot: "\u4E57"
+selected:
+- "\u6771"
+- "\u679C"
+---
+distractors:
+- "\u4E0A"
+- "\u4E38"
+- "\u4E59"
+- "\u4EBA"
+- "\u529B"
+- "\u8ECC"
+- "\u96D1"
+participant_id: 21
+pivot: "\u4E5D"
+selected:
+- "\u4E38"
+---
+distractors:
+- "\u4E09"
+- "\u4E92"
+- "\u4E9C"
+- "\u609F"
+- "\u6B63"
+- "\u7389"
+participant_id: 21
+pivot: "\u4E94"
+selected:
+- "\u6B63"
+---
+distractors:
+- "\u4EFB"
+- "\u4F73"
+- "\u4FF5"
+- "\u5728"
+- "\u58EB"
+- "\u58EE"
+participant_id: 21
+pivot: "\u4ED5"
+selected:
+- "\u4EFB"
+- "\u4F73"
+---
+distractors:
+- "\u4EBA"
+- "\u4F3C"
+- "\u5317"
+- "\u53E3"
+- "\u7ACB"
+participant_id: 21
+pivot: "\u4EE5"
+selected:
+- "\u4F3C"
+---
+distractors:
+- "\u4E3B"
+- "\u4EFB"
+- "\u5F80"
+- "\u67F1"
+participant_id: 21
+pivot: "\u4F4F"
+selected:
+- "\u4EFB"
+- "\u5F80"
+---
+distractors:
+- "\u5143"
+- "\u5148"
+- "\u5149"
+- "\u514B"
+- "\u53F2"
+- "\u6CC1"
+- "\u898B"
+participant_id: 21
+pivot: "\u5144"
+selected:
+- "\u514B"
+---
+distractors:
+- "\u5143"
+- "\u5149"
+- "\u58F2"
+- "\u592B"
+- "\u6D17"
+- "\u9291"
+participant_id: 21
+pivot: "\u5148"
+selected:
+- "\u5149"
+---
+distractors:
+- "\u4EA4"
+- "\u5143"
+- "\u516B"
+- "\u5927"
+- "\u604B"
+- "\u6587"
+- "\u6C34"
+- "\u7A74"
+participant_id: 21
+pivot: "\u516D"
+selected:
+- "\u5927"
+- "\u7A74"
+---
+distractors:
+- "\u4E00"
+- "\u4E0E"
+- "\u518D"
+- "\u5B89"
+- "\u673D"
+participant_id: 21
+pivot: "\u5199"
+selected:
+- "\u4E0E"
+---
+distractors:
+- "\u4E38"
+- "\u4E45"
+- "\u5404"
+- "\u540D"
+- "\u5C3D"
+- "\u7D42"
+participant_id: 21
+pivot: "\u51AC"
+selected:
+- "\u5404"
+- "\u5C3D"
+---
+distractors:
+- "\u51F8"
+- "\u51F9"
+- "\u5C71"
+- "\u5E02"
+- "\u62D9"
+participant_id: 21
+pivot: "\u51FA"
+selected:
+- "\u62D9"
+---
+distractors:
+- "\u4E03"
+- "\u4E07"
+- "\u5200"
+- "\u521D"
+- "\u529F"
+- "\u574A"
+- "\u8650"
+participant_id: 21
+pivot: "\u5207"
+selected:
+- "\u529F"
+---
+distractors:
+- "\u4E07"
+- "\u5200"
+- "\u529F"
+- "\u52A0"
+- "\u52C9"
+- "\u5927"
+participant_id: 21
+pivot: "\u529B"
+selected:
+- "\u4E07"
+- "\u5200"
+---
+distractors:
+- "\u514D"
+- "\u529B"
+- "\u52F2"
+- "\u9038"
+participant_id: 21
+pivot: "\u52C9"
+selected:
+- "\u9038"
+---
+distractors:
+- "\u5343"
+- "\u5E74"
+- "\u725B"
+- "\u8A31"
+participant_id: 21
+pivot: "\u5348"
+selected:
+- "\u5343"
+- "\u5E74"
+- "\u725B"
+---
+distractors:
+- "\u592B"
+- "\u5BFA"
+- "\u6CD5"
+- "\u7389"
+- "\u81F3"
+- "\u866B"
+participant_id: 21
+pivot: "\u53BB"
+selected:
+- "\u81F3"
+---
+distractors:
+- "\u4E2D"
+- "\u4E8C"
+- "\u52A0"
+- "\u53F3"
+- "\u56DE"
+- "\u56F0"
+- "\u7530"
+participant_id: 21
+pivot: "\u53E3"
+selected:
+- "\u56DE"
+---
+distractors:
+- "\u53E3"
+- "\u5426"
+- "\u5DE6"
+- "\u77F3"
+- "\u820C"
+- "\u82E5"
+participant_id: 21
+pivot: "\u53F3"
+selected:
+- "\u77F3"
+---
+distractors:
+- "\u51AC"
+- "\u53E3"
+- "\u53F3"
+- "\u5404"
+- "\u9298"
+participant_id: 21
+pivot: "\u540D"
+selected:
+- "\u51AC"
+- "\u5404"
+---
+distractors:
+- "\u51F8"
+- "\u53E3"
+- "\u5B98"
+- "\u64CD"
+- "\u6676"
+participant_id: 21
+pivot: "\u54C1"
+selected:
+- "\u6676"
+---
+distractors:
+- "\u5075"
+- "\u640D"
+- "\u8C9D"
+- "\u8CAC"
+- "\u8CB4"
+- "\u8CB7"
+- "\u8CC0"
+participant_id: 21
+pivot: "\u54E1"
+selected:
+- "\u8C9D"
+- "\u8CB4"
+- "\u8CB7"
+---
+distractors:
+- "\u53E3"
+- "\u805E"
+- "\u9580"
+- "\u9593"
+- "\u95A3"
+participant_id: 21
+pivot: "\u554F"
+selected:
+- "\u9580"
+- "\u9593"
+---
+distractors:
+- "\u4E00"
+- "\u5927"
+- "\u592B"
+- "\u592E"
+- "\u706B"
+- "\u77E2"
+- "\u8695"
+participant_id: 21
+pivot: "\u5929"
+selected:
+- "\u5927"
+- "\u592B"
+- "\u77E2"
+---
+distractors:
+- "\u4EBA"
+- "\u4F0F"
+- "\u516C"
+- "\u5927"
+- "\u72AC"
+- "\u99C4"
+participant_id: 21
+pivot: "\u592A"
+selected:
+- "\u5927"
+- "\u72AC"
+---
+distractors:
+- "\u5973"
+- "\u5974"
+- "\u598A"
+- "\u59B9"
+- "\u5B50"
+- "\u5B58"
+participant_id: 21
+pivot: "\u597D"
+selected:
+- "\u598A"
+---
+distractors:
+- "\u5473"
+- "\u59C9"
+- "\u672A"
+- "\u6731"
+- "\u6B8A"
+participant_id: 21
+pivot: "\u59B9"
+selected:
+- "\u59C9"
+- "\u6B8A"
+---
+distractors:
+- "\u585A"
+- "\u5AC1"
+- "\u5B89"
+- "\u5C4B"
+- "\u6771"
+participant_id: 21
+pivot: "\u5BB6"
+selected:
+- "\u585A"
+---
+distractors:
+- "\u516D"
+- "\u5E03"
+- "\u5E1D"
+- "\u7533"
+- "\u80BA"
+participant_id: 21
+pivot: "\u5E02"
+selected:
+- "\u5E03"
+---
+distractors:
+- "\u4FB5"
+- "\u5A66"
+- "\u5E1D"
+- "\u5E2F"
+- "\u6383"
+- "\u640D"
+- "\u6EDE"
+participant_id: 21
+pivot: "\u5E30"
+selected:
+- "\u5A66"
+- "\u6383"
+---
+distractors:
+- "\u4E39"
+- "\u5C40"
+- "\u5F13"
+- "\u5F15"
+- "\u5F25"
+- "\u5F37"
+- "\u6CB8"
+participant_id: 21
+pivot: "\u5F31"
+selected:
+- "\u5F25"
+---
+distractors:
+- "\u4EEE"
+- "\u4FCA"
+- "\u5F79"
+- "\u5F7C"
+- "\u5FA9"
+participant_id: 21
+pivot: "\u5F8C"
+selected:
+- "\u4FCA"
+---
+distractors:
+- "\u5915"
+- "\u5FC5"
+- "\u5FCC"
+- "\u60AA"
+- "\u706B"
+participant_id: 21
+pivot: "\u5FC3"
+selected:
+- "\u5FC5"
+---
+distractors:
+- "\u5343"
+- "\u5370"
+- "\u5B87"
+- "\u6211"
+- "\u6319"
+- "\u6BDB"
+- "\u725B"
+participant_id: 21
+pivot: "\u624B"
+selected:
+- "\u5B87"
+- "\u6BDB"
+---
+distractors:
+- "\u5B5D"
+- "\u653E"
+- "\u6570"
+- "\u81F4"
+- "\u8D66"
+participant_id: 21
+pivot: "\u6559"
+selected:
+- "\u6570"
+- "\u81F4"
+---
+distractors:
+- "\u4E08"
+- "\u4EA4"
+- "\u592B"
+- "\u6589"
+- "\u7D0B"
+- "\u868A"
+- "\u8863"
+participant_id: 21
+pivot: "\u6587"
+selected:
+- "\u4E08"
+- "\u4EA4"
+---
+distractors:
+- "\u6597"
+- "\u659C"
+- "\u65AD"
+- "\u79D1"
+- "\u7C73"
+- "\u7C8B"
+- "\u7CFE"
+participant_id: 21
+pivot: "\u6599"
+selected:
+- "\u659C"
+- "\u79D1"
+---
+distractors:
+- "\u65AD"
+- "\u6790"
+- "\u7C8B"
+- "\u85AA"
+- "\u89AA"
+participant_id: 21
+pivot: "\u65B0"
+selected:
+- "\u89AA"
+---
+distractors:
+- "\u653E"
+- "\u65B9"
+- "\u65BD"
+- "\u65CB"
+- "\u65CF"
+participant_id: 21
+pivot: "\u65C5"
+selected:
+- "\u653E"
+- "\u65CF"
+---
+distractors:
+- "\u65B9"
+- "\u65C5"
+- "\u65CB"
+- "\u77E2"
+participant_id: 21
+pivot: "\u65CF"
+selected:
+- "\u65C5"
+- "\u65CB"
+---
+distractors:
+- "\u4F46"
+- "\u5C3A"
+- "\u5C3D"
+- "\u5C40"
+- "\u5C4A"
+- "\u7532"
+- "\u99C5"
+participant_id: 21
+pivot: "\u663C"
+selected:
+- "\u5C3D"
+---
+distractors:
+- "\u4F8D"
+- "\u5BFA"
+- "\u5C01"
+- "\u5F85"
+- "\u6301"
+- "\u7279"
+- "\u91CC"
+participant_id: 21
+pivot: "\u6642"
+selected:
+- "\u4F8D"
+- "\u5F85"
+- "\u7279"
+---
+distractors:
+- "\u552F"
+- "\u6676"
+- "\u6687"
+- "\u6FEF"
+- "\u7F85"
+- "\u8E8D"
+participant_id: 21
+pivot: "\u66DC"
+selected:
+- "\u6FEF"
+- "\u8E8D"
+---
+distractors:
+- "\u5D29"
+- "\u65E5"
+- "\u7528"
+- "\u76EE"
+- "\u9AA8"
+participant_id: 21
+pivot: "\u6708"
+selected:
+- "\u7528"
+- "\u76EE"
+---
+distractors:
+- "\u53F3"
+- "\u6708"
+- "\u80A9"
+- "\u8CC4"
+- "\u968F"
+- "\u9996"
+- "\u9AEA"
+participant_id: 21
+pivot: "\u6709"
+selected:
+- "\u53F3"
+- "\u80A9"
+---
+distractors:
+- "\u4E57"
+- "\u66F4"
+- "\u675F"
+- "\u68DF"
+- "\u69FD"
+- "\u8ECA"
+participant_id: 21
+pivot: "\u6771"
+selected:
+- "\u4E57"
+- "\u675F"
+- "\u8ECA"
+---
+distractors:
+- "\u6B62"
+- "\u738B"
+- "\u75C7"
+- "\u8A3C"
+participant_id: 21
+pivot: "\u6B63"
+selected:
+- "\u6B62"
+- "\u738B"
+---
+distractors:
+- "\u58EB"
+- "\u5999"
+- "\u5C11"
+- "\u6E09"
+- "\u8D70"
+participant_id: 21
+pivot: "\u6B69"
+selected:
+- "\u5C11"
+- "\u6E09"
+---
+distractors:
+- "\u4E00"
+- "\u4E39"
+- "\u65E5"
+- "\u6BCE"
+- "\u7530"
+- "\u9AEA"
+participant_id: 21
+pivot: "\u6BCD"
+selected:
+- "\u6BCE"
+---
+distractors:
+- "\u4E45"
+- "\u4FAE"
+- "\u5F85"
+- "\u6709"
+- "\u6BCD"
+- "\u6D77"
+participant_id: 21
+pivot: "\u6BCE"
+selected:
+- "\u4FAE"
+- "\u6D77"
+---
+distractors:
+- "\u4E00"
+- "\u6C0F"
+- "\u7720"
+- "\u8C9D"
+participant_id: 21
+pivot: "\u6C11"
+selected:
+- "\u6C0F"
+---
+distractors:
+- "\u4E08"
+- "\u4EBA"
+- "\u5C3F"
+- "\u6728"
+- "\u6C37"
+participant_id: 21
+pivot: "\u6C34"
+selected:
+- "\u4E08"
+- "\u6728"
+- "\u6C37"
+---
+distractors:
+- "\u4FAE"
+- "\u6094"
+- "\u6BCD"
+- "\u6BCE"
+participant_id: 21
+pivot: "\u6D77"
+selected:
+- "\u4FAE"
+- "\u6094"
+---
+distractors:
+- "\u5834"
+- "\u6613"
+- "\u6749"
+- "\u725B"
+- "\u7267"
+- "\u7272"
+- "\u7279"
+participant_id: 21
+pivot: "\u7269"
+selected:
+- "\u7279"
+---
+distractors:
+- "\u4E3B"
+- "\u59D3"
+- "\u7389"
+- "\u738B"
+participant_id: 21
+pivot: "\u751F"
+selected:
+- "\u4E3B"
+- "\u738B"
+---
+distractors:
+- "\u5099"
+- "\u5468"
+- "\u6708"
+- "\u7532"
+- "\u7537"
+- "\u89D2"
+- "\u901A"
+participant_id: 21
+pivot: "\u7528"
+selected:
+- "\u5468"
+- "\u6708"
+---
+distractors:
+- "\u4E01"
+- "\u53EF"
+- "\u552F"
+- "\u6253"
+- "\u706F"
+- "\u7537"
+participant_id: 21
+pivot: "\u753A"
+selected:
+- "\u7537"
+---
+distractors:
+- "\u4ECA"
+- "\u4ECB"
+- "\u5351"
+- "\u7537"
+- "\u754F"
+participant_id: 21
+pivot: "\u754C"
+selected:
+- "\u754F"
+---
+distractors:
+- "\u4F2F"
+- "\u65E5"
+- "\u65E8"
+- "\u7531"
+- "\u767E"
+- "\u81EA"
+participant_id: 21
+pivot: "\u767D"
+selected:
+- "\u65E5"
+- "\u81EA"
+---
+distractors:
+- "\u4E00"
+- "\u5BBF"
+- "\u767D"
+- "\u76EE"
+- "\u9801"
+participant_id: 21
+pivot: "\u767E"
+selected:
+- "\u767D"
+- "\u9801"
+---
+distractors:
+- "\u5150"
+- "\u5177"
+- "\u76EE"
+- "\u76F4"
+- "\u7701"
+- "\u8336"
+- "\u8C9D"
+participant_id: 21
+pivot: "\u770C"
+selected:
+- "\u5177"
+- "\u8C9D"
+---
+distractors:
+- "\u5584"
+- "\u5DEE"
+- "\u770B"
+- "\u7F8E"
+- "\u8005"
+- "\u9996"
+participant_id: 21
+pivot: "\u7740"
+selected:
+- "\u5DEE"
+- "\u770B"
+- "\u9996"
+---
+distractors:
+- "\u52A0"
+- "\u5374"
+- "\u548C"
+- "\u75F4"
+- "\u77E9"
+- "\u77ED"
+participant_id: 21
+pivot: "\u77E5"
+selected:
+- "\u548C"
+---
+distractors:
+- "\u518A"
+- "\u5211"
+- "\u547C"
+- "\u7802"
+- "\u7815"
+- "\u958B"
+participant_id: 21
+pivot: "\u7814"
+selected:
+- "\u7815"
+---
+distractors:
+- "\u5408"
+- "\u7B26"
+- "\u7B52"
+- "\u7D66"
+- "\u8336"
+participant_id: 21
+pivot: "\u7B54"
+selected:
+- "\u5408"
+- "\u7B26"
+- "\u8336"
+---
+distractors:
+- "\u6CCA"
+- "\u767D"
+- "\u7686"
+- "\u7FBD"
+- "\u7FCC"
+participant_id: 21
+pivot: "\u7FD2"
+selected:
+- "\u7686"
+- "\u7FCC"
+---
+distractors:
+- "\u5B5D"
+- "\u62F7"
+- "\u8001"
+- "\u8005"
+participant_id: 21
+pivot: "\u8003"
+selected:
+- "\u5B5D"
+- "\u8001"
+---
+distractors:
+- "\u554F"
+- "\u8033"
+- "\u9580"
+- "\u9593"
+participant_id: 21
+pivot: "\u805E"
+selected:
+- "\u9593"
+---
+distractors:
+- "\u514D"
+- "\u52FA"
+- "\u7D76"
+- "\u82AD"
+- "\u89D2"
+- "\u9091"
+participant_id: 21
+pivot: "\u8272"
+selected:
+- "\u82AD"
+- "\u9091"
+---
+distractors:
+- "\u51CD"
+- "\u697D"
+- "\u6A21"
+- "\u767D"
+- "\u83D3"
+- "\u83DC"
+- "\u8449"
+participant_id: 21
+pivot: "\u85AC"
+selected:
+- "\u697D"
+- "\u83D3"
+---
+distractors:
+- "\u4E21"
+- "\u4FA1"
+- "\u5339"
+- "\u56DB"
+- "\u7530"
+- "\u8981"
+- "\u9152"
+participant_id: 21
+pivot: "\u897F"
+selected:
+- "\u4E21"
+- "\u5339"
+---
+distractors:
+- "\u5150"
+- "\u6606"
+- "\u773A"
+- "\u8996"
+- "\u8C9D"
+participant_id: 21
+pivot: "\u898B"
+selected:
+- "\u8C9D"
+---
+distractors:
+- "\u820C"
+- "\u8A54"
+- "\u8A5E"
+- "\u8A70"
+- "\u8A9E"
+participant_id: 21
+pivot: "\u8A71"
+selected:
+- "\u8A54"
+- "\u8A5E"
+- "\u8A70"
+- "\u8A9E"
+---
+distractors:
+- "\u609F"
+- "\u8A00"
+- "\u8A5E"
+- "\u8A70"
+- "\u8A71"
+- "\u8AEE"
+participant_id: 21
+pivot: "\u8A9E"
+selected:
+- "\u8A5E"
+- "\u8A70"
+- "\u8A71"
+- "\u8AEE"
+---
+distractors:
+- "\u5687"
+- "\u5BFA"
+- "\u606D"
+- "\u8D66"
+- "\u8D70"
+participant_id: 21
+pivot: "\u8D64"
+selected:
+- "\u606D"
+---
+distractors:
+- "\u7832"
+- "\u8D70"
+- "\u8D74"
+- "\u8D85"
+participant_id: 21
+pivot: "\u8D77"
+selected:
+- "\u8D74"
+- "\u8D85"
+---
+distractors:
+- "\u4FC3"
+- "\u53E3"
+- "\u53F2"
+- "\u5B9A"
+- "\u81E3"
+- "\u8D70"
+- "\u8DEF"
+- "\u8DF3"
+participant_id: 21
+pivot: "\u8DB3"
+selected:
+- "\u53F2"
+- "\u5B9A"
+---
+distractors:
+- "\u65A4"
+- "\u8FBA"
+- "\u8FBC"
+- "\u8FCE"
+- "\u8FD4"
+- "\u8FF0"
+- "\u901D"
+participant_id: 21
+pivot: "\u8FD1"
+selected:
+- "\u8FD4"
+---
+distractors:
+- "\u5468"
+- "\u5F6B"
+- "\u8ABF"
+- "\u901A"
+- "\u9020"
+- "\u904E"
+participant_id: 21
+pivot: "\u9031"
+selected:
+- "\u904E"
+---
+distractors:
+- "\u63EE"
+- "\u901A"
+- "\u9023"
+- "\u9031"
+participant_id: 21
+pivot: "\u904B"
+selected:
+- "\u901A"
+- "\u9023"
+---
+distractors:
+- "\u4FBF"
+- "\u52D5"
+- "\u5398"
+- "\u5782"
+- "\u8ECA"
+- "\u91CC"
+- "\u96EA"
+participant_id: 21
+pivot: "\u91CD"
+selected:
+- "\u5782"
+- "\u91CC"
+---
+distractors:
+- "\u4E88"
+- "\u7406"
+- "\u77DB"
+- "\u91CC"
+- "\u91DD"
+- "\u9ED2"
+participant_id: 21
+pivot: "\u91CE"
+selected:
+- "\u7406"
+---
+distractors:
+- "\u6839"
+- "\u91D1"
+- "\u91DD"
+- "\u9243"
+- "\u92AD"
+- "\u932C"
+- "\u9396"
+participant_id: 21
+pivot: "\u9280"
+selected:
+- "\u6839"
+- "\u9396"
+---
+distractors:
+- "\u5192"
+- "\u554F"
+- "\u660E"
+- "\u805E"
+- "\u958B"
+- "\u9591"
+- "\u9593"
+participant_id: 21
+pivot: "\u9580"
+selected:
+- "\u554F"
+- "\u9593"
+---
+distractors:
+- "\u5143"
+- "\u51A0"
+- "\u5B8C"
+- "\u6669"
+- "\u8155"
+- "\u9632"
+participant_id: 21
+pivot: "\u9662"
+selected:
+- "\u6669"
+- "\u9632"
+---
+distractors:
+- "\u6A29"
+- "\u7126"
+- "\u83D3"
+- "\u96BB"
+- "\u96BC"
+- "\u96D1"
+participant_id: 21
+pivot: "\u96C6"
+selected:
+- "\u7126"
+- "\u96BB"
+- "\u96BC"
+---
+distractors:
+- "\u6614"
+- "\u6697"
+- "\u7ADC"
+- "\u7AE0"
+participant_id: 21
+pivot: "\u97F3"
+selected:
+- "\u6614"
+- "\u7ADC"
+---
+distractors:
+- "\u5824"
+- "\u95A2"
+- "\u9806"
+- "\u983C"
+- "\u9846"
+- "\u9855"
+participant_id: 21
+pivot: "\u984C"
+selected:
+- "\u983C"
+- "\u9846"
+---
+distractors:
+- "\u5411"
+- "\u5468"
+- "\u72EC"
+- "\u76FE"
+- "\u7E6D"
+- "\u866B"
+participant_id: 21
+pivot: "\u98A8"
+selected:
+- "\u5468"
+---
+distractors:
+- "\u5009"
+- "\u542B"
+- "\u5A18"
+- "\u826F"
+- "\u98E2"
+- "\u990A"
+participant_id: 21
+pivot: "\u98DF"
+selected:
+- "\u5009"
+---
+distractors:
+- "\u4EEE"
+- "\u53CD"
+- "\u7248"
+- "\u98E2"
+- "\u98F2"
+participant_id: 21
+pivot: "\u98EF"
+selected:
+- "\u98E2"
+- "\u98F2"
+---
+distractors:
+- "\u6B20"
+- "\u6B3A"
+- "\u6B3D"
+- "\u98DF"
+- "\u98E2"
+- "\u98EF"
+- "\u98FE"
+participant_id: 21
+pivot: "\u98F2"
+selected:
+- "\u6B3A"
+- "\u6B3D"
+- "\u98FE"
+---
+distractors:
+- "\u691C"
+- "\u967A"
+- "\u99D0"
+- "\u9A0E"
+- "\u9A12"
+participant_id: 21
+pivot: "\u9A13"
+selected:
+- "\u967A"
+- "\u9A0E"
+- "\u9A12"
+---
+distractors:
+- "\u4E00"
+- "\u4E0E"
+- "\u4E8C"
+- "\u4E94"
+- "\u5DE5"
+- "\u738B"
+participant_id: 24
+pivot: "\u4E09"
+selected:
+- "\u738B"
+---
+distractors:
+- "\u4E00"
+- "\u4E0B"
+- "\u571F"
+- "\u5CE0"
+- "\u6B62"
+- "\u6B63"
+participant_id: 24
+pivot: "\u4E0A"
+selected:
+- "\u4E0B"
+---
+distractors:
+- "\u4E03"
+- "\u4E07"
+- "\u4E5F"
+- "\u53EF"
+- "\u76EE"
+- "\u8449"
+participant_id: 24
+pivot: "\u4E16"
+selected:
+- "\u4E03"
+---
+distractors:
+- "\u4F4F"
+- "\u5168"
+- "\u7389"
+- "\u738B"
+- "\u751F"
+participant_id: 24
+pivot: "\u4E3B"
+selected:
+- "\u738B"
+---
+distractors:
+- "\u4E07"
+- "\u4F9B"
+- "\u5270"
+- "\u6731"
+- "\u6771"
+- "\u679C"
+- "\u91CD"
+participant_id: 24
+pivot: "\u4E57"
+selected:
+- "\u91CD"
+---
+distractors:
+- "\u4E0A"
+- "\u4E38"
+- "\u4E59"
+- "\u4EBA"
+- "\u529B"
+- "\u8ECC"
+- "\u96D1"
+participant_id: 24
+pivot: "\u4E5D"
+selected:
+- "\u4E38"
+---
+distractors:
+- "\u4E09"
+- "\u4E92"
+- "\u4E9C"
+- "\u609F"
+- "\u6B63"
+- "\u7389"
+participant_id: 24
+pivot: "\u4E94"
+selected:
+- "\u4E92"
+---
+distractors:
+- "\u4EFB"
+- "\u4F73"
+- "\u4FF5"
+- "\u5728"
+- "\u58EB"
+- "\u58EE"
+participant_id: 24
+pivot: "\u4ED5"
+selected:
+- "\u4EFB"
+---
+distractors:
+- "\u4EBA"
+- "\u4F3C"
+- "\u5317"
+- "\u53E3"
+- "\u7ACB"
+participant_id: 24
+pivot: "\u4EE5"
+selected:
+- "\u4F3C"
+---
+distractors:
+- "\u4E3B"
+- "\u4EFB"
+- "\u5F80"
+- "\u67F1"
+participant_id: 24
+pivot: "\u4F4F"
+selected:
+- "\u5F80"
+- "\u67F1"
+---
+distractors:
+- "\u5143"
+- "\u5149"
+- "\u58F2"
+- "\u592B"
+- "\u6D17"
+- "\u9291"
+participant_id: 24
+pivot: "\u5148"
+selected:
+- "\u6D17"
+---
+distractors:
+- "\u4EA4"
+- "\u5143"
+- "\u516B"
+- "\u5927"
+- "\u604B"
+- "\u6587"
+- "\u6C34"
+- "\u7A74"
+participant_id: 24
+pivot: "\u516D"
+selected:
+- "\u7A74"
+---
+distractors:
+- "\u4E00"
+- "\u4E0E"
+- "\u518D"
+- "\u5B89"
+- "\u673D"
+participant_id: 24
+pivot: "\u5199"
+selected:
+- "\u4E0E"
+---
+distractors:
+- "\u4E38"
+- "\u4E45"
+- "\u5404"
+- "\u540D"
+- "\u5C3D"
+- "\u7D42"
+participant_id: 24
+pivot: "\u51AC"
+selected:
+- "\u5404"
+---
+distractors:
+- "\u51F8"
+- "\u51F9"
+- "\u5C71"
+- "\u5E02"
+- "\u62D9"
+participant_id: 24
+pivot: "\u51FA"
+selected:
+- "\u62D9"
+---
+distractors:
+- "\u4E03"
+- "\u4E07"
+- "\u5200"
+- "\u521D"
+- "\u529F"
+- "\u574A"
+- "\u8650"
+participant_id: 24
+pivot: "\u5207"
+selected:
+- "\u529F"
+---
+distractors:
+- "\u4E07"
+- "\u5200"
+- "\u529F"
+- "\u52A0"
+- "\u52C9"
+- "\u5927"
+participant_id: 24
+pivot: "\u529B"
+selected:
+- "\u5200"
+---
+distractors:
+- "\u514D"
+- "\u529B"
+- "\u52F2"
+- "\u9038"
+participant_id: 24
+pivot: "\u52C9"
+selected:
+- "\u514D"
+---
+distractors:
+- "\u5343"
+- "\u5E74"
+- "\u725B"
+- "\u8A31"
+participant_id: 24
+pivot: "\u5348"
+selected:
+- "\u725B"
+---
+distractors:
+- "\u592B"
+- "\u5BFA"
+- "\u6CD5"
+- "\u7389"
+- "\u81F3"
+- "\u866B"
+participant_id: 24
+pivot: "\u53BB"
+selected:
+- "\u6CD5"
+---
+distractors:
+- "\u4E2D"
+- "\u4E8C"
+- "\u52A0"
+- "\u53F3"
+- "\u56DE"
+- "\u56F0"
+- "\u7530"
+participant_id: 24
+pivot: "\u53E3"
+selected:
+- "\u56DE"
+---
+distractors:
+- "\u53E3"
+- "\u5426"
+- "\u5DE6"
+- "\u77F3"
+- "\u820C"
+- "\u82E5"
+participant_id: 24
+pivot: "\u53F3"
+selected:
+- "\u5DE6"
+- "\u77F3"
+---
+distractors:
+- "\u51AC"
+- "\u53E3"
+- "\u53F3"
+- "\u5404"
+- "\u9298"
+participant_id: 24
+pivot: "\u540D"
+selected:
+- "\u5404"
+---
+distractors:
+- "\u5075"
+- "\u640D"
+- "\u8C9D"
+- "\u8CAC"
+- "\u8CB4"
+- "\u8CB7"
+- "\u8CC0"
+participant_id: 24
+pivot: "\u54E1"
+selected:
+- "\u8CB7"
+---
+distractors:
+- "\u53E3"
+- "\u805E"
+- "\u9580"
+- "\u9593"
+- "\u95A3"
+participant_id: 24
+pivot: "\u554F"
+selected:
+- "\u9580"
+- "\u9593"
+---
+distractors:
+- "\u4E00"
+- "\u5927"
+- "\u592B"
+- "\u592E"
+- "\u706B"
+- "\u77E2"
+- "\u8695"
+participant_id: 24
+pivot: "\u5929"
+selected:
+- "\u5927"
+- "\u592B"
+---
+distractors:
+- "\u4EBA"
+- "\u4F0F"
+- "\u516C"
+- "\u5927"
+- "\u72AC"
+- "\u99C4"
+participant_id: 24
+pivot: "\u592A"
+selected:
+- "\u5927"
+- "\u72AC"
+---
+distractors:
+- "\u5973"
+- "\u5974"
+- "\u598A"
+- "\u59B9"
+- "\u5B50"
+- "\u5B58"
+participant_id: 24
+pivot: "\u597D"
+selected:
+- "\u598A"
+---
+distractors:
+- "\u5473"
+- "\u59C9"
+- "\u672A"
+- "\u6731"
+- "\u6B8A"
+participant_id: 24
+pivot: "\u59B9"
+selected:
+- "\u59C9"
+---
+distractors:
+- "\u4EBA"
+- "\u5343"
+- "\u5C0F"
+- "\u5C71"
+- "\u5F15"
+- "\u8A13"
+- "\u9AEA"
+participant_id: 24
+pivot: "\u5DDD"
+selected:
+- "\u5C71"
+---
+distractors:
+- "\u516D"
+- "\u5E03"
+- "\u5E1D"
+- "\u7533"
+- "\u80BA"
+participant_id: 24
+pivot: "\u5E02"
+selected:
+- "\u5E1D"
+---
+distractors:
+- "\u4FB5"
+- "\u5A66"
+- "\u5E1D"
+- "\u5E2F"
+- "\u6383"
+- "\u640D"
+- "\u6EDE"
+participant_id: 24
+pivot: "\u5E30"
+selected:
+- "\u6383"
+---
+distractors:
+- "\u5DE5"
+- "\u5E84"
+- "\u5E8A"
+- "\u62E1"
+- "\u7384"
+- "\u9271"
+participant_id: 24
+pivot: "\u5E83"
+selected:
+- "\u5E84"
+---
+distractors:
+- "\u4E39"
+- "\u5C40"
+- "\u5F13"
+- "\u5F15"
+- "\u5F25"
+- "\u5F37"
+- "\u6CB8"
+participant_id: 24
+pivot: "\u5F31"
+selected:
+- "\u5F15"
+---
+distractors:
+- "\u5915"
+- "\u5FC5"
+- "\u5FCC"
+- "\u60AA"
+- "\u706B"
+participant_id: 24
+pivot: "\u5FC3"
+selected:
+- "\u5FC5"
+---
+distractors:
+- "\u5343"
+- "\u5370"
+- "\u5B87"
+- "\u6211"
+- "\u6319"
+- "\u6BDB"
+- "\u725B"
+participant_id: 24
+pivot: "\u624B"
+selected:
+- "\u6BDB"
+---
+distractors:
+- "\u5B5D"
+- "\u653E"
+- "\u6570"
+- "\u81F4"
+- "\u8D66"
+participant_id: 24
+pivot: "\u6559"
+selected:
+- "\u6570"
+---
+distractors:
+- "\u4E08"
+- "\u4EA4"
+- "\u592B"
+- "\u6589"
+- "\u7D0B"
+- "\u868A"
+- "\u8863"
+participant_id: 24
+pivot: "\u6587"
+selected:
+- "\u4E08"
+---
+distractors:
+- "\u6597"
+- "\u659C"
+- "\u65AD"
+- "\u79D1"
+- "\u7C73"
+- "\u7C8B"
+- "\u7CFE"
+participant_id: 24
+pivot: "\u6599"
+selected:
+- "\u79D1"
+---
+distractors:
+- "\u65AD"
+- "\u6790"
+- "\u7C8B"
+- "\u85AA"
+- "\u89AA"
+participant_id: 24
+pivot: "\u65B0"
+selected:
+- "\u89AA"
+---
+distractors:
+- "\u653E"
+- "\u65B9"
+- "\u65BD"
+- "\u65CB"
+- "\u65CF"
+participant_id: 24
+pivot: "\u65C5"
+selected:
+- "\u653E"
+- "\u65CF"
+---
+distractors:
+- "\u65B9"
+- "\u65C5"
+- "\u65CB"
+- "\u77E2"
+participant_id: 24
+pivot: "\u65CF"
+selected:
+- "\u65C5"
+---
+distractors:
+- "\u4F46"
+- "\u5C3A"
+- "\u5C3D"
+- "\u5C40"
+- "\u5C4A"
+- "\u7532"
+- "\u99C5"
+participant_id: 24
+pivot: "\u663C"
+selected:
+- "\u5C3D"
+---
+distractors:
+- "\u4F8D"
+- "\u5BFA"
+- "\u5C01"
+- "\u5F85"
+- "\u6301"
+- "\u7279"
+- "\u91CC"
+participant_id: 24
+pivot: "\u6642"
+selected:
+- "\u4F8D"
+- "\u5F85"
+- "\u6301"
+- "\u7279"
+---
+distractors:
+- "\u552F"
+- "\u6676"
+- "\u6687"
+- "\u6FEF"
+- "\u7F85"
+- "\u8E8D"
+participant_id: 24
+pivot: "\u66DC"
+selected:
+- "\u6FEF"
+---
+distractors:
+- "\u5D29"
+- "\u65E5"
+- "\u7528"
+- "\u76EE"
+- "\u9AA8"
+participant_id: 24
+pivot: "\u6708"
+selected:
+- "\u7528"
+---
+distractors:
+- "\u53F3"
+- "\u6708"
+- "\u80A9"
+- "\u8CC4"
+- "\u968F"
+- "\u9996"
+- "\u9AEA"
+participant_id: 24
+pivot: "\u6709"
+selected:
+- "\u6708"
+---
+distractors:
+- "\u4E57"
+- "\u66F4"
+- "\u675F"
+- "\u68DF"
+- "\u69FD"
+- "\u8ECA"
+participant_id: 24
+pivot: "\u6771"
+selected:
+- "\u8ECA"
+---
+distractors:
+- "\u6B62"
+- "\u738B"
+- "\u75C7"
+- "\u8A3C"
+participant_id: 24
+pivot: "\u6B63"
+selected:
+- "\u738B"
+---
+distractors:
+- "\u58EB"
+- "\u5999"
+- "\u5C11"
+- "\u6E09"
+- "\u8D70"
+participant_id: 24
+pivot: "\u6B69"
+selected:
+- "\u8D70"
+---
+distractors:
+- "\u4E00"
+- "\u4E39"
+- "\u65E5"
+- "\u6BCE"
+- "\u7530"
+- "\u9AEA"
+participant_id: 24
+pivot: "\u6BCD"
+selected:
+- "\u6BCE"
+---
+distractors:
+- "\u4E45"
+- "\u4FAE"
+- "\u5F85"
+- "\u6709"
+- "\u6BCD"
+- "\u6D77"
+participant_id: 24
+pivot: "\u6BCE"
+selected:
+- "\u6BCD"
+---
+distractors:
+- "\u4E00"
+- "\u6C0F"
+- "\u7720"
+- "\u8C9D"
+participant_id: 24
+pivot: "\u6C11"
+selected:
+- "\u7720"
+---
+distractors:
+- "\u4FAE"
+- "\u6094"
+- "\u6BCD"
+- "\u6BCE"
+participant_id: 24
+pivot: "\u6D77"
+selected:
+- "\u6BCE"
+---
+distractors:
+- "\u5834"
+- "\u6613"
+- "\u6749"
+- "\u725B"
+- "\u7267"
+- "\u7272"
+- "\u7279"
+participant_id: 24
+pivot: "\u7269"
+selected:
+- "\u7279"
+---
+distractors:
+- "\u4E3B"
+- "\u59D3"
+- "\u7389"
+- "\u738B"
+participant_id: 24
+pivot: "\u751F"
+selected:
+- "\u4E3B"
+---
+distractors:
+- "\u5099"
+- "\u5468"
+- "\u6708"
+- "\u7532"
+- "\u7537"
+- "\u89D2"
+- "\u901A"
+participant_id: 24
+pivot: "\u7528"
+selected:
+- "\u6708"
+---
+distractors:
+- "\u4ECA"
+- "\u4ECB"
+- "\u5351"
+- "\u7537"
+- "\u754F"
+participant_id: 24
+pivot: "\u754C"
+selected:
+- "\u7537"
+---
+distractors:
+- "\u4F2F"
+- "\u65E5"
+- "\u65E8"
+- "\u7531"
+- "\u767E"
+- "\u81EA"
+participant_id: 24
+pivot: "\u767D"
+selected:
+- "\u65E5"
+- "\u81EA"
+---
+distractors:
+- "\u4E00"
+- "\u5BBF"
+- "\u767D"
+- "\u76EE"
+- "\u9801"
+participant_id: 24
+pivot: "\u767E"
+selected:
+- "\u767D"
+---
+distractors:
+- "\u5150"
+- "\u5177"
+- "\u76EE"
+- "\u76F4"
+- "\u7701"
+- "\u8336"
+- "\u8C9D"
+participant_id: 24
+pivot: "\u770C"
+selected:
+- "\u5177"
+---
+distractors:
+- "\u5584"
+- "\u5DEE"
+- "\u770B"
+- "\u7F8E"
+- "\u8005"
+- "\u9996"
+participant_id: 24
+pivot: "\u7740"
+selected:
+- "\u770B"
+---
+distractors:
+- "\u52A0"
+- "\u5374"
+- "\u548C"
+- "\u75F4"
+- "\u77E9"
+- "\u77ED"
+participant_id: 24
+pivot: "\u77E5"
+selected:
+- "\u52A0"
+- "\u548C"
+---
+distractors:
+- "\u518A"
+- "\u5211"
+- "\u547C"
+- "\u7802"
+- "\u7815"
+- "\u958B"
+participant_id: 24
+pivot: "\u7814"
+selected:
+- "\u5211"
+- "\u7802"
+---
+distractors:
+- "\u6CCA"
+- "\u767D"
+- "\u7686"
+- "\u7FBD"
+- "\u7FCC"
+participant_id: 24
+pivot: "\u7FD2"
+selected:
+- "\u7FCC"
+---
+distractors:
+- "\u5B5D"
+- "\u62F7"
+- "\u8001"
+- "\u8005"
+participant_id: 24
+pivot: "\u8003"
+selected:
+- "\u5B5D"
+---
+distractors:
+- "\u554F"
+- "\u8033"
+- "\u9580"
+- "\u9593"
+participant_id: 24
+pivot: "\u805E"
+selected:
+- "\u554F"
+- "\u9580"
+- "\u9593"
+---
+distractors:
+- "\u514D"
+- "\u52FA"
+- "\u7D76"
+- "\u82AD"
+- "\u89D2"
+- "\u9091"
+participant_id: 24
+pivot: "\u8272"
+selected:
+- "\u82AD"
+---
+distractors:
+- "\u51CD"
+- "\u697D"
+- "\u6A21"
+- "\u767D"
+- "\u83D3"
+- "\u83DC"
+- "\u8449"
+participant_id: 24
+pivot: "\u85AC"
+selected:
+- "\u697D"
+---
+distractors:
+- "\u4E21"
+- "\u4FA1"
+- "\u5339"
+- "\u56DB"
+- "\u7530"
+- "\u8981"
+- "\u9152"
+participant_id: 24
+pivot: "\u897F"
+selected:
+- "\u56DB"
+---
+distractors:
+- "\u5150"
+- "\u6606"
+- "\u773A"
+- "\u8996"
+- "\u8C9D"
+participant_id: 24
+pivot: "\u898B"
+selected:
+- "\u8C9D"
+---
+distractors:
+- "\u820C"
+- "\u8A54"
+- "\u8A5E"
+- "\u8A70"
+- "\u8A9E"
+participant_id: 24
+pivot: "\u8A71"
+selected:
+- "\u8A9E"
+---
+distractors:
+- "\u609F"
+- "\u8A00"
+- "\u8A5E"
+- "\u8A70"
+- "\u8A71"
+- "\u8AEE"
+participant_id: 24
+pivot: "\u8A9E"
+selected:
+- "\u8A71"
+---
+distractors:
+- "\u5687"
+- "\u5BFA"
+- "\u606D"
+- "\u8D66"
+- "\u8D70"
+participant_id: 24
+pivot: "\u8D64"
+selected:
+- "\u606D"
+---
+distractors:
+- "\u7832"
+- "\u8D70"
+- "\u8D74"
+- "\u8D85"
+participant_id: 24
+pivot: "\u8D77"
+selected:
+- "\u8D85"
+---
+distractors:
+- "\u4FC3"
+- "\u53E3"
+- "\u53F2"
+- "\u5B9A"
+- "\u81E3"
+- "\u8D70"
+- "\u8DEF"
+- "\u8DF3"
+participant_id: 24
+pivot: "\u8DB3"
+selected:
+- "\u8D70"
+---
+distractors:
+- "\u65A4"
+- "\u8FBA"
+- "\u8FBC"
+- "\u8FCE"
+- "\u8FD4"
+- "\u8FF0"
+- "\u901D"
+participant_id: 24
+pivot: "\u8FD1"
+selected:
+- "\u8FBC"
+---
+distractors:
+- "\u5468"
+- "\u5F6B"
+- "\u8ABF"
+- "\u901A"
+- "\u9020"
+- "\u904E"
+participant_id: 24
+pivot: "\u9031"
+selected:
+- "\u8ABF"
+---
+distractors:
+- "\u63EE"
+- "\u901A"
+- "\u9023"
+- "\u9031"
+participant_id: 24
+pivot: "\u904B"
+selected:
+- "\u63EE"
+---
+distractors:
+- "\u4E88"
+- "\u7406"
+- "\u77DB"
+- "\u91CC"
+- "\u91DD"
+- "\u9ED2"
+participant_id: 24
+pivot: "\u91CE"
+selected:
+- "\u7406"
+---
+distractors:
+- "\u6839"
+- "\u91D1"
+- "\u91DD"
+- "\u9243"
+- "\u92AD"
+- "\u932C"
+- "\u9396"
+participant_id: 24
+pivot: "\u9280"
+selected:
+- "\u9243"
+---
+distractors:
+- "\u5192"
+- "\u554F"
+- "\u660E"
+- "\u805E"
+- "\u958B"
+- "\u9591"
+- "\u9593"
+participant_id: 24
+pivot: "\u9580"
+selected:
+- "\u554F"
+- "\u805E"
+- "\u9593"
+---
+distractors:
+- "\u5143"
+- "\u51A0"
+- "\u5B8C"
+- "\u6669"
+- "\u8155"
+- "\u9632"
+participant_id: 24
+pivot: "\u9662"
+selected:
+- "\u9632"
+---
+distractors:
+- "\u6A29"
+- "\u7126"
+- "\u83D3"
+- "\u96BB"
+- "\u96BC"
+- "\u96D1"
+participant_id: 24
+pivot: "\u96C6"
+selected:
+- "\u7126"
+---
+distractors:
+- "\u6614"
+- "\u6697"
+- "\u7ADC"
+- "\u7AE0"
+participant_id: 24
+pivot: "\u97F3"
+selected:
+- "\u6614"
+---
+distractors:
+- "\u5411"
+- "\u5468"
+- "\u72EC"
+- "\u76FE"
+- "\u7E6D"
+- "\u866B"
+participant_id: 24
+pivot: "\u98A8"
+selected:
+- "\u5468"
+---
+distractors:
+- "\u4EEE"
+- "\u53CD"
+- "\u7248"
+- "\u98E2"
+- "\u98F2"
+participant_id: 24
+pivot: "\u98EF"
+selected:
+- "\u98F2"
+---
+distractors:
+- "\u6B20"
+- "\u6B3A"
+- "\u6B3D"
+- "\u98DF"
+- "\u98E2"
+- "\u98EF"
+- "\u98FE"
+participant_id: 24
+pivot: "\u98F2"
+selected:
+- "\u98EF"
+---
+distractors:
+- "\u691C"
+- "\u967A"
+- "\u99D0"
+- "\u9A0E"
+- "\u9A12"
+participant_id: 24
+pivot: "\u9A13"
+selected:
+- "\u967A"
+---
+distractors:
+- "\u4E01"
+- "\u4E07"
+- "\u4E8C"
+- "\u4E92"
+- "\u5341"
+participant_id: 25
+pivot: "\u4E00"
+selected:
+- "\u4E8C"
+---
+distractors:
+- "\u4E00"
+- "\u4E0B"
+- "\u571F"
+- "\u5CE0"
+- "\u6B62"
+- "\u6B63"
+participant_id: 25
+pivot: "\u4E0A"
+selected:
+- "\u4E0B"
+---
+distractors:
+- "\u4E03"
+- "\u4E07"
+- "\u4E5F"
+- "\u53EF"
+- "\u76EE"
+- "\u8449"
+participant_id: 25
+pivot: "\u4E16"
+selected:
+- "\u4E07"
+---
+distractors:
+- "\u4E07"
+- "\u4F9B"
+- "\u5270"
+- "\u6731"
+- "\u6771"
+- "\u679C"
+- "\u91CD"
+participant_id: 25
+pivot: "\u4E57"
+selected:
+- "\u91CD"
+---
+distractors:
+- "\u4EFB"
+- "\u4F73"
+- "\u4FF5"
+- "\u5728"
+- "\u58EB"
+- "\u58EE"
+participant_id: 25
+pivot: "\u4ED5"
+selected:
+- "\u4F73"
+---
+distractors:
+- "\u4E3B"
+- "\u4EFB"
+- "\u5F80"
+- "\u67F1"
+participant_id: 25
+pivot: "\u4F4F"
+selected:
+- "\u4EFB"
+---
+distractors:
+- "\u4EA4"
+- "\u5143"
+- "\u516B"
+- "\u5927"
+- "\u604B"
+- "\u6587"
+- "\u6C34"
+- "\u7A74"
+participant_id: 25
+pivot: "\u516D"
+selected:
+- "\u5927"
+---
+distractors:
+- "\u4E03"
+- "\u4E07"
+- "\u5200"
+- "\u521D"
+- "\u529F"
+- "\u574A"
+- "\u8650"
+participant_id: 25
+pivot: "\u5207"
+selected:
+- "\u5200"
+---
+distractors:
+- "\u4E07"
+- "\u5200"
+- "\u529F"
+- "\u52A0"
+- "\u52C9"
+- "\u5927"
+participant_id: 25
+pivot: "\u529B"
+selected:
+- "\u52A0"
+---
+distractors:
+- "\u5343"
+- "\u5E74"
+- "\u725B"
+- "\u8A31"
+participant_id: 25
+pivot: "\u5348"
+selected:
+- "\u5E74"
+---
+distractors:
+- "\u53E3"
+- "\u805E"
+- "\u9580"
+- "\u9593"
+- "\u95A3"
+participant_id: 25
+pivot: "\u554F"
+selected:
+- "\u9580"
+---
+distractors:
+- "\u5473"
+- "\u59C9"
+- "\u672A"
+- "\u6731"
+- "\u6B8A"
+participant_id: 25
+pivot: "\u59B9"
+selected:
+- "\u6B8A"
+---
+distractors:
+- "\u5B5D"
+- "\u653E"
+- "\u6570"
+- "\u81F4"
+- "\u8D66"
+participant_id: 25
+pivot: "\u6559"
+selected:
+- "\u8D66"
+---
+distractors:
+- "\u4E08"
+- "\u4EA4"
+- "\u592B"
+- "\u6589"
+- "\u7D0B"
+- "\u868A"
+- "\u8863"
+participant_id: 25
+pivot: "\u6587"
+selected:
+- "\u7D0B"
+---
+distractors:
+- "\u65AD"
+- "\u6790"
+- "\u7C8B"
+- "\u85AA"
+- "\u89AA"
+participant_id: 25
+pivot: "\u65B0"
+selected:
+- "\u7C8B"
+---
+distractors:
+- "\u653E"
+- "\u65B9"
+- "\u65BD"
+- "\u65CB"
+- "\u65CF"
+participant_id: 25
+pivot: "\u65C5"
+selected:
+- "\u65CF"
+---
+distractors:
+- "\u65B9"
+- "\u65C5"
+- "\u65CB"
+- "\u77E2"
+participant_id: 25
+pivot: "\u65CF"
+selected:
+- "\u65CB"
+---
+distractors:
+- "\u4F46"
+- "\u5C3A"
+- "\u5C3D"
+- "\u5C40"
+- "\u5C4A"
+- "\u7532"
+- "\u99C5"
+participant_id: 25
+pivot: "\u663C"
+selected:
+- "\u5C3D"
+---
+distractors:
+- "\u4E57"
+- "\u66F4"
+- "\u675F"
+- "\u68DF"
+- "\u69FD"
+- "\u8ECA"
+participant_id: 25
+pivot: "\u6771"
+selected:
+- "\u66F4"
+---
+distractors:
+- "\u58EB"
+- "\u5999"
+- "\u5C11"
+- "\u6E09"
+- "\u8D70"
+participant_id: 25
+pivot: "\u6B69"
+selected:
+- "\u58EB"
+---
+distractors:
+- "\u4E00"
+- "\u4E39"
+- "\u65E5"
+- "\u6BCE"
+- "\u7530"
+- "\u9AEA"
+participant_id: 25
+pivot: "\u6BCD"
+selected:
+- "\u4E00"
+---
+distractors:
+- "\u4E08"
+- "\u4EBA"
+- "\u5C3F"
+- "\u6728"
+- "\u6C37"
+participant_id: 25
+pivot: "\u6C34"
+selected:
+- "\u4E08"
+---
+distractors:
+- "\u5834"
+- "\u6613"
+- "\u6749"
+- "\u725B"
+- "\u7267"
+- "\u7272"
+- "\u7279"
+participant_id: 25
+pivot: "\u7269"
+selected:
+- "\u7279"
+---
+distractors:
+- "\u4E3B"
+- "\u59D3"
+- "\u7389"
+- "\u738B"
+participant_id: 25
+pivot: "\u751F"
+selected:
+- "\u59D3"
+---
+distractors:
+- "\u5099"
+- "\u5468"
+- "\u6708"
+- "\u7532"
+- "\u7537"
+- "\u89D2"
+- "\u901A"
+participant_id: 25
+pivot: "\u7528"
+selected:
+- "\u7537"
+---
+distractors:
+- "\u4E01"
+- "\u53EF"
+- "\u552F"
+- "\u6253"
+- "\u706F"
+- "\u7537"
+participant_id: 25
+pivot: "\u753A"
+selected:
+- "\u53EF"
+---
+distractors:
+- "\u4E00"
+- "\u5BBF"
+- "\u767D"
+- "\u76EE"
+- "\u9801"
+participant_id: 25
+pivot: "\u767E"
+selected:
+- "\u76EE"
+---
+distractors:
+- "\u5150"
+- "\u5177"
+- "\u76EE"
+- "\u76F4"
+- "\u7701"
+- "\u8336"
+- "\u8C9D"
+participant_id: 25
+pivot: "\u770C"
+selected:
+- "\u5150"
+---
+distractors:
+- "\u5584"
+- "\u5DEE"
+- "\u770B"
+- "\u7F8E"
+- "\u8005"
+- "\u9996"
+participant_id: 25
+pivot: "\u7740"
+selected:
+- "\u5DEE"
+---
+distractors:
+- "\u5408"
+- "\u7B26"
+- "\u7B52"
+- "\u7D66"
+- "\u8336"
+participant_id: 25
+pivot: "\u7B54"
+selected:
+- "\u8336"
+---
+distractors:
+- "\u554F"
+- "\u8033"
+- "\u9580"
+- "\u9593"
+participant_id: 25
+pivot: "\u805E"
+selected:
+- "\u9580"
+---
+distractors:
+- "\u514D"
+- "\u52FA"
+- "\u7D76"
+- "\u82AD"
+- "\u89D2"
+- "\u9091"
+participant_id: 25
+pivot: "\u8272"
+selected:
+- "\u7D76"
+---
+distractors:
+- "\u4E21"
+- "\u4FA1"
+- "\u5339"
+- "\u56DB"
+- "\u7530"
+- "\u8981"
+- "\u9152"
+participant_id: 25
+pivot: "\u897F"
+selected:
+- "\u7530"
+---
+distractors:
+- "\u5150"
+- "\u6606"
+- "\u773A"
+- "\u8996"
+- "\u8C9D"
+participant_id: 25
+pivot: "\u898B"
+selected:
+- "\u773A"
+---
+distractors:
+- "\u820C"
+- "\u8A54"
+- "\u8A5E"
+- "\u8A70"
+- "\u8A9E"
+participant_id: 25
+pivot: "\u8A71"
+selected:
+- "\u8A70"
+---
+distractors:
+- "\u6839"
+- "\u91D1"
+- "\u91DD"
+- "\u9243"
+- "\u92AD"
+- "\u932C"
+- "\u9396"
+participant_id: 25
+pivot: "\u9280"
+selected:
+- "\u92AD"
+---
+distractors:
+- "\u5143"
+- "\u51A0"
+- "\u5B8C"
+- "\u6669"
+- "\u8155"
+- "\u9632"
+participant_id: 25
+pivot: "\u9662"
+selected:
+- "\u8155"
+---
+distractors:
+- "\u6614"
+- "\u6697"
+- "\u7ADC"
+- "\u7AE0"
+participant_id: 25
+pivot: "\u97F3"
+selected:
+- "\u7ADC"
+---
+distractors:
+- "\u5411"
+- "\u5468"
+- "\u72EC"
+- "\u76FE"
+- "\u7E6D"
+- "\u866B"
+participant_id: 25
+pivot: "\u98A8"
+selected:
+- "\u76FE"

@@ -157,6 +157,7 @@ The input data comes from:
    both under [CC BY-SA 4.0][cc-by-sa-4].
 3. [Jiten Frequency](https://jiten.moe/other), [JPDB Frequency](https://github.com/Kuuuube/yomitan-dictionaries/blob/main/data/jpdbv2_kanji_frequency_2026-02-09.csv), [KKLC Order](https://github.com/vadasambar/kanji_order/blob/master/final_order.txt)
 4. Kanji structure data used to generate similarity search can be found on /raw/structure-info/SOURCES.md.
+5. Kanji confusion/similarity data for the 1945 jouyou kanji comes from Lars Yencken's [kanji-confusion dataset][yencken-kanji-confusion] (see /raw/similarity/README.md), used in `src/build_similar_kanji.py`.
 
 ### JMdict and JMnedict
 
@@ -171,4 +172,5 @@ All derived files are distributed under the same license, as the original licens
 [pika-furi]: https://github.com/PikaPikaGems/jmdict-furigana-map
 [EDRDG-license]: http://www.edrdg.org/edrdg/licence.html
 [jmdict-edict]: https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project
+[yencken-kanji-confusion]: https://lars.yencken.org/datasets/kanji-confusion/
 [jmdict-simplified]: https://github.com/scriptin/jmdict-simplified
