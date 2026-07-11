@@ -77,6 +77,9 @@ from sources import (
     write_json,
     resolve_path,
     textbook_candidates,
+    freq_key,
+    corpus_coverage,
+    parse_rank,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count
 from jmdict_resolver import JmdictResolver, CLASS_OTHER
@@ -118,25 +121,10 @@ DEFAULT_TIER_TAG = "🦉"
 # Bands eligible for the special rule (single-kanji standalone word wins outright).
 TOP_BANDS = {TIER_BAND["BASIC"], TIER_BAND["COMMON"]}
 
-# --- Composite corpus frequency (ported from the freq-ranks experiment) ---
-# Per-corpus weight in the composite frequency; 0 drops a corpus. SPOKEN/everyday
-# corpora (conversation, subtitles) weigh more than WRITTEN ones (web, wiki) —
-# a learner's representative word is better drawn from speech than from text.
-CORPUS_WEIGHTS = {
-    "CEJC_all_conversations": 2.0, "CEJC_small_talk_zatsudan": 2.0,
-    "BCCWJ_LUW_compound": 1.0, "BCCWJ_SUW_short_unit": 1.0,
-    "CommonCrawl_CC100": 0.5, "NWJC_web_corpus": 0.5, "Wikipedia_v2": 0.5,
-    "DaveDoebrick_SliceOfLife": 2.0, "jiten_all_media": 1.5, "jiten_drama": 2.0,
-    "Shoui_anime_jdrama": 1.5, "MarvNC_youtube_v3": 1.5, "Shoui_netflix": 1.5,
-    "DaveDoebrick_netflix_no_names": 1.5,
-}
-
-# Each corpus a word is MISSING from inflates its mean rank by this fraction, so a
-# word seen across many corpora beats an equally-ranked word seen in only one.
-COVERAGE_PENALTY = 0.15
-
 # Distrust words attested in fewer weighted corpora than this — dropped unless
-# that would leave the kanji with no candidates at all.
+# that would leave the kanji with no candidates at all. (The composite frequency
+# itself — freq_key, CORPUS_WEIGHTS — is shared with the sample-vocab algorithm
+# and lives in sources.py.)
 MIN_CORPUS_COVERAGE = 2
 
 # TSV column names (raw/freq-ranks/*.tsv).
@@ -222,48 +210,6 @@ def read_freq_rows(kanji):
         return list(csv.DictReader(f, delimiter="\t"))
 
 
-def _rank(value):
-    """Parse a corpus rank cell: int rank, or None for NA/blank/garbage."""
-    if not value or value == "NA":
-        return None
-    try:
-        return int(value)
-    except ValueError:
-        return None
-
-
-def freq_key(row):
-    """Composite corpus frequency for a row — LOWER is better.
-
-    Weighted mean of the per-corpus ranks the word actually has, inflated by
-    COVERAGE_PENALTY for every weighted corpus it is missing from. Infinity when
-    the word appears in no weighted corpus at all (kept only as a last resort)."""
-    num = den = 0.0
-    present = 0
-    weighted_total = 0
-    for col, weight in CORPUS_WEIGHTS.items():
-        if weight <= 0:
-            continue
-        weighted_total += 1
-        r = _rank(row.get(col))
-        if r is None:
-            continue
-        num += weight * r
-        den += weight
-        present += 1
-    if den == 0:
-        return float("inf")
-    return (num / den) * (1 + COVERAGE_PENALTY * (weighted_total - present))
-
-
-def coverage(row):
-    """How many weighted corpora the word appears in (non-NA, weight > 0)."""
-    return sum(
-        1 for col, weight in CORPUS_WEIGHTS.items()
-        if weight > 0 and _rank(row.get(col)) is not None
-    )
-
-
 # stage values: candidates that START with the kanji rank before those that
 # merely CONTAIN it (textbook relaxed search — rare/classical kanji nothing
 # starts with, e.g. 斐 → 甲斐).
@@ -277,12 +223,12 @@ def load_freq_candidates(kanji):
     Words attested in fewer than MIN_CORPUS_COVERAGE corpora are dropped unless
     that would empty the pool (rare kanji often only have such words)."""
     rows = [r for r in read_freq_rows(kanji) if is_valid_word(r.get(COL_WORD, ""), kanji)]
-    broad = [r for r in rows if coverage(r) >= MIN_CORPUS_COVERAGE]
+    broad = [r for r in rows if corpus_coverage(r) >= MIN_CORPUS_COVERAGE]
     if broad:
         rows = broad
     candidates = []
     for row in rows:
-        jlpt = _rank(row.get(COL_JLPT))
+        jlpt = parse_rank(row.get(COL_JLPT))
         candidates.append({
             "word": row[COL_WORD],
             "stage": STAGE_STARTS_WITH,

@@ -1,23 +1,18 @@
 """Shared data loading for the kanji-data scripts.
 
-Project-relative path resolution, JSON loading, and the raw word-source readers
-(v3 kanji-words, textbook words, JMdict gloss extraction). The readers return
-unfiltered raw tuples — each caller applies its own validity rules, which differ
-between the sample-vocab and representative-word selection algorithms.
+Project-relative path resolution, JSON loading, the raw word-source readers
+(textbook words, JMdict gloss extraction) and the freq-ranks composite corpus
+frequency. The readers return unfiltered raw tuples — each caller applies its
+own validity rules, which differ between the sample-vocab and
+representative-word selection algorithms.
 """
 
 import json
 import os
 
-# Default v3 word-pool subfolder under raw/kanji-words/. Callers can swap it for an
-# experimental sibling (e.g. "v3b") without touching the readers — mirrors the
-# folder switch the textbook reader exposes via TEXTBOOK_SUBDIR. Override per-run
-# with the V3_SUBDIR env var (e.g. for batch comparison builds).
-V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3c")  # v3c, v3b, v3
-
 # Default textbook word-pool folder under raw/. Callers can swap it for the full set
-# ("kanji-textbook-words") or an experimental sibling without touching the readers —
-# mirrors V3_SUBDIR / the v3 reader. Override per-run with the TEXTBOOK_SUBDIR env var.
+# ("kanji-textbook-words") or an experimental sibling without touching the readers.
+# Override per-run with the TEXTBOOK_SUBDIR env var.
 # "kanji-textbook-words", "kanji-textbook-words-min"
 TEXTBOOK_SUBDIR = os.environ.get("TEXTBOOK_SUBDIR", "kanji-textbook-words-min")
 
@@ -54,25 +49,76 @@ def write_json(rel_path, data, *, indent=None, separators=None, ensure_ascii=Fal
 
 
 # Internal tag marking a candidate as coming from the textbook word source rather
-# than a v3 frequency band. Shared so both selection algorithms agree on the value.
+# than a corpus frequency band. Shared so both selection algorithms agree on the value.
 TEXTBOOK_TAG = "__textbook__"
 
 
-def load_v3_entries(kanji, subdir=V3_SUBDIR):
-    """Raw (word, reading, tag, meaning) tuples from raw/kanji-words/{subdir}/{kanji}.json.
+# ---------------------------------------------------------------------------
+# freq-ranks corpus data (raw/freq-ranks/*.tsv)
+# ---------------------------------------------------------------------------
+#
+# Each TSV lists the words starting with its key character (kanji AND kana files),
+# with a frequency RANK per corpus (lower = more frequent; NA = absent), a
+# precomputed `tier` band and JLPT level. Both selection algorithms rank
+# same-tier words by the composite frequency below, so it lives here.
 
-    subdir selects the v3 word pool ("v3" by default, "v3b" for an experimental set)."""
-    data = load_json(f"raw/kanji-words/{subdir}/{kanji}.json", [])
-    return [
-        (e.get("w", ""), e.get("r", ""), e.get("t", ""), e.get("e", "")) for e in data
-    ]
+# Per-corpus weight in the composite frequency; 0 drops a corpus. SPOKEN/everyday
+# corpora (conversation, subtitles) weigh more than WRITTEN ones (web, wiki) —
+# a learner's word is better drawn from speech than from text.
+CORPUS_WEIGHTS = {
+    "CEJC_all_conversations": 2.0, "CEJC_small_talk_zatsudan": 2.0,
+    "BCCWJ_LUW_compound": 1.0, "BCCWJ_SUW_short_unit": 1.0,
+    "CommonCrawl_CC100": 0.5, "NWJC_web_corpus": 0.5, "Wikipedia_v2": 0.5,
+    "DaveDoebrick_SliceOfLife": 2.0, "jiten_all_media": 1.5, "jiten_drama": 2.0,
+    "Shoui_anime_jdrama": 1.5, "MarvNC_youtube_v3": 1.5, "Shoui_netflix": 1.5,
+    "DaveDoebrick_netflix_no_names": 1.5,
+}
+
+# Each corpus a word is MISSING from inflates its mean rank by this fraction, so a
+# word seen across many corpora beats an equally-ranked word seen in only one.
+COVERAGE_PENALTY = 0.15
 
 
-def v3_candidates(kanji, keep, subdir=V3_SUBDIR):
-    """v3 (word, reading, tag, meaning) tuples whose (word, reading) passes keep().
+def parse_rank(value):
+    """Parse a corpus rank cell: int rank, or None for NA/blank/garbage."""
+    if not value or value == "NA":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
-    subdir is forwarded to load_v3_entries to pick which v3 folder to read."""
-    return [e for e in load_v3_entries(kanji, subdir) if keep(e[0], e[1])]
+
+def freq_key(row):
+    """Composite corpus frequency for a freq-ranks row — LOWER is better.
+
+    Weighted mean of the per-corpus ranks the word actually has, inflated by
+    COVERAGE_PENALTY for every weighted corpus it is missing from. Infinity when
+    the word appears in no weighted corpus at all (kept only as a last resort)."""
+    num = den = 0.0
+    present = 0
+    weighted_total = 0
+    for col, weight in CORPUS_WEIGHTS.items():
+        if weight <= 0:
+            continue
+        weighted_total += 1
+        r = parse_rank(row.get(col))
+        if r is None:
+            continue
+        num += weight * r
+        den += weight
+        present += 1
+    if den == 0:
+        return float("inf")
+    return (num / den) * (1 + COVERAGE_PENALTY * (weighted_total - present))
+
+
+def corpus_coverage(row):
+    """How many weighted corpora the word appears in (non-NA, weight > 0)."""
+    return sum(
+        1 for col, weight in CORPUS_WEIGHTS.items()
+        if weight > 0 and parse_rank(row.get(col)) is not None
+    )
 
 
 def textbook_candidates(kanji, keep, subdir=TEXTBOOK_SUBDIR):

@@ -23,20 +23,23 @@ Kanji listed in overrides/kanji_to_remove.json are skipped entirely.
 Source priority (lower tier wins; ties broken by fewer kanji → length band [2-3
 ideal, 4 ok, 5 max] → has-reading → has-meaning → shorter overall [2 beats 3]).
 Hand-curated picks live in overrides/kanji_vocab.json and win at BUILD time
-(build_helpers.get_words), not here. The two fallbacks only fill a slot when no
-v3/textbook candidate exists and never displace a primary word:
-   0. v3 words tagged 🌱        (most frequent band; beats ☘️ even with more kanji)
-   1. v3 words tagged ☘️
-   2. v3 words tagged 🌷
+(build_helpers.get_words), not here. The primary pool is the freq-ranks corpus
+dataset (raw/freq-ranks/*.tsv, indexed once so a word counts for EVERY kanji it
+contains, not just the one it starts with), whose tier column maps onto the same
+emoji bands the old v3 pool used. The two fallbacks only fill a slot when no
+freq-ranks/textbook candidate exists and never displace a primary word:
+   0. freq-ranks tier BASIC 🌱   (most frequent band; beats ☘️ even with more kanji)
+   1. freq-ranks tier COMMON ☘️
+   2. freq-ranks tier FLUENT 🌷
    3. textbook words             raw/kanji-textbook-words/
-   4. v3 words tagged 📚 (or unknown tag)
-   5. v3 words tagged 🦉
+   4. freq-ranks tier ADVANCED 📚 (or unknown)
+   5. freq-ranks NICHE 🌶️ / UNRANKED 🦉
    6. current production words   input/kanji_vocab.json           (fallback)
    7. full JMdict                input/scriptin-jmdict-eng.json   (fallback)
 
-Deduplication: if a word appears in both v3 and textbook, keep whichever gives the
-better (lower) score — so a textbook word isn't unfairly penalised just because it
-also appears in v3 under a lower-priority tag.
+Deduplication: if a word appears in both freq-ranks and textbook, keep whichever
+gives the better (lower) score — so a textbook word isn't unfairly penalised just
+because it also appears in the corpus data under a lower-priority tier.
 
 Second-word diversity: after the best word is chosen, the second pick prefers a word
 in which the kanji takes a DIFFERENT reading than in the first word (e.g. 考える/考慮
@@ -65,7 +68,8 @@ words (北京 → ペキン).
 
 Sources:
   input/filtered_kanji.json                → [kanji]  (the kanji set to process)
-  raw/kanji-words/v3/[kanji].json          → [{w, r, t, j?, k?, e}]
+  raw/freq-ranks/*.tsv                     → corpus frequency rows (word, gloss,
+                                             tier, other_forms with kana spelling)
   raw/kanji-textbook-words/[kanji].json    → {kanji: {word: [reading, meaning]}}
   input/kanji_vocab.json                   → {kanji: [word, ...]}   (existing fallback)
   input/scriptin-jmdict-eng.json           → JMdict                 (jmdict fallback)
@@ -80,6 +84,8 @@ Outputs (overrides/): kanji_vocab-algo.json, vocab_meaning-algo.json,
 Run from the project root: python3 src/algorithmic_kanji_vocab_overrides.py
 """
 
+import csv
+import glob
 import json
 import unicodedata
 
@@ -88,9 +94,9 @@ from sources import (
     load_json,
     write_json,
     jmdict_entry_gloss,
-    v3_candidates,
     textbook_candidates,
     TEXTBOOK_TAG,
+    freq_key,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments, segment_word
 
@@ -305,8 +311,64 @@ def is_valid_candidate(word, kanji):
     return kanji in word
 
 
-def load_v3_candidates(kanji):
-    return v3_candidates(kanji, lambda w, r: is_valid_candidate(w, kanji))
+# Emoji tag per freq-ranks tier — the same glyphs (and TAG_PRIORITY slots) the old
+# v3 pool used, so scoring, reports and the shipped tags stay comparable.
+FREQ_TIER_TAG = {
+    'BASIC': '🌱', 'COMMON': '☘️', 'FLUENT': '🌷',
+    'ADVANCED': '📚', 'NICHE': '🌶️', 'UNRANKED': '🦉',
+}
+DEFAULT_FREQ_TIER_TAG = '🦉'
+
+
+def _kana_spelling(other_forms):
+    """First kana-only token from a TSV `other_forms` cell ("御金; おかね" → おかね).
+
+    Used as the candidate's reading: the furigana generator only treats it as a
+    HINT to disambiguate multi-reading words (the furigana map stays authoritative),
+    and a katakana token marks foreign proper nouns (北京 → ペキン) for demotion."""
+    for token in (other_forms or '').split(';'):
+        token = token.strip()
+        if token and is_all_japanese(token) and kanji_count(token) == 0:
+            return token
+    return ''
+
+
+def build_freq_candidate_index(target_kanji):
+    """{kanji: [(word, reading, tag, meaning), ...]} over ALL raw/freq-ranks/*.tsv.
+
+    Each TSV lists words starting with its key character (kanji AND kana files),
+    so one pass over every file, registering each word under every target kanji
+    it contains, yields the contains-anywhere pool this algorithm needs (比較 is
+    stored in 比.tsv but must count for 較; お金 lives in お.tsv).
+
+    Buckets are sorted by composite corpus frequency: word_score ties within a
+    tier then resolve most-frequent-first (日 must prefer 日本 over 一日), which
+    the raw file order can't provide — one kanji's words come from many files."""
+    index = {}
+    seen = set()  # (kanji, word) — defensive dedupe across files
+    for path in sorted(glob.glob(resolve_path('raw/freq-ranks/*.tsv'))):
+        with open(path, encoding='utf-8') as f:
+            for row in csv.DictReader(f, delimiter='\t'):
+                word = row.get('japanese_word', '')
+                candidate = None  # built lazily, once per word
+                for ch in set(word):
+                    if ch not in target_kanji or not is_valid_candidate(word, ch):
+                        continue
+                    if (ch, word) in seen:
+                        continue
+                    seen.add((ch, word))
+                    if candidate is None:
+                        candidate = (freq_key(row), (
+                            word,
+                            _kana_spelling(row.get('other_forms')),
+                            FREQ_TIER_TAG.get(row.get('tier', ''), DEFAULT_FREQ_TIER_TAG),
+                            (row.get('english_gloss') or '').strip(),
+                        ))
+                    index.setdefault(ch, []).append(candidate)
+    return {
+        ch: [cand for _fk, cand in sorted(bucket, key=lambda pair: pair[0])]
+        for ch, bucket in index.items()
+    }
 
 
 def load_textbook_candidates(kanji):
@@ -456,16 +518,16 @@ def readings_equivalent(r1, r2):
     return d1 == d2 or _gemination_equivalent(d1, d2)
 
 
-def _gather_sorted_candidates(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, jmdict_index):
+def _gather_sorted_candidates(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index):
     """All valid candidates for `kanji`, deduped per word (best score kept) and
     sorted best-first. Only words with a meaning available somewhere are kept."""
-    v3 = load_v3_candidates(kanji)
+    freq = freq_index.get(kanji, [])
     textbook = load_textbook_candidates(kanji)
     existing = load_existing_candidates(kanji, existing_kanji_vocab, existing_meanings)
     jmdict = jmdict_index.get(kanji, [])
 
     candidates = [
-        c for c in (v3 + textbook + existing + jmdict)
+        c for c in (freq + textbook + existing + jmdict)
         if (c[3] or c[0] in known_meaning_words)  # c[3] = own meaning, c[0] = word
         and has_dictionary_reading(c[0])  # unreadable corpus fragments don't exist
     ]
@@ -554,14 +616,14 @@ def _log_diversity_replacement(kanji, first, first_reading, second, all_candidat
     replace_logs.append((kanji, first, first_reading, second, second_kr, best_passed, passed_kr))
 
 
-def select_vocab_for_kanji(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, jmdict_index, furigana_map, replace_logs=None):
+def select_vocab_for_kanji(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index, furigana_map, replace_logs=None):
     """Return up to 2 best (word, reading, tag, meaning) tuples for this kanji.
 
     Only words with a meaning available somewhere are considered: either the
     candidate carries its own meaning (e) or the word is in known_meaning_words.
     """
     all_candidates = _gather_sorted_candidates(
-        kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, jmdict_index
+        kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index
     )
     if not all_candidates:
         return []
@@ -631,6 +693,9 @@ def main():
         set(existing_meanings) | set(jmdict_cache) | jsw_words
     )
 
+    # Primary pool: the freq-ranks corpus dataset, indexed once contains-anywhere.
+    freq_index = build_freq_candidate_index(set(all_kanji))
+
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
     jmdict_index, jmdict_word_meanings, readable_forms = build_jmdict_candidate_index(set(all_kanji))
     READABLE_FORMS.update(readable_forms)
@@ -656,7 +721,7 @@ def main():
     replace_logs = []
 
     for kanji in all_kanji:
-        selected = select_vocab_for_kanji(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, jmdict_index, furigana_map, replace_logs)
+        selected = select_vocab_for_kanji(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index, furigana_map, replace_logs)
         if not selected:
             continue
 
@@ -692,16 +757,16 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
     with_one  = sum(1 for v in kanji_vocab_result.values() if len(v) == 1)
     with_two  = sum(1 for v in kanji_vocab_result.values() if len(v) >= 2)
 
-    # label = display-glyph + source + plain-language meaning (the v3 bands 🌱→🦉 run
-    # most-frequent → rarest, tracked by the JLPT level in the source data).
+    # label = display-glyph + source + plain-language meaning (the freq-ranks tiers
+    # 🌱→🦉 run most-frequent → rarest).
     tier_labels = {
-        "🌱": "🌱  v3 — most frequent (core everyday words)",
-        "☘️": "🍀  v3 — very frequent",
-        "🌷": "🌷  v3 — frequent / common",
+        "🌱": "🌱  freq-ranks BASIC — most frequent (core everyday words)",
+        "☘️": "🍀  freq-ranks COMMON — very frequent",
+        "🌷": "🌷  freq-ranks FLUENT — frequent / common",
         TEXTBOOK_TAG: "📖  textbook — from raw/kanji-textbook-words/",
-        "📚": "📚  v3 — less common",
-        "🦉": "🦉  v3 — rare (inflections, compounds, proper nouns)",
-        "🌶️": "🌶️  v3 — niche, same tier as 🌶️ rare",
+        "📚": "📚  freq-ranks ADVANCED — less common",
+        "🦉": "🦉  freq-ranks UNRANKED — rare",
+        "🌶️": "🌶️  freq-ranks NICHE — same tier as 🦉",
         EXISTING_TAG: "📋  existing — current production word (fallback)",
         JMDICT_TAG: "📕  jmdict — pulled from full JMdict (last resort)",
     }
