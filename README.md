@@ -78,7 +78,7 @@ merged_kanji.json
 missing_components.json
 phonetic_components.json
 scriptin-jmdict-eng.json # From: Jmdict Simplified
-vocab_furigana.json
+vocab_furigana.json      # legacy, no longer read (furigana comes from jmdict-furigana-map)
 vocab_meaning.json
 ```
 

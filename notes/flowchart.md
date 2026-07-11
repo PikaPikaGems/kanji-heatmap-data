@@ -31,8 +31,7 @@ flowchart TD
     B -.writes.-> b1[(overrides/japanese_study_words-algo.json)]
     C -.writes.-> c1[(overrides/kanji_vocab-algo.json
     vocab_meaning-algo.json
-    vocab_reading-algo.json
-    vocab-with-no-furigana.json)]
+    vocab_reading-algo.json)]
     D -.writes.-> d1[(overrides/vocab_furigana-algo.json)]
     E -.writes.-> e1[(overrides/keywords-algo.json
     debug/debug-keywords.json)]
@@ -49,6 +48,12 @@ calls). It is not part of `generate.sh`; see §5.
 (`build_similar_kanjis.py`) has been removed from the repo, but the file still ships
 in the release tarball (listed in `constants.output_files`).
 
+`generate_furigana_algo.py` is the ONLY step that generates furigana. It computes the
+shipped word set itself (same `get_words` logic as the final build) and covers EVERY
+shipped word — like all `-algo` files it is complete and never consults the manual
+overrides. The final build then just merges the two layers (hand-written
+`overrides/vocab_furigana.json` wins) and aborts if a word is in neither.
+
 ---
 
 ## 2. Full data-dependency graph
@@ -58,15 +63,13 @@ flowchart LR
     %% raw inputs
     merged[("🟩 input/merged_kanji.json")]
     remove[("🟩 overrides/kanji_to_remove.json")]
-    v3[("🟩 raw/kanji-words/v3/*")]
+    v3[("🟩 raw/kanji-words/v3c/* — chosen per run
+    by V3_SUBDIR")]
     textbook[("🟩 raw/kanji-textbook-words/* OR
     raw/kanji-textbook-words-min/* — chosen per script
     by USE_TEXT_BOOK_MIN")]
     jmdict[("🟩 input/scriptin-jmdict-eng.json")]
     furimap[("🟩 input/jmdict-furigana-map.json")]
-    aiwords[("🟩 raw/ai-generated/sample-vocab-ai.json")]
-    aimean[("🟩 raw/ai-generated/vocab-meanings-ai.json")]
-    aistudy[("🟩 raw/ai-generated/japanese-study-words-ai.json")]
     jpdbfreq[("🟩 raw/JPDB_FREQUENCY_*.csv")]
     keywordsraw[("🟩 raw/kanji-keywords-{j,w,k}.json")]
     manual[("🟩 raw/manual-inspections.json")]
@@ -88,7 +91,6 @@ flowchart LR
     kv[("🟦 kanji_vocab-algo")]
     vm[("🟦 vocab_meaning-algo")]
     vr[("🟦 vocab_reading-algo")]
-    nofuri[("🟦 vocab-with-no-furigana")]
     vf[("🟦 vocab_furigana-algo")]
     kwalgo[("🟦 keywords-algo")]
     ext[("🟦 vocab_meaning-external-dict")]
@@ -111,8 +113,6 @@ flowchart LR
     v3 --> S2
     textbook --> S2
     jmdict --> S2
-    aimean --> S2
-    aistudy --> S2
     manual --> S2
     furimap --> S2
     S2 --> jsw
@@ -122,13 +122,12 @@ flowchart LR
     textbook --> S3
     jmdict --> S3
     furimap --> S3
-    aiwords --> S3
-    aimean --> S3
     jsw --> S3
     ext --> S3
-    S3 --> kv & vm & vr & nofuri
+    S3 --> kv & vm & vr
 
-    nofuri --> S4
+    filt --> S4
+    kv --> S4
     furimap --> S4
     jmdict --> S4
     vr --> S4
@@ -147,10 +146,8 @@ flowchart LR
     vr --> S6
     vf --> S6
     ext --> S6
-    aimean --> S6
     jsw --> S6
     kwalgo --> S6
-    furimap --> S6
     jmdict --> S6
     S6 --> main & extd & repw & outvf & outvm & compkw
 ```
@@ -206,10 +203,9 @@ flowchart TD
     CONTAINING kanji, shortest first]
     FB --> U2{unused?}
     U2 -- yes --> PICK
-    U2 -- no --> AI[last resort: ai-generated study word]
-    AI --> PICK
+    U2 -- no --> NONE[no study word — null entry]
     PICK --> MEAN[resolve meaning:
-    entry -> jmdict -> scriptin -> ai]
+    entry -> jmdict -> scriptin]
     MEAN --> MAN[apply manual replaceKanjiStudyWords]
     MAN --> DUP{any word maps to 2 kanji?}
     DUP -- yes --> ERR[raise ValueError]
@@ -221,14 +217,12 @@ Up to two SAMPLE words per kanji (kanji can appear anywhere), with reading diver
 
 ```mermaid
 flowchart TD
-    K[for each kanji] --> OV{hand-curated override
-    in sample-vocab-ai.json?}
-    OV -- yes --> RES[use override words] --> EMIT
-    OV -- no --> C[collect v3 + textbook + existing + jmdict
+    K[for each kanji] --> C[collect v3 + textbook + existing + jmdict
     candidates that have a meaning available
-    textbook source: full or -min per USE_TEXT_BOOK_MIN]
+    textbook source: full or -min per TEXTBOOK_SUBDIR]
     C --> S1[first word = best score
-    tier, extra-kanji, length, reading, meaning]
+    proper-noun demotion, then tier, extra-kanji, length, reading, meaning
+    hand-curated picks live in overrides/kanji_vocab.json, applied at BUILD time]
     S1 --> S2[second word = best score
     + bonus for DIFFERENT kanji reading
     only if itself high-frequency]
@@ -254,7 +248,7 @@ whichever source maps they have; the precedence is fixed in the function:
 ```mermaid
 flowchart LR
     w[word] --> R[sources.resolve_meaning]
-    R --> o["common → custom → algo → external → ai → jmdict_full → jsw"]
+    R --> o["common → custom → algo → external → jmdict_full → jsw"]
     o --> m[meaning or None]
 ```
 

@@ -68,7 +68,6 @@ from build_representative_study_word_algo import (
     load_kanji_list,
     load_jmdict_meanings,
     load_scriptin_meanings,
-    load_ai_meanings,
     load_jmdict_readings,
 )
 
@@ -347,12 +346,12 @@ def resolve_reading(word, row, jmdict_readings):
     return ""
 
 
-def resolve_meaning(word, row, jmdict, scriptin, ai_meanings):
+def resolve_meaning(word, row, jmdict, scriptin):
     """The row's inline gloss, else the jmdict / scriptin / ai caches."""
     gloss = row.get(COL_GLOSS, "").strip()
     if gloss:
         return gloss
-    return jmdict.get(word) or scriptin.get(word) or ai_meanings.get(word, "")
+    return jmdict.get(word) or scriptin.get(word) or ""
 
 
 # ---------------------------------------------------------------------------
@@ -364,7 +363,6 @@ def main():
     SHIPPED.update(all_kanji)
     jmdict = load_jmdict_meanings()
     scriptin = load_scriptin_meanings()
-    ai_meanings = load_ai_meanings()
     jmdict_readings = load_jmdict_readings()
 
     result = {}
@@ -377,7 +375,7 @@ def main():
             continue
         word = row[COL_WORD]
         reading = resolve_reading(word, row, jmdict_readings)
-        meaning = resolve_meaning(word, row, jmdict, scriptin, ai_meanings)
+        meaning = resolve_meaning(word, row, jmdict, scriptin)
         tag = TIER_TAG.get(row.get(COL_TIER, ""), DEFAULT_TIER_TAG)
         result[kanji] = [word, reading, meaning, tag]
         used_words.add(word)

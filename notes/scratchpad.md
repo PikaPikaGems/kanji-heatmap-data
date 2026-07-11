@@ -1,4 +1,3 @@
-
 # 1
 I think there is something wrong with your algorithm
 花 → 貨 靴 芯 華 苗 芳 芹 苦 著 蔦

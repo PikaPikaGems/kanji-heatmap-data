@@ -9,9 +9,8 @@ run this by hand only when new words need external meanings.
 
 Resolution order for each missing word:
   1. japanese_study_words-algo.json        (in-memory, no network)
-  2. raw/ai-generated/vocab-meanings-ai.json  (in-memory, no network)
-  3. Jotoba API  (POST /api/search/words)
-  4. Jisho API   (GET  /api/v1/search/words?keyword="word")
+  2. Jotoba API  (POST /api/search/words)
+  3. Jisho API   (GET  /api/v1/search/words?keyword="word")
 
 Saves results to overrides/vocab_meaning-external-dict.json.
 Run from project root: python3 src/fetch_missing_vocab_meanings.py
@@ -23,7 +22,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from sources import resolve_path, load_json, ai_meaning_map, jsw_meaning_map
+from sources import resolve_path, load_json, jsw_meaning_map
 
 DEFINITION_COUNT = 3
 OUT_PATH = "overrides/vocab_meaning-external-dict.json"
@@ -101,10 +100,8 @@ def main():
     jmdict_cache = load_json(JMDICT_CACHE_PATH)
     external_dict = load_json(OUT_PATH)
     jsw_algo = load_json("overrides/japanese_study_words-algo.json")
-    ai_meanings_raw = load_json("raw/ai-generated/vocab-meanings-ai.json")
 
     jsw_word_meanings = jsw_meaning_map(jsw_algo)
-    ai_meanings = ai_meaning_map(ai_meanings_raw)
 
     algo_words = {w for words in kanji_vocab_algo.values() for w in words}
     missing = [
@@ -113,7 +110,6 @@ def main():
         and w not in existing_meanings
         and w not in jmdict_cache
         and w not in external_dict
-        and w not in ai_meanings
     ]
 
     print(f"Words missing meaning: {len(missing)}")

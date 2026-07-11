@@ -2,7 +2,9 @@
 """
 Task: Better Sample Vocabulary
 Selects up to two sample words per kanji and writes overrides/kanji_vocab-algo.json,
-vocab_meaning-algo.json, vocab_reading-algo.json and vocab-with-no-furigana.json.
+vocab_meaning-algo.json and vocab_reading-algo.json. (Furigana for the selected
+words is generated afterwards by src/generate_furigana_algo.py, which computes the
+shipped word set itself.)
 
 Selection rules:
 - Word must be >= 2 characters (hiragana included)
@@ -11,17 +13,19 @@ Selection rules:
 - 2-3 chars ideal (no preference between them); 4 okay; 5 allowed; 6+ not allowed
 - A meaning must be available from some known source — either the candidate's own
   meaning or one of the local dictionaries (input/vocab_meaning.json, jmdict cache,
-  external-dict, ai-generated, japanese_study_words-algo). Words with no definition
+  external-dict, japanese_study_words-algo). Words with no definition
   anywhere are never selected.
+- A dictionary reading must exist (furigana map, or JMdict whole-word / per-span) —
+  v3 corpus phrase fragments like 犬五匹 or 森様御夫妻 that would ship bare furigana
+  are ignored as if they didn't exist (see has_dictionary_reading).
 
 Kanji listed in overrides/kanji_to_remove.json are skipped entirely.
 
 Source priority (lower tier wins; ties broken by fewer kanji → length band [2-3
 ideal, 4 ok, 5 max] → has-reading → has-meaning → shorter overall [2 beats 3]).
-Hand-curated overrides bypass
-selection; the two fallbacks only fill a slot when no v3/textbook candidate exists
-and never displace a primary word:
-  -1. hand-curated overrides    raw/ai-generated/sample-vocab-ai.json
+Hand-curated picks live in overrides/kanji_vocab.json and win at BUILD time
+(build_helpers.get_words), not here. The two fallbacks only fill a slot when no
+v3/textbook candidate exists and never displace a primary word:
    0. v3 words tagged 🌱        (most frequent band; beats ☘️ even with more kanji)
    1. v3 words tagged ☘️
    2. v3 words tagged 🌷
@@ -51,22 +55,28 @@ Phrase exclusion: words where a grammatical particle (て で に を が は �
 between two kanji sequences are treated as verbal phrases and excluded, so true
 compound words are preferred over phrases like 診て貰う.
 
+Proper-noun demotion: place names, personal names, companies and era names
+(北京, 佐藤, 講談社, 嘉永) score below every ordinary word regardless of frequency
+tier — they teach a label rather than vocabulary, and JmdictFurigana deliberately
+excludes name readings so their furigana is unreliable. They are demoted, not
+banned: a kanji whose only real usage IS names (媛 → 愛媛県, 浩 → 浩二) still gets
+one. Detection is heuristic — JMdict tags most famous places as plain nouns — via
+gloss patterns ("(city", "surname", " era (", …) and katakana readings on all-kanji
+words (北京 → ペキン).
+
 Sources:
   input/filtered_kanji.json                → [kanji]  (the kanji set to process)
-  raw/ai-generated/sample-vocab-ai.json    → {kanji: [word, ...]}   (overrides)
   raw/kanji-words/v3/[kanji].json          → [{w, r, t, j?, k?, e}]
   raw/kanji-textbook-words/[kanji].json    → {kanji: {word: [reading, meaning]}}
   input/kanji_vocab.json                   → {kanji: [word, ...]}   (existing fallback)
   input/scriptin-jmdict-eng.json           → JMdict                 (jmdict fallback)
   input/jmdict-furigana-map.json           → {word: {reading: segments}}  (readings)
-  input/vocab_furigana.json                → {word: segments}  (which words still need furigana)
   Meaning sources (a word is eligible only if one has its meaning):
     input/vocab_meaning.json, input/jmdict-vocab-meaning.json,
-    overrides/vocab_meaning-external-dict.json, raw/ai-generated/vocab-meanings-ai.json,
-    overrides/japanese_study_words-algo.json
+    overrides/vocab_meaning-external-dict.json, overrides/japanese_study_words-algo.json
 
 Outputs (overrides/): kanji_vocab-algo.json, vocab_meaning-algo.json,
-  vocab_reading-algo.json, vocab-with-no-furigana.json
+  vocab_reading-algo.json
 
 Run from the project root: python3 src/algorithmic_kanji_vocab_overrides.py
 """
@@ -82,11 +92,8 @@ from sources import (
     v3_candidates,
     textbook_candidates,
     TEXTBOOK_TAG,
-    resolve_meaning,
-    ai_meaning_map,
-    jsw_meaning_map,
 )
-from japanese import is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments
+from japanese import is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments, segment_word
 
 # NOTE: word_score / is_valid_candidate here intentionally differ from the
 # same-named functions in build_representative_study_word_algo.py — this algorithm
@@ -95,12 +102,10 @@ from japanese import is_all_japanese, is_kanji_char, kanji_count, reading_of_kan
 
 EXISTING_TAG = '__existing__'
 JMDICT_TAG = '__jmdict__'
-OVERRIDE_TAG = '__override__'
 
 PHRASE_PARTICLES = set('てでにをがはもへと')
 
 TAG_PRIORITY = {
-    OVERRIDE_TAG: -1,  # hand-curated picks (sample-vocab-ai.json): always win
     '🌱': 0,           # most frequent band — strictly preferred over ☘️
     '☘️': 1,
     '🌷': 2,
@@ -145,7 +150,6 @@ def _fmt_tag(tag):
         TEXTBOOK_TAG: "📖",
         EXISTING_TAG: "📋",
         JMDICT_TAG: "📕",
-        OVERRIDE_TAG: "📝",
     }.get(tag, tag)
 
 
@@ -197,10 +201,78 @@ def has_phrase_bridge(word):
 # unshipped partner (玉 → 玉葱[葱 unshipped]) when an all-shipped option exists.
 SHIPPED = set()
 
+# Words the furigana step (generate_furigana_algo.py) can actually read; populated
+# in main(). FURIGANA_MAP_WORDS = keys of input/jmdict-furigana-map.json;
+# READABLE_FORMS = every JMdict kanji form that has a kana reading. A candidate
+# readable by neither route would ship bare [[word]] furigana (v3 corpus phrase
+# fragments like 犬五匹, 森様御夫妻), so it is ignored as if it didn't exist.
+FURIGANA_MAP_WORDS = set()
+READABLE_FORMS = set()
+
+
+def has_dictionary_reading(word):
+    """True if a real reading exists for `word` somewhere the furigana generator
+    looks: the furigana map, a whole-word JMdict kana form, or — mirroring the
+    per-span fallback — a JMdict kana form for every kanji span (必須の → 必須+の)."""
+    if word in FURIGANA_MAP_WORDS or word in READABLE_FORMS:
+        return True
+    return all(
+        not is_kanji_span or text in READABLE_FORMS
+        for text, is_kanji_span in segment_word(word)
+    )
+
 
 def has_nonshipped_kanji(word):
     """1 if `word` contains a kanji we don't ship, else 0 (sorts all-shipped first)."""
     return 1 if any(is_kanji_char(c) and c not in SHIPPED for c in word) else 0
+
+
+# Gloss fragments that mark a proper noun. JMdict tags most famous places as plain
+# nouns, so detection has to lean on how their glosses are written: geography and
+# name entries carry parenthesised annotations ("Nara (city, prefecture)",
+# "Satô (surname)", "Kaei era (1848...)", "Kodansha (publisher)").
+PROPER_NOUN_GLOSS_FRAGMENTS = (
+    'surname', 'given name', 'place name', 'family name',
+    '(city', 'city in', 'City)', '(prefecture', 'prefecture)', 'Prefecture',
+    '(province', 'former province', 'province)', '(country', '(district',
+    '(island', 'ward of', '(region',
+    ' era (', 'era name', 'Emperor ',
+    '(company', 'company)', '(publisher', 'publisher)', '(organization',
+    'organisation)', 'conglomerate', '(manufacturer', 'manufacturing company',
+    '(deity', '(god of', 'Bodhisattva',
+    '(China)', '(Japan)', '(South Korea)', '(North Korea)', '(UK)', '(USA)',
+    '(France)', '(Germany)', '(Russia)', '(Taiwan)', '(Brazil)', '(Bulgaria)',
+)
+# Deliberately NOT flagged: bare country-name glosses ("Japan", "South Korea",
+# "Taiwan") — words like 日本/韓国/台湾 are legitimate everyday vocabulary. The
+# parenthesised forms above only catch entries where the country is an annotation
+# on a foreign place name ("Busan (South Korea)").
+
+# Resolved gloss per word for proper-noun detection; populated in main(). Needed
+# because v3/textbook candidate entries often carry a bare gloss ("Shinano") while
+# the dictionaries' richer one ("Shinano (former province ...)") is what reveals
+# the name-ness. Module-level for word_score's sake, like SHIPPED above.
+PN_GLOSS_LOOKUP = {}
+
+
+def is_proper_noun(word, e="", r=""):
+    """1 if the candidate looks like a proper noun (place, person, company, era).
+
+    Two heuristic signals: gloss fragments (candidate's own gloss plus the resolved
+    dictionary gloss), and a katakana reading on an all-kanji word (北京 → ペキン),
+    which marks foreign place names. Heuristic by necessity — JMdict has no
+    reliable tag for these (北京/奈良 are tagged plain 'n').
+    """
+    for gloss in (e, PN_GLOSS_LOOKUP.get(word)):
+        if gloss and any(frag in gloss for frag in PROPER_NOUN_GLOSS_FRAGMENTS):
+            return 1
+    if (
+        r and r != '-'
+        and all(is_kanji_char(c) for c in word)
+        and all('ァ' <= c <= 'ヶ' or c == 'ー' for c in r)
+    ):
+        return 1
+    return 0
 
 
 def word_score(word, tag, e="", r=""):
@@ -212,12 +284,14 @@ def word_score(word, tag, e="", r=""):
     length_penalty = 0 if n <= 3 else (1 if n == 4 else 2)  # 2-3 ideal, 4 okay, 5 allowed
     no_reading_penalty = 0 if (r and r != '-') else 1
     no_meaning_penalty = 0 if e else 1
+    # Proper nouns lead the tuple: they lose to ANY ordinary word, whatever the
+    # tier, and are picked only when a kanji has nothing else (媛 → 愛媛県).
     # all_shipped (has_nonshipped) is a LATE tiebreaker — after tier, kanji-count,
     # length, reading and meaning — so an all-shipped word is preferred only among
     # otherwise-equal candidates (玉葱☘️ → 玉子☘️). A kanji whose only good word has an
     # unshipped partner keeps it rather than dropping to a structurally worse word.
-    return (ts, extra_kanji, length_penalty, no_reading_penalty, no_meaning_penalty,
-            has_nonshipped_kanji(word), n)
+    return (is_proper_noun(word, e, r), ts, extra_kanji, length_penalty,
+            no_reading_penalty, no_meaning_penalty, has_nonshipped_kanji(word), n)
 
 
 def is_valid_candidate(word, kanji):
@@ -270,19 +344,26 @@ def _pick_reading(kana_list, form_text):
 def build_jmdict_candidate_index(target_kanji):
     """Index JMdict (input/scriptin-jmdict-eng.json) as a fallback candidate source.
 
-    Returns (index, word_meaning):
+    Returns (index, word_meaning, readable_forms):
       index        {kanji: [(word, reading, JMDICT_TAG, meaning), ...]} for every
                    >=2-char JMdict word containing a target kanji. Search-only (sK)
                    and ateji forms are skipped. Rescues rare kanji whose only real
                    vocabulary lives in the full dictionary (楠 → 石楠花, 凜 → 凜々).
-      word_meaning {word: meaning} for every JMdict form, used to resolve meanings
-                   for hand-curated override words that aren't in the local caches.
+      word_meaning {word: meaning} for every JMdict form (kept for callers that
+                   need to resolve meanings outside the index).
+      readable_forms  every kanji form that has a kana reading (gloss or not) —
+                   feeds READABLE_FORMS / has_dictionary_reading.
     """
     data = load_json('input/scriptin-jmdict-eng.json', {})
     index = {}
     word_meaning = {}
+    readable_forms = set()
     seen = {}  # kanji -> set of words already added (dedupe across entries)
     for entry in data.get('words', []):
+        if entry.get('kana'):
+            readable_forms.update(
+                k.get('text', '') for k in entry.get('kanji', [])
+            )
         if jmdict_entry_gloss(entry) is None:  # entry has no English gloss at all
             continue
         kana_list = entry.get('kana', [])
@@ -307,7 +388,8 @@ def build_jmdict_candidate_index(target_kanji):
                         continue
                     bucket.add(text)
                     index.setdefault(ch, []).append((text, reading, JMDICT_TAG, meaning))
-    return index, word_meaning
+    readable_forms.discard('')
+    return index, word_meaning, readable_forms
 
 
 def kanji_reading_in_word(kanji, word, word_reading, furigana_map):
@@ -385,7 +467,8 @@ def _gather_sorted_candidates(kanji, known_meaning_words, existing_kanji_vocab, 
 
     candidates = [
         c for c in (v3 + textbook + existing + jmdict)
-        if c[3] or c[0] in known_meaning_words  # c[3] = own meaning, c[0] = word
+        if (c[3] or c[0] in known_meaning_words)  # c[3] = own meaning, c[0] = word
+        and has_dictionary_reading(c[0])  # unreadable corpus fragments don't exist
     ]
 
     best_by_word = {}
@@ -402,17 +485,19 @@ def _make_second_score(kanji, first, first_reading, furigana_map):
     first_kanji_set = {ch for ch in first[0] if is_kanji_char(ch)}
 
     def second_score(entry):
-        ws = word_score(entry[0], entry[2], entry[3], entry[1])
+        ws = word_score(entry[0], entry[2], entry[3], entry[1])  # ws[0] = proper-noun flag
         shared = len(first_kanji_set & {ch for ch in entry[0] if is_kanji_char(ch)})
         cand_reading = kanji_reading_in_word(kanji, entry[0], entry[1], furigana_map)
-        high_band = ws[0] <= HIGH_FREQ_TIER_MAX
+        high_band = TAG_PRIORITY.get(entry[2], DEFAULT_TAG_PRIORITY) <= HIGH_FREQ_TIER_MAX
         different_reading = (
             first_reading is not None
             and cand_reading is not None
             and not readings_equivalent(cand_reading, first_reading)
         )
         reading_bonus = 0 if (high_band and different_reading) else 1
-        return (reading_bonus, shared) + ws
+        # The proper-noun flag stays in front: reading-diversity credit must not
+        # rescue a name (済州 offering さい never beats an ordinary same-reading word).
+        return (ws[0], reading_bonus, shared) + ws[1:]
 
     return second_score
 
@@ -438,6 +523,8 @@ def _pick_second_word(kanji, first, first_reading, all_candidates, furigana_map,
             if TAG_PRIORITY.get(e[2], DEFAULT_TAG_PRIORITY) > EXTENDED_TIER_MAX:
                 continue
             if is_redundant_pair(first[0], e[0]):
+                continue
+            if is_proper_noun(e[0], e[3], e[1]):  # a name never rescues diversity (信じる → 信濃)
                 continue
             cand_reading = kanji_reading_in_word(kanji, e[0], e[1], furigana_map)
             if cand_reading is not None and not readings_equivalent(cand_reading, first_reading):
@@ -528,9 +615,6 @@ def main():
     with open(resolve_path('input/vocab_meaning.json'), encoding='utf-8') as f:
         existing_meanings = json.load(f)
 
-    with open(resolve_path('input/vocab_furigana.json'), encoding='utf-8') as f:
-        existing_furigana = json.load(f)
-
     with open(resolve_path('input/kanji_vocab.json'), encoding='utf-8') as f:
         existing_kanji_vocab = json.load(f)
     existing_vocab_words = set(w for words in existing_kanji_vocab.values() for w in words)
@@ -540,7 +624,6 @@ def main():
     # (excluding this script's own output), so afterward nothing should be missing.
     jmdict_cache  = load_json('input/jmdict-vocab-meaning.json', {})
     external_dict = load_json('overrides/vocab_meaning-external-dict.json', {})
-    ai_meanings   = load_json('raw/ai-generated/vocab-meanings-ai.json', {})
     jsw_algo      = load_json('overrides/japanese_study_words-algo.json', {})
     jsw_words = {
         entry[0] for entry in jsw_algo.values()
@@ -548,54 +631,35 @@ def main():
     }
     known_meaning_words = (
         set(existing_meanings) | set(jmdict_cache) | set(external_dict)
-        | set(ai_meanings) | jsw_words
+        | jsw_words
     )
 
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
-    jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(set(all_kanji))
+    jmdict_index, jmdict_word_meanings, readable_forms = build_jmdict_candidate_index(set(all_kanji))
+    READABLE_FORMS.update(readable_forms)
 
-    # Per-kanji furigana, used to give the second word a different reading.
+    # Resolved glosses for proper-noun detection: JMdict's full gloss is the most
+    # revealing ("Shinano (former province ...)"), so it overlays the local caches.
+    # Non-string values (structured ai/external entries) are skipped.
+    for gloss_src in (existing_meanings, external_dict, jmdict_cache, jmdict_word_meanings):
+        PN_GLOSS_LOOKUP.update(
+            (w, m) for w, m in gloss_src.items() if isinstance(m, str)
+        )
+
+    # Per-kanji furigana, used to give the second word a different reading and to
+    # know which words the furigana step can read at all.
     furigana_map = load_json('input/jmdict-furigana-map.json', {})
-
-    # Hand-curated overrides take precedence for kanji the algorithm picks badly
-    # (e.g. 族 → ながら族/ローラー族). Format: {kanji: [word, ...]} (1-2 words);
-    # reading and meaning are resolved from the furigana map and dictionaries below.
-    sample_overrides = load_json('raw/ai-generated/sample-vocab-ai.json', {})
-    ai_meanings_map = ai_meaning_map(ai_meanings)
-    jsw_meanings = jsw_meaning_map(jsw_algo)
-
-    def resolve_override(words):
-        # Meaning precedence lives in sources.resolve_meaning so it matches the
-        # final build (kanji_load.dump_all_vocab_meanings) exactly.
-        resolved = []
-        for w in words:
-            reading = next(iter(furigana_map.get(w, {})), '')
-            meaning = resolve_meaning(
-                w,
-                common=jmdict_cache,
-                custom=existing_meanings,
-                external=external_dict,
-                ai=ai_meanings_map,
-                jmdict_full=jmdict_word_meanings,
-                jsw=jsw_meanings,
-            ) or ''
-            resolved.append((w, reading, OVERRIDE_TAG, meaning))
-        return resolved
+    FURIGANA_MAP_WORDS.update(furigana_map)
 
     kanji_vocab_result = {}
     vocab_meaning_result = {}
     vocab_reading_result = {}
-    no_furigana_words = []
-    no_furigana_seen = set()
 
     selected_all = []  # (word, tag, kanji) for stats
     replace_logs = []
 
     for kanji in all_kanji:
-        if kanji in sample_overrides:
-            selected = resolve_override(sample_overrides[kanji])
-        else:
-            selected = select_vocab_for_kanji(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, jmdict_index, furigana_map, replace_logs)
+        selected = select_vocab_for_kanji(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, jmdict_index, furigana_map, replace_logs)
         if not selected:
             continue
 
@@ -607,9 +671,6 @@ def main():
                 vocab_reading_result[w] = r
             if e and w not in existing_meanings:
                 vocab_meaning_result[w] = e
-            if w not in existing_furigana and w not in no_furigana_seen:
-                no_furigana_words.append(w)
-                no_furigana_seen.add(w)
 
     _print_replace_logs(replace_logs)
 
@@ -620,7 +681,6 @@ def main():
     write_and_report('overrides/kanji_vocab-algo.json', kanji_vocab_result)
     write_and_report('overrides/vocab_meaning-algo.json', vocab_meaning_result)
     write_and_report('overrides/vocab_reading-algo.json', vocab_reading_result)
-    write_and_report('overrides/vocab-with-no-furigana.json', no_furigana_words)
 
     print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words)
 
@@ -647,7 +707,6 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
         "🌶️": "🌶️  v3 — niche, same tier as 🌶️ rare",
         EXISTING_TAG: "📋  existing — current production word (fallback)",
         JMDICT_TAG: "📕  jmdict — pulled from full JMdict (last resort)",
-        OVERRIDE_TAG: "📝  override — hand-curated pick",
     }
     from collections import Counter
 

@@ -13,7 +13,7 @@ import os
 # experimental sibling (e.g. "v3b") without touching the readers — mirrors the
 # folder switch the textbook reader exposes via TEXTBOOK_SUBDIR. Override per-run
 # with the V3_SUBDIR env var (e.g. for batch comparison builds).
-V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3c")  # v3b, v3
+V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3c")  # v3c, v3b, v3
 
 # Default textbook word-pool folder under raw/. Callers can swap it for the full set
 # ("kanji-textbook-words") or an experimental sibling without touching the readers —
@@ -166,7 +166,6 @@ def jmdict_entry_gloss(entry, word=None, definition_count=3):
 #   custom   hand-curated input/vocab_meaning.json + overrides/vocab_meaning.json
 #   algo     overrides/vocab_meaning-algo.json (sample-vocab algorithm output)
 #   external overrides/vocab_meaning-external-dict.json (Jotoba/Jisho cache)
-#   ai       raw/ai-generated/vocab-meanings-ai.json
 #   jmdict_full  any JMdict form (broader than `common`) — gap-filler
 #   jsw      japanese_study_words-algo meanings — gap-filler
 
@@ -178,29 +177,18 @@ def resolve_meaning(
     custom=None,
     algo=None,
     external=None,
-    ai=None,
     jmdict_full=None,
     jsw=None,
 ):
     """First available meaning for `word` across the given source maps, in the fixed
     precedence above. Each argument is a {word: meaning} dict or None. Returns None
     when no source has a (non-empty) meaning."""
-    for src in (common, custom, algo, external, ai, jmdict_full, jsw):
+    for src in (common, custom, algo, external, jmdict_full, jsw):
         if src:
             meaning = src.get(word)
             if meaning:
                 return meaning
     return None
-
-
-def ai_meaning_map(ai_raw):
-    """Normalize raw/ai-generated/vocab-meanings-ai.json ({word: [meaning, ...]} or
-    {word: meaning}) to a flat {word: meaning} map."""
-    return {
-        w: (v[0] if isinstance(v, list) else v)
-        for w, v in ai_raw.items()
-        if (v[0] if isinstance(v, list) else v)
-    }
 
 
 def jsw_meaning_map(jsw_algo):

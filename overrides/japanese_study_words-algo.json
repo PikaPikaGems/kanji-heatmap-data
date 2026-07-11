@@ -690,9 +690,9 @@
     "🌱"
   ],
   "覧": [
-    "御覧",
-    "ごらん",
-    "(please) try to",
+    "一覧",
+    "いちらん",
+    "a glance, a reading; synopsis",
     "📖"
   ],
   "先": [
@@ -2742,10 +2742,10 @@
     "🌱"
   ],
   "識": [
-    "識",
-    "しき",
-    "acquaintanceship",
-    "📚"
+    "識別",
+    "しきべつ",
+    "distinction, discrimination, discernment",
+    "📖"
   ],
   "建": [
     "建てる",
@@ -6055,10 +6055,10 @@
     "🌱"
   ],
   "督": [
-    "督促",
-    "とくそく",
-    "urge; demand; importunity",
-    "📚"
+    "督励",
+    "とくれい",
+    "encouragement, urging",
+    "📖"
   ],
   "辛": [
     "辛い",
@@ -6253,10 +6253,10 @@
     "☘️"
   ],
   "慢": [
-    "慢性",
-    "まんせい",
-    "chronic (illness)",
-    "📚"
+    "慢性の",
+    "まんせいの",
+    "chronic",
+    "📖"
   ],
   "那": [
     "那覇",
@@ -6739,9 +6739,9 @@
     "🌱"
   ],
   "郡": [
-    "郡",
-    "ぐん",
-    "district; county",
+    "郡部",
+    "ぐんぶ",
+    "counties; rural districts",
     "📖"
   ],
   "腕": [
@@ -7067,7 +7067,7 @@
     "閲覧",
     "えつらん",
     "inspection; reading; perusal",
-    "📖"
+    "📚"
   ],
   "句": [
     "句",
@@ -7145,7 +7145,7 @@
     "湾",
     "わん",
     "bay; gulf; inlet",
-    "📖"
+    "📚"
   ],
   "炎": [
     "炎",
@@ -7287,9 +7287,9 @@
   ],
   "龍": null,
   "械": [
-    "機械",
+    "器械",
     "きかい",
-    "machine, mechanism",
+    "instrument, apparatus, appliance",
     "📖"
   ],
   "腰": [
@@ -7559,7 +7559,7 @@
   "践": [
     "実践",
     "じっせん",
-    "practice; putting into practice; implementation",
+    "practice, putting into practice, implementation",
     "📖"
   ],
   "衝": [
@@ -8105,8 +8105,8 @@
   "羅": [
     "羅列",
     "られつ",
-    "enumeration; citation; listing",
-    "📚"
+    "enumeration, citation, listing",
+    "📖"
   ],
   "粒": [
     "粒",
@@ -9424,15 +9424,15 @@
     "🌱"
   ],
   "殖": [
-    "殖える",
-    "ふえる",
-    "to increase; to multiply",
+    "殖民",
+    "しょくみん",
+    "colonization",
     "📖"
   ],
   "穫": [
     "収穫",
     "しゅうかく",
-    "harvest; crop; ingathering",
+    "harvest, crop, ingathering",
     "📖"
   ],
   "紛": [
@@ -9954,9 +9954,9 @@
     "🌷"
   ],
   "附": [
-    "附属",
-    "ふぞく",
-    "being attached (to); being affiliated (to); belonging (to); going with",
+    "附随",
+    "ふずい",
+    "incident to, concomitant",
     "📖"
   ],
   "蘭": [
@@ -9996,9 +9996,9 @@
     "🌷"
   ],
   "蓮": [
-    "蓮",
-    "はす",
-    "sacred lotus (Nelumbo nucifera); Indian lotus; lotus",
+    "蓮の根",
+    "はすのね",
+    "lotus root",
     "📖"
   ],
   "肢": [
@@ -10111,9 +10111,9 @@
     "📚"
   ],
   "昧": [
-    "曖昧",
-    "あいまい",
-    "vague; ambiguous; unclear",
+    "曖昧な",
+    "あいまいな",
+    "unclear, vague, equivocal",
     "📖"
   ],
   "戒": [
@@ -10327,9 +10327,9 @@
     "✏️"
   ],
   "傍": [
-    "傍ら",
-    "かたわら",
-    "side; edge; beside; besides; nearby",
+    "傍に",
+    "そばに",
+    "by the side of",
     "📖"
   ],
   "壇": [
@@ -10797,9 +10797,9 @@
     "📖"
   ],
   "僧": [
-    "僧",
-    "そう",
-    "monk; priest",
+    "僧侶",
+    "そうりょ",
+    "Buddhist monk",
     "📖"
   ],
   "剰": [
@@ -10917,9 +10917,9 @@
     "🌷"
   ],
   "朴": [
-    "素朴",
-    "そぼく",
-    "simple; artless; naive; unsophisticated",
+    "朴直な",
+    "ぼくちょくな",
+    "simple and honest, artless, naïve",
     "📖"
   ],
   "銅": [
@@ -10995,9 +10995,9 @@
     "📖"
   ],
   "吟": [
-    "吟味",
-    "ぎんみ",
-    "close examination; careful investigation; close inspection; careful selection; inquiry; enquiry; scrutiny; testing",
+    "吟詠",
+    "ぎんえい",
+    "reciting [chanting] a poem; poem",
     "📖"
   ],
   "寮": [
@@ -11194,16 +11194,16 @@
     "☘️"
   ],
   "耗": [
-    "消耗",
-    "しょうもう",
-    "exhaustion; consumption; using up; dissipation; waste",
+    "損耗",
+    "そんもう",
+    "wear and tear, deterioration",
     "📖"
   ],
   "膳": [
     "膳",
     "ぜん",
     "small dining table (usu. for a single person); serving tray (with legs)",
-    "📖"
+    "📚"
   ],
   "柿": [
     "柿",
@@ -11242,9 +11242,9 @@
     "☘️"
   ],
   "艶": [
-    "艶",
-    "つや",
-    "gloss; luster; lustre; shine; sheen; polish",
+    "艶かしい",
+    "なまめかしい",
+    "charming; voluptuous",
     "📖"
   ],
   "謙": [
@@ -11278,9 +11278,9 @@
     "🌷"
   ],
   "碁": [
-    "碁",
-    "ご",
-    "go (board game)",
+    "碁盤",
+    "ごばん",
+    "<go> board, checkerboard",
     "📖"
   ],
   "孔": [
@@ -11398,9 +11398,9 @@
     "📚"
   ],
   "紺": [
-    "紺",
-    "こん",
-    "navy blue; deep blue",
+    "紺色",
+    "こんいろ",
+    "dark blue, navy blue",
     "📖"
   ],
   "擬": [
@@ -11641,8 +11641,8 @@
   "伐": [
     "伐採",
     "ばっさい",
-    "felling timber; cutting down trees; logging",
-    "📚"
+    "felling timber, cutting down trees, logging",
+    "📖"
   ],
   "詠": [
     "詠唱",
@@ -11651,9 +11651,9 @@
     "📖"
   ],
   "盲": [
-    "盲点",
-    "もうてん",
-    "blind spot (on the retina)",
+    "盲目",
+    "もうもく",
+    "blindness",
     "📖"
   ],
   "款": [
@@ -11669,9 +11669,9 @@
     "🌷"
   ],
   "廷": [
-    "法廷",
-    "ほうてい",
-    "court of law",
+    "廷内で",
+    "ていないで",
+    "in the court",
     "📖"
   ],
   "藻": [
@@ -11717,9 +11717,9 @@
     "🌷"
   ],
   "胴": [
-    "胴",
-    "どう",
-    "trunk; torso; body; abdomen; waist",
+    "胴体",
+    "どうたい",
+    "trunk, torso, hull",
     "📖"
   ],
   "駿": [
@@ -11801,10 +11801,10 @@
     "📖"
   ],
   "曖": [
-    "曖昧さ",
-    "あいまいさ",
-    "ambiguity",
-    "🌶️"
+    "曖昧",
+    "あいまい",
+    "vague; ambiguous; unclear",
+    "☘️"
   ],
   "汎": [
     "汎米",
@@ -11999,9 +11999,9 @@
     "📚"
   ],
   "醒": [
-    "醒める",
-    "さめる",
-    "[vi] wake up",
+    "醒す",
+    "さます",
+    "[vt] wake up",
     "📖"
   ],
   "宵": [
@@ -12330,9 +12330,9 @@
     "🌷"
   ],
   "慨": [
-    "憤慨",
-    "ふんがい",
-    "resentment, indignation",
+    "慨嘆",
+    "がいたん",
+    "deploring, lamentation, regret",
     "📖"
   ],
   "嗣": [
@@ -12397,9 +12397,9 @@
     "☘️"
   ],
   "萎": [
-    "萎む",
-    "しぼむ",
-    "to wither (of flowers, dreams, etc.); to wilt; to droop; to shrivel; to fade (away); to sag; to deflate",
+    "萎える",
+    "なえる",
+    "wilt, wither, weaken",
     "📖"
   ],
   "乞": [
@@ -12423,7 +12423,7 @@
   "剖": [
     "解剖",
     "かいぼう",
-    "dissection; autopsy; postmortem examination",
+    "dissection, autopsy, postmortem examination",
     "📖"
   ],
   "禄": [
@@ -12547,9 +12547,9 @@
     "📖"
   ],
   "享": [
-    "享受",
-    "きょうじゅ",
-    "enjoyment (of freedom, beauty, etc.); reception (of a right, privilege, rank, etc.); having",
+    "享年",
+    "きょうねん",
+    "age at death",
     "📖"
   ],
   "后": [
@@ -12643,9 +12643,9 @@
     "📖"
   ],
   "濫": [
-    "濫用",
-    "らんよう",
-    "abuse; misuse; misappropriation; using to excess",
+    "濫費",
+    "らんぴ",
+    "extravagant spending",
     "📖"
   ],
   "塀": [
@@ -12826,8 +12826,8 @@
   "倣": [
     "倣う",
     "ならう",
-    "to imitate; to follow; to copy; to emulate",
-    "📖"
+    "to imitate; to follow; to copy",
+    "📚"
   ],
   "庸": [
     "庸才",
@@ -12854,9 +12854,9 @@
     "🌷"
   ],
   "淫": [
-    "淫欲",
-    "いんよく",
-    "lust",
+    "淫らな",
+    "みだらな",
+    "lewd, indecent",
     "📖"
   ],
   "寡": [
@@ -12988,8 +12988,8 @@
   "氾": [
     "氾濫",
     "はんらん",
-    "overflowing; flood; inundation; deluge",
-    "📖"
+    "overflowing; flood; inundation",
+    "📚"
   ],
   "訃": [
     "訃報",
