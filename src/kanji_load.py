@@ -42,7 +42,6 @@ IN_VOCAB_MEANING_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_meaning.json"
 )
 IN_VOCAB_MEANING_ALGO_PATH = os.path.join(const.dir_overrides, "vocab_meaning-algo.json")
-IN_VOCAB_MEANING_EXTERNAL_DICT_PATH = os.path.join(const.dir_overrides, "vocab_meaning-external-dict.json")
 IN_JAPANESE_STUDY_WORDS_ALGO_PATH = os.path.join(
     const.dir_overrides, "japanese_study_words-algo.json"
 )
@@ -325,9 +324,6 @@ def dump_all_vocab_meanings(all_words):
     meaning_source_algo: dict[str, str] = utils.get_data_from_file(
         IN_VOCAB_MEANING_ALGO_PATH
     )
-    meaning_source_external_dict: dict[str, str] = utils.get_data_from_file(
-        IN_VOCAB_MEANING_EXTERNAL_DICT_PATH
-    )
     meaning_source_custom.update(meaning_source_overrides)
 
     # Build word → kanji reverse map for diagnostics
@@ -355,7 +351,6 @@ def dump_all_vocab_meanings(all_words):
             common=meaning_source_common,
             custom=meaning_source_custom,
             algo=meaning_source_algo,
-            external=meaning_source_external_dict,
         )
         if not meaning:
             not_found.append(word)

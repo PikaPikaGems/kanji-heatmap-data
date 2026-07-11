@@ -165,7 +165,6 @@ def jmdict_entry_gloss(entry, word=None, definition_count=3):
 #   common   jmdict common-form meanings (input/jmdict-vocab-meaning.json)
 #   custom   hand-curated input/vocab_meaning.json + overrides/vocab_meaning.json
 #   algo     overrides/vocab_meaning-algo.json (sample-vocab algorithm output)
-#   external overrides/vocab_meaning-external-dict.json (Jotoba/Jisho cache)
 #   jmdict_full  any JMdict form (broader than `common`) — gap-filler
 #   jsw      japanese_study_words-algo meanings — gap-filler
 
@@ -176,14 +175,13 @@ def resolve_meaning(
     common=None,
     custom=None,
     algo=None,
-    external=None,
     jmdict_full=None,
     jsw=None,
 ):
     """First available meaning for `word` across the given source maps, in the fixed
     precedence above. Each argument is a {word: meaning} dict or None. Returns None
     when no source has a (non-empty) meaning."""
-    for src in (common, custom, algo, external, jmdict_full, jsw):
+    for src in (common, custom, algo, jmdict_full, jsw):
         if src:
             meaning = src.get(word)
             if meaning:

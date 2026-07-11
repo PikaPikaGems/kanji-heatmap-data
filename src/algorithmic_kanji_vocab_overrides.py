@@ -13,8 +13,7 @@ Selection rules:
 - 2-3 chars ideal (no preference between them); 4 okay; 5 allowed; 6+ not allowed
 - A meaning must be available from some known source — either the candidate's own
   meaning or one of the local dictionaries (input/vocab_meaning.json, jmdict cache,
-  external-dict, japanese_study_words-algo). Words with no definition
-  anywhere are never selected.
+  japanese_study_words-algo). Words with no definition anywhere are never selected.
 - A dictionary reading must exist (furigana map, or JMdict whole-word / per-span) —
   v3 corpus phrase fragments like 犬五匹 or 森様御夫妻 that would ship bare furigana
   are ignored as if they didn't exist (see has_dictionary_reading).
@@ -73,7 +72,7 @@ Sources:
   input/jmdict-furigana-map.json           → {word: {reading: segments}}  (readings)
   Meaning sources (a word is eligible only if one has its meaning):
     input/vocab_meaning.json, input/jmdict-vocab-meaning.json,
-    overrides/vocab_meaning-external-dict.json, overrides/japanese_study_words-algo.json
+    overrides/japanese_study_words-algo.json
 
 Outputs (overrides/): kanji_vocab-algo.json, vocab_meaning-algo.json,
   vocab_reading-algo.json
@@ -623,15 +622,13 @@ def main():
     # Words missing from all of these fall back to the word itself in the final
     # build, which prints them in its "Word meaning Not Found" report.
     jmdict_cache  = load_json('input/jmdict-vocab-meaning.json', {})
-    external_dict = load_json('overrides/vocab_meaning-external-dict.json', {})
     jsw_algo      = load_json('overrides/japanese_study_words-algo.json', {})
     jsw_words = {
         entry[0] for entry in jsw_algo.values()
         if entry and len(entry) >= 3 and entry[2]
     }
     known_meaning_words = (
-        set(existing_meanings) | set(jmdict_cache) | set(external_dict)
-        | jsw_words
+        set(existing_meanings) | set(jmdict_cache) | jsw_words
     )
 
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
@@ -640,8 +637,8 @@ def main():
 
     # Resolved glosses for proper-noun detection: JMdict's full gloss is the most
     # revealing ("Shinano (former province ...)"), so it overlays the local caches.
-    # Non-string values (structured ai/external entries) are skipped.
-    for gloss_src in (existing_meanings, external_dict, jmdict_cache, jmdict_word_meanings):
+    # Non-string values (structured entries) are skipped.
+    for gloss_src in (existing_meanings, jmdict_cache, jmdict_word_meanings):
         PN_GLOSS_LOOKUP.update(
             (w, m) for w, m in gloss_src.items() if isinstance(m, str)
         )

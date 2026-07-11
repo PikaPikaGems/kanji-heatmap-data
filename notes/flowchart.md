@@ -79,8 +79,8 @@ flowchart LR
     SK[algorithmic_overrides_keywords]
     S6[kanji_build_output_jsons]
 
-    %% intermediate files — all script-written: input/filtered_kanji.json, the
-    %% -algo.json overrides, and the external-dict cache. The hand-written
+    %% intermediate files — all script-written: input/filtered_kanji.json and the
+    %% -algo.json overrides. The hand-written
     %% overrides/*.json (no -algo suffix) that take priority at build time are
     %% authoritative and intentionally omitted from this view (see §3).
     filt[("🟦 input/filtered_kanji.json")]
@@ -90,7 +90,6 @@ flowchart LR
     vr[("🟦 vocab_reading-algo")]
     vf[("🟦 vocab_furigana-algo")]
     kwalgo[("🟦 keywords-algo")]
-    ext[("🟦 vocab_meaning-external-dict")]
 
     %% outputs
     main[("🟧 output/kanji_main")]
@@ -120,7 +119,6 @@ flowchart LR
     jmdict --> S3
     furimap --> S3
     jsw --> S3
-    ext --> S3
     S3 --> kv & vm & vr
 
     filt --> S4
@@ -142,7 +140,6 @@ flowchart LR
     vm --> S6
     vr --> S6
     vf --> S6
-    ext --> S6
     jsw --> S6
     kwalgo --> S6
     jmdict --> S6
@@ -154,8 +151,8 @@ flowchart LR
 ## 3. Override files: algorithm-generated vs hand-written
 
 Files in `overrides/` come from two sources. Only these are written by scripts — all
-have the `-algo` suffix (plus the external-dict cache). Every other `overrides/*` file
-is hand-maintained and must not be regenerated.
+have the `-algo` suffix. Every other `overrides/*` file is hand-maintained and must
+not be regenerated.
 
 ```mermaid
 flowchart TB
@@ -166,7 +163,6 @@ flowchart TB
       a4["vocab_reading-algo.json — algorithmic_kanji_vocab_overrides"]
       a5["vocab_furigana-algo.json — generate_furigana_algo"]
       a6["keywords-algo.json — algorithmic_overrides_keywords"]
-      a7["vocab_meaning-external-dict.json — static cache (its fetch script was removed); hand-edit like a manual override"]
     end
     subgraph MANUAL["Hand-written (authoritative overrides)"]
       m1["keywords.json, component_keyword.json, kanji_vocab.json,
@@ -245,14 +241,13 @@ in the function:
 ```mermaid
 flowchart LR
     w[word] --> R[sources.resolve_meaning]
-    R --> o["common → custom → algo → external → jmdict_full → jsw"]
+    R --> o["common → custom → algo → jmdict_full → jsw"]
     o --> m[meaning or None]
 ```
 
 The final build falls back to the word itself when every source misses, and prints
 each such word in a "Word meaning Not Found" report — hand-add those to
-`overrides/vocab_meaning.json`. (`vocab_meaning-external-dict.json` is a frozen cache
-from a since-deleted Jotoba/Jisho fetch script.)
+`overrides/vocab_meaning.json`.
 
 ---
 
