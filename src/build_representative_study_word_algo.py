@@ -9,74 +9,78 @@ Constraints:
   - All characters must be Japanese (hiragana/katakana/kanji)
   - Each word is assigned to at most one kanji
 
-Special rule – single-kanji word with top tag wins outright:
-  If any candidate contains exactly one kanji (word_type 0 or 1, e.g. 行く) AND
-  carries a top tag, it is chosen immediately, bypassing all other scoring.
-  Within this group, normal word scoring applies (🌱 beats ☘️ beats 🌷).
-  Applies before Rule 1 and Rule 2.
-  Top tags: 🌱 and ☘️ always; 🌷 only when INCLUDE_TULIP_IN_PRIORITY = True.
+Candidate pool: raw/freq-ranks/{kanji}.tsv — every word starting with the kanji,
+with a frequency rank in each of 14 corpora, a precomputed `tier` band (BASIC >
+COMMON > FLUENT > ADVANCED > NICHE > UNRANKED), and a JLPT level where known.
+Textbook words (raw/kanji-textbook-words-min) are merged in as a mid band —
+they mostly matter for the ~219 kanji that have no freq-ranks file at all.
 
-Rule 1 – source priority (lower index wins):
-  0. v3 tag 🌱
-  1. v3 tag ☘️
-  2. v3 tag 🌷
-  3. textbook words  (📖)
-  4. v3 tag 📚
-  5. unknown tag  (🤔)
-  6. v3 tag 🦉
+Special rule – single-kanji word in a top tier wins outright:
+  If any candidate contains exactly one kanji (行 or 行く), sits in a top tier
+  (BASIC/COMMON), and is a standalone JMdict word, it is chosen immediately —
+  the study word should show THIS kanji as a word when the kanji is one.
+  Within this group, normal word scoring applies.
 
-  If the same word appears in both v3 and textbook sources, the entry with the
-  better (lower) tag priority wins.
+Word scoring (lower tuple wins): (validity, band, jlpt, class, type, shipped, freq, len)
+  validity  0 standalone JMdict word · 1 affix-only entry (新/しん) · 2 not in
+            JMdict — outranks everything: unresolvable words ship empty meanings
+            and affix-only entries aren't real standalone words
+  band      frequency tier band (textbook words sit at ADVANCED level)
+  jlpt      N5 easiest first, untagged last — the strongest "teach this first"
+            signal (空 N5 beats 空く N4; 高い N5 beats 高 N1)
+  class     verb < adjective < other (語る beats 語 when JLPT ties)
+  type      1 kanji + kana < bare single kanji < 2-kanji compound
+            (okurigana beats bare kanji: 高い > 高, 書く > 書)
+  shipped   words whose every kanji ships sort first
+  freq      composite corpus frequency — weighted mean rank across corpora,
+            spoken/media corpora weighted up, inflated by a coverage penalty
+            for each corpus the word is missing from
+  len       shorter wins
 
-Rule 2 – word quality within a source tier (lower score wins):
-  Score tuple: (source_tier, word_type, length)
-  word_type 0 → single-char kanji
-  word_type 1 → 1 kanji + kana only
-  word_type 2 → exactly 2 kanji (prefer shorter length)
-
-Fallback (no candidates remain after applying constraints + uniqueness):
-  - Relaxed search: word only needs to contain the kanji, not start with it
-  - Source: textbook words only
-  - Prioritizes shorter words first, then word_score
-  - These kanjis show up in the "Words NOT starting with kanji" stat (~59 kanjis,
-    mostly rare/classical with no words starting with them in the textbook data)
-
-Kanji with no candidates even after the relaxed search get null (no study word).
+Two safety nets ride along in the same scored pool:
+  - Textbook words that merely CONTAIN the kanji (not start with it) carry a
+    stage penalty: they only win when nothing real starts with the kanji
+    (甲斐 for 斐). These show in the "Words NOT starting with kanji" stat.
+  - The bare kanji itself joins at UNRANKED band when the pool doesn't already
+    list it: if everything else is junk but the kanji is a standalone JMdict
+    word (栞/しおり, 李/すもも), it wins via the validity slot. It is never
+    forced — kanji JMdict knows only as affixes or not at all stay null.
 
 Reading + meaning (resolved AFTER word selection, via jmdict_resolver):
   Both come from input/scriptin-jmdict-eng.json ONLY — the single source of
-  truth. The word pools' own r/e fields take part in candidate SELECTION but
-  never reach the output. The resolver returns up to 2 common readings joined
-  with ・ (空 → そら・から) and a short meaning whose [n] blocks align with the
-  split readings (see jmdict_resolver.py). Words JMdict doesn't know fall back
-  to the furigana map for a reading, get an empty meaning, and are reported.
+  truth. The resolver returns up to 2 common readings joined with ・
+  (空 → そら・から) and a short meaning whose [n] blocks align with the split
+  readings (see jmdict_resolver.py). Words JMdict doesn't know fall back to
+  the furigana map for a reading, get an empty meaning, and are reported.
 
 Sources:
-  input/filtered_kanji.json                        → [kanji]  (the kanji set to process)
-  raw/kanji-words/v3/[kanji].json                  → [{w, r, t, j?, k?, e}]
-  raw/kanji-textbook-words/[kanji].json            → {kanji: {word: [reading, meaning]}}
-  input/scriptin-jmdict-eng.json                   → JMdict JSON (words[].kanji/kana/sense)
-  raw/manual-inspections.json                      → {replaceKanjiStudyWords: {kanji: word}}
-  input/jmdict-furigana-map.json                   → {word: {reading: segments}}  (fallback readings)
+  input/filtered_kanji.json              → [kanji]  (the kanji set to process)
+  raw/freq-ranks/[kanji].tsv             → tab-separated corpus frequency rows
+  raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning]}}
+  input/scriptin-jmdict-eng.json         → JMdict JSON (words[].kanji/kana/sense)
+  raw/manual-inspections.json            → {replaceKanjiStudyWords: {kanji: word}}
+  input/jmdict-furigana-map.json         → {word: {reading: segments}}  (fallback readings)
 
 Output: overrides/japanese_study_words-algo.json
   { kanji: [word, reading, meaning, tag] }   (null when no valid word found)
+  tag = tier emoji (🌱☘️🌷📚🌶️🦉), 📖 textbook, ✏️ manual override
 
 Run from project root: python3 src/build_representative_study_word_algo.py
 """
 
+import csv
+import os
 from collections import Counter
 
 from sources import (
     load_json,
     write_json,
+    resolve_path,
     jmdict_entry_gloss,
-    v3_candidates,
     textbook_candidates,
-    TEXTBOOK_TAG,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count
-from jmdict_resolver import JmdictResolver
+from jmdict_resolver import JmdictResolver, CLASS_OTHER
 
 # ---------------------------------------------------------------------------
 # Scoring / prioritisation
@@ -84,30 +88,65 @@ from jmdict_resolver import JmdictResolver
 
 # NOTE: word_score / is_valid_candidate here intentionally differ from the
 # same-named functions in algorithmic_kanji_vocab_overrides.py — this algorithm
-# requires the word to START with the kanji and scores by word-type, while the
+# requires the word to START with the kanji and scores by word-shape, while the
 # sample-vocab algorithm only requires the kanji to appear anywhere.
 
-# Set to True to include 🌷 in the special rule (single-kanji word with a top
-# tag wins outright). False = only 🌱 and ☘️ qualify.
-INCLUDE_TULIP_IN_PRIORITY = False
+# Strip a trailing する or な from 2-kanji textbook headwords so the bare noun is
+# the representative word (解剖する → 解剖, 真摯な → 真摯) — the inflected forms
+# aren't JMdict headwords. Only fires for 2-kanji stems — single-kanji する verbs
+# (関する → 関, 察する → 察) are left alone, since the bare kanji is a poor
+# standalone word. Reading and meaning re-resolve to the noun afterwards.
+STRIP_JUNK_SUFFIXES = True
 
-# Strip a trailing する from 2-kanji verbal-noun headwords so the bare noun is the
-# representative word (督励する → 督励, 解剖する → 解剖) rather than the verb. This
-# only fires for 2-kanji stems — single-kanji する verbs (関する → 関, 察する → 察)
-# are left alone, since the bare kanji is a poor standalone word. The reading and
-# meaning re-resolve to the noun when available, falling back to the verb's.
-STRIP_SURU_VERBS = True
-
-TAG_PRIORITY = {
-    "🌱": 0,
-    "☘️": 1,
-    "🌷": 2,
-    TEXTBOOK_TAG: 3,
-    "📚": 4,
-    "🦉": 6,
-    "🌶️": 6,
+# Frequency tier band from the freq-ranks `tier` column (lower = more frequent).
+# Textbook words slot in at ADVANCED level: real corpus evidence of the first
+# three tiers should beat a textbook appearance, but a curated textbook word
+# beats NICHE/UNRANKED corpus noise.
+TIER_BAND = {
+    "BASIC": 0, "COMMON": 1, "FLUENT": 2, "ADVANCED": 3, "NICHE": 4, "UNRANKED": 5,
 }
-DEFAULT_TAG_PRIORITY = 5  # unknown tag → between 📚 and 🦉
+DEFAULT_TIER_BAND = 5
+TEXTBOOK_BAND = 3
+
+# Emoji written into each entry's tag slot, by freq-ranks tier (🌱 most frequent
+# → 🦉 rarest) — same glyphs the v3 pool used, so the output stays comparable.
+TIER_TAG = {
+    "BASIC": "🌱", "COMMON": "☘️", "FLUENT": "🌷",
+    "ADVANCED": "📚", "NICHE": "🌶️", "UNRANKED": "🦉",
+}
+DEFAULT_TIER_TAG = "🦉"
+
+# Bands eligible for the special rule (single-kanji standalone word wins outright).
+TOP_BANDS = {TIER_BAND["BASIC"], TIER_BAND["COMMON"]}
+
+# --- Composite corpus frequency (ported from the freq-ranks experiment) ---
+# Per-corpus weight in the composite frequency; 0 drops a corpus. SPOKEN/everyday
+# corpora (conversation, subtitles) weigh more than WRITTEN ones (web, wiki) —
+# a learner's representative word is better drawn from speech than from text.
+CORPUS_WEIGHTS = {
+    "CEJC_all_conversations": 2.0, "CEJC_small_talk_zatsudan": 2.0,
+    "BCCWJ_LUW_compound": 1.0, "BCCWJ_SUW_short_unit": 1.0,
+    "CommonCrawl_CC100": 0.5, "NWJC_web_corpus": 0.5, "Wikipedia_v2": 0.5,
+    "DaveDoebrick_SliceOfLife": 2.0, "jiten_all_media": 1.5, "jiten_drama": 2.0,
+    "Shoui_anime_jdrama": 1.5, "MarvNC_youtube_v3": 1.5, "Shoui_netflix": 1.5,
+    "DaveDoebrick_netflix_no_names": 1.5,
+}
+
+# Each corpus a word is MISSING from inflates its mean rank by this fraction, so a
+# word seen across many corpora beats an equally-ranked word seen in only one.
+COVERAGE_PENALTY = 0.15
+
+# Distrust words attested in fewer weighted corpora than this — dropped unless
+# that would leave the kanji with no candidates at all.
+MIN_CORPUS_COVERAGE = 2
+
+# TSV column names (raw/freq-ranks/*.tsv).
+COL_WORD = "japanese_word"
+COL_TIER = "tier"
+COL_JLPT = "jlpt_level"
+
+# JLPT levels run 5 (N5, easiest) .. 1 (N1); untagged sorts after all of them.
+JLPT_UNTAGGED_RANK = 5
 
 
 # Kanji we ship (input/filtered_kanji.json); populated in main(). Used to prefer
@@ -121,134 +160,214 @@ def has_nonshipped_kanji(word):
     return 1 if any(is_kanji_char(c) and c not in SHIPPED for c in word) else 0
 
 
-def word_score(word, tag, meaning=""):
-    """Lower is better. Tuple: (tier, has_meaning, all_shipped, word_type, length).
+def word_type(word):
+    """0 = 1 kanji + kana (高い), 1 = bare single kanji (高), 2 = 2-kanji compound.
 
-    has_meaning and all_shipped sit AFTER the source tier, so both only break ties
-    WITHIN a frequency tier — we never drop a tier to satisfy them. has_meaning comes
-    first so an all-shipped but meaningless name (椎名) can't beat a meaningful word
-    (椎茸); all_shipped then prefers an all-shipped partner among equals (麻痺 → 麻酔).
-    A kanji whose only same-tier word is unshipped keeps it (喧 stays 喧嘩)."""
-    ts = TAG_PRIORITY.get(tag, DEFAULT_TAG_PRIORITY)
-    n = len(word)
-    kc = kanji_count(word)
-
-    if n == 1:
-        word_type = 0  # single-char kanji
-    elif kc == 1:
-        word_type = 1  # 1 kanji + kana only
-    else:
-        word_type = 2  # exactly 2 kanji (3+ are excluded)
-
-    # no_meaning and all_shipped are LATE tiebreakers (after tier AND word_type), so
-    # they never override the single-kanji preference — they only choose among
-    # otherwise-equal words: prefer a meaningful one, then an all-shipped one.
-    no_meaning = 0 if meaning else 1
-    return (ts, word_type, no_meaning, has_nonshipped_kanji(word), n)
+    Okurigana beats bare kanji: 高い > 高, 書く > 書 — the inflected form is a
+    word a learner can actually use, the bare kanji often reads differently on
+    its own."""
+    if len(word) == 1:
+        return 1
+    return 0 if kanji_count(word) == 1 else 2
 
 
-def is_valid_candidate(word, reading, target_kanji):
-    if not word or not reading or reading == "-" or "," in reading:
-        return False
+def resolver_validity(resolved):
+    """0 standalone JMdict word · 1 affix-only entry (新/しん, 同/どう) · 2 not in
+    JMdict at all (or only as a rare/irregular writing, e.g. 容れる)."""
+    if resolved is None:
+        return 2
+    return 0 if resolved["standalone"] else 1
+
+
+def word_score(cand, resolved):
+    """Lower is better; see the module docstring for the tuple's rationale.
+
+    validity outranks the frequency band on purpose: an unresolvable word ships
+    with an empty meaning (rare-kanji writings like 然し, corpus phrase junk like
+    廷内で) and an affix-only entry (歳/さい, 匹/ひき) breaks the "study words are
+    real standalone words" rule — a real word from a lower tier beats both.
+    stage sits between them: a real word merely CONTAINING the kanji (甲斐 for 斐)
+    beats junk that starts with it, but never a real starts-with word."""
+    w = cand["word"]
+    return (
+        resolver_validity(resolved),
+        cand["stage"],
+        cand["band"],
+        cand["jlpt_rank"],
+        resolved["word_class"] if resolved else CLASS_OTHER,
+        word_type(w),
+        has_nonshipped_kanji(w),
+        cand["freq"],
+        len(w),
+    )
+
+
+def is_valid_word(word, target_kanji):
     if not word or word[0] != target_kanji:
         return False
     if not is_all_japanese(word):
         return False
-    kc = kanji_count(word)
-    if kc < 1 or kc > 2:
-        return False
-    return True
-
-
-def is_valid_fallback_candidate(word, reading, target_kanji):
-    """Like is_valid_candidate but only requires the kanji to appear anywhere in the word."""
-    if not word or not reading or reading == "-" or "," in reading:
-        return False
-    if target_kanji not in word:
-        return False
-    if not is_all_japanese(word):
-        return False
-    kc = kanji_count(word)
-    if kc < 1 or kc > 2:
-        return False
-    return True
+    return 1 <= kanji_count(word) <= 2
 
 
 # ---------------------------------------------------------------------------
-# Data loading
+# Candidate loading
 # ---------------------------------------------------------------------------
 
-def load_v3_candidates(kanji):
-    return v3_candidates(kanji, lambda w, r: is_valid_candidate(w, r, kanji))
+def read_freq_rows(kanji):
+    """Rows from raw/freq-ranks/{kanji}.tsv as dicts keyed by column name. [] if absent."""
+    path = resolve_path(f"raw/freq-ranks/{kanji}.tsv")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        return list(csv.DictReader(f, delimiter="\t"))
+
+
+def _rank(value):
+    """Parse a corpus rank cell: int rank, or None for NA/blank/garbage."""
+    if not value or value == "NA":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+def freq_key(row):
+    """Composite corpus frequency for a row — LOWER is better.
+
+    Weighted mean of the per-corpus ranks the word actually has, inflated by
+    COVERAGE_PENALTY for every weighted corpus it is missing from. Infinity when
+    the word appears in no weighted corpus at all (kept only as a last resort)."""
+    num = den = 0.0
+    present = 0
+    weighted_total = 0
+    for col, weight in CORPUS_WEIGHTS.items():
+        if weight <= 0:
+            continue
+        weighted_total += 1
+        r = _rank(row.get(col))
+        if r is None:
+            continue
+        num += weight * r
+        den += weight
+        present += 1
+    if den == 0:
+        return float("inf")
+    return (num / den) * (1 + COVERAGE_PENALTY * (weighted_total - present))
+
+
+def coverage(row):
+    """How many weighted corpora the word appears in (non-NA, weight > 0)."""
+    return sum(
+        1 for col, weight in CORPUS_WEIGHTS.items()
+        if weight > 0 and _rank(row.get(col)) is not None
+    )
+
+
+# stage values: candidates that START with the kanji rank before those that
+# merely CONTAIN it (textbook relaxed search — rare/classical kanji nothing
+# starts with, e.g. 斐 → 甲斐).
+STAGE_STARTS_WITH = 0
+STAGE_CONTAINS = 1
+
+
+def load_freq_candidates(kanji):
+    """Valid freq-ranks candidates for `kanji`: {word, stage, band, tag, jlpt_rank, freq}.
+
+    Words attested in fewer than MIN_CORPUS_COVERAGE corpora are dropped unless
+    that would empty the pool (rare kanji often only have such words)."""
+    rows = [r for r in read_freq_rows(kanji) if is_valid_word(r.get(COL_WORD, ""), kanji)]
+    broad = [r for r in rows if coverage(r) >= MIN_CORPUS_COVERAGE]
+    if broad:
+        rows = broad
+    candidates = []
+    for row in rows:
+        jlpt = _rank(row.get(COL_JLPT))
+        candidates.append({
+            "word": row[COL_WORD],
+            "stage": STAGE_STARTS_WITH,
+            "band": TIER_BAND.get(row.get(COL_TIER, ""), DEFAULT_TIER_BAND),
+            "tag": TIER_TAG.get(row.get(COL_TIER, ""), DEFAULT_TIER_TAG),
+            "jlpt_rank": JLPT_UNTAGGED_RANK if jlpt is None else 5 - jlpt,
+            "freq": freq_key(row),
+        })
+    return candidates
+
+
+def _textbook_cand(word, stage):
+    return {
+        "word": word,
+        "stage": stage,
+        "band": TEXTBOOK_BAND,
+        "tag": OUTPUT_TEXTBOOK_TAG,
+        "jlpt_rank": JLPT_UNTAGGED_RANK,
+        "freq": float("inf"),
+    }
 
 
 def load_textbook_candidates(kanji):
-    return textbook_candidates(kanji, lambda w, r: is_valid_candidate(w, r, kanji))
+    """Textbook candidates containing `kanji`, same dict shape as freq ones;
+    words starting with the kanji get STAGE_STARTS_WITH, the rest STAGE_CONTAINS."""
+    entries = textbook_candidates(
+        kanji,
+        lambda w, r: is_all_japanese(w) and kanji in w and 1 <= kanji_count(w) <= 2,
+    )
+    return [
+        _textbook_cand(w, STAGE_STARTS_WITH if w[0] == kanji else STAGE_CONTAINS)
+        for w, _r, _t, _e in entries
+    ]
 
 
-def load_textbook_candidates_fallback(kanji):
-    """Relaxed: word only needs to contain the kanji, not start with it."""
-    return textbook_candidates(kanji, lambda w, r: is_valid_fallback_candidate(w, r, kanji))
+def bare_kanji_candidate(kanji):
+    """The kanji itself as a candidate — safety net for kanji whose pool is empty
+    or all-junk but that ARE a standalone JMdict word (栞/しおり, 李/すもも).
+    No corpus evidence → UNRANKED band, so any real pooled word outscores it."""
+    return {
+        "word": kanji,
+        "stage": STAGE_STARTS_WITH,
+        "band": DEFAULT_TIER_BAND,
+        "tag": DEFAULT_TIER_TAG,
+        "jlpt_rank": JLPT_UNTAGGED_RANK,
+        "freq": float("inf"),
+    }
 
 
 OUTPUT_TEXTBOOK_TAG = "📖"
 OVERRIDE_TAG = "✏️"  # manual study-word override (from raw/manual-inspections.json)
 
 
-def select_word_for_kanji(kanji, used_words=None):
-    """Return the best [word, reading, meaning, tag] for this kanji, or None.
+def select_word_for_kanji(kanji, used_words, resolver):
+    """Return the best [word, "", "", tag] for this kanji, or None. Reading and
+    meaning are attached later by the caller (always from the resolver).
 
     used_words: set of words already assigned to other kanjis — these are skipped.
     """
-    if used_words is None:
-        used_words = set()
+    merged = {}  # word → candidate; later sources win: freq-ranks over textbook
+    for cand in load_textbook_candidates(kanji) + load_freq_candidates(kanji):
+        merged[cand["word"]] = cand
+    resolved_bare = resolver.resolve(kanji)
+    if resolved_bare is not None and resolved_bare["standalone"]:
+        merged.setdefault(kanji, bare_kanji_candidate(kanji))
+    candidates = [c for c in merged.values() if c["word"] not in used_words]
 
-    v3 = load_v3_candidates(kanji)
-    textbook = load_textbook_candidates(kanji)
+    scored = sorted(
+        ((word_score(c, resolver.resolve(c["word"])), c) for c in candidates),
+        key=lambda pair: pair[0],
+    )
+    if not scored:
+        return None
 
-    seen = {}  # word -> index in all_candidates
-    all_candidates = []
-    for entry in v3:
-        w = entry[0]
-        if w not in seen:
-            seen[w] = len(all_candidates)
-            all_candidates.append(entry)
-    for entry in textbook:
-        w = entry[0]
-        if w not in seen:
-            seen[w] = len(all_candidates)
-            all_candidates.append(entry)
-        else:
-            idx = seen[w]
-            existing = all_candidates[idx]
-            if TAG_PRIORITY.get(entry[2], DEFAULT_TAG_PRIORITY) < TAG_PRIORITY.get(existing[2], DEFAULT_TAG_PRIORITY):
-                all_candidates[idx] = entry
+    # Special rule: a single-kanji standalone word in a top band wins outright —
+    # when the kanji IS a common word, that word represents it best (毎 over 毎日).
+    # The validity gate keeps affix-only entries out (同じ must beat bare 同).
+    for _score, cand in scored:
+        if (kanji_count(cand["word"]) == 1 and cand["band"] in TOP_BANDS
+                and resolver_validity(resolver.resolve(cand["word"])) == 0):
+            return [cand["word"], "", "", cand["tag"]]
 
-    # Special rule: single-kanji word (kanji_count==1) with top tag wins outright
-    _TOP_TAGS = {"🌱", "☘️", "🌷"} if INCLUDE_TULIP_IN_PRIORITY else {"🌱", "☘️"}
-    priority = [x for x in all_candidates if kanji_count(x[0]) == 1 and x[2] in _TOP_TAGS and x[0] not in used_words]
-    if priority:
-        priority.sort(key=lambda x: word_score(x[0], x[2], x[3]))
-        w, r, t, e = priority[0]
-        return [w, r, e, t]
-
-    all_candidates.sort(key=lambda x: word_score(x[0], x[2], x[3]))
-
-    # Try regular candidates (word starts with kanji), skip already-used words
-    for w, r, t, e in all_candidates:
-        if w not in used_words:
-            display_tag = OUTPUT_TEXTBOOK_TAG if t == TEXTBOOK_TAG else t
-            return [w, r, e, display_tag]
-
-    # Fallback: relaxed search (kanji anywhere in word), textbook only, shorter words first
-    # (59): 宏雰紘稔輔肇亨喬槙峻蕉欣禎斐尭馨彬匡欽佑惇脩甫暉允瑛皓洸怜悌侃侑琳瑚瑳瑶詢洵倖誼諄晏莉晨碩熙燎燦滉蓉恕迪綸麟柾裟頌眸伶
-    fallback = load_textbook_candidates_fallback(kanji)
-    fallback.sort(key=lambda x: (len(x[0]), word_score(x[0], x[2], x[3])))
-    for w, r, t, e in fallback:
-        if w not in used_words:
-            return [w, r, e, OUTPUT_TEXTBOOK_TAG]
-
-    return None
+    best = scored[0][1]
+    return [best["word"], "", "", best["tag"]]
 
 
 # ---------------------------------------------------------------------------
@@ -291,30 +410,31 @@ def load_jmdict_readings():
     return {word: next(iter(readings)) for word, readings in data.items() if readings}
 
 
-def strip_suru_verb(entry, used_words, resolver):
-    """Return `entry` with a 2-kanji 〜する headword reduced to its bare noun
-    (督励する → 督励), or `entry` unchanged when it isn't such a verb. Skips the strip
-    if the bare noun is already assigned to another kanji (uniqueness), or when
-    JMdict doesn't know the bare noun (the verb form at least resolves).
+def strip_junk_suffix(entry, used_words, resolver):
+    """Return `entry` with a 2-kanji 〜する/〜な headword reduced to its bare noun
+    (解剖する → 解剖, 真摯な → 真摯), or `entry` unchanged when nothing strips.
+    Skips the strip if the bare noun is already assigned to another kanji
+    (uniqueness), or when JMdict knows the full form but not the stem — stripping
+    would trade a resolvable word for an unresolvable one. When it knows neither
+    (kyūjitai variants like 充塡する), still strip: the bare noun is the better
+    unresolvable word.
 
     entry is [word, reading, meaning, tag]; the tag (source band) is kept as-is;
     reading/meaning are re-resolved by the caller.
     """
     word, reading, meaning, tag = entry
-    if not word.endswith("する"):
-        return entry
-    stem = word[:-2]
-    if kanji_count(stem) != 2:            # only 2-kanji verbal nouns; leave 関する → 関 alone
-        return entry
-    if stem in used_words:               # don't create a duplicate with another kanji's word
-        return entry
-    # Keep the verb only when JMdict knows it but not the stem — stripping would
-    # trade a resolvable word for an unresolvable one. When it knows neither
-    # (kyūjitai variants like 充塡する), still strip: the bare noun is the better
-    # unresolvable word.
-    if resolver.resolve(stem) is None and resolver.resolve(word) is not None:
-        return entry
-    return [stem, reading, meaning, tag]
+    for suffix in ("する", "な"):
+        if not word.endswith(suffix):
+            continue
+        stem = word[: -len(suffix)]
+        if kanji_count(stem) != 2:        # only 2-kanji stems; leave 関する → 関 alone
+            return entry
+        if stem in used_words:            # don't create a duplicate with another kanji's word
+            return entry
+        if resolver.resolve(stem) is None and resolver.resolve(word) is not None:
+            return entry
+        return [stem, reading, meaning, tag]
+    return entry
 
 
 def main():
@@ -342,10 +462,10 @@ def main():
         return entry
 
     for kanji in all_kanji:
-        entry = select_word_for_kanji(kanji, used_words)
+        entry = select_word_for_kanji(kanji, used_words, resolver)
 
-        if STRIP_SURU_VERBS and entry:
-            entry = strip_suru_verb(entry, used_words, resolver)
+        if STRIP_JUNK_SUFFIXES and entry:
+            entry = strip_junk_suffix(entry, used_words, resolver)
 
         if entry:
             entry = attach_reading_meaning(entry)
@@ -383,6 +503,16 @@ def main():
     for word in missing_jmdict:
         print(f"    {word}")
 
+    # Kanji whose ONLY viable pick is an affix-only entry (validity 1) — the user
+    # wants standalone study words, so these are candidates for manual overrides.
+    non_standalone = [
+        (k, v) for k, v in result.items()
+        if v and (r := resolver.resolve(v[0])) is not None and not r["standalone"]
+    ]
+    print(f"\n  Non-standalone picks — affix-only JMdict entries ({len(non_standalone)}):")
+    for k, v in non_standalone:
+        print(f"    {v[3]} {k} → {v[0]} ~ {v[1]} {v[2][:60]}")
+
 
 def print_report(result, all_kanji):
     """Print selection statistics: tier/length/kanji-count breakdowns plus anomaly
@@ -415,20 +545,21 @@ def print_report(result, all_kanji):
         OVERRIDE_TAG: 0, "🌱": 1, "☘️": 2, "🌷": 3,
         OUTPUT_TEXTBOOK_TAG: 4, "📚": 5, "🦉": 7, "🌶️": 7
     }
+    unknown_tag_priority = 6
 
     def print_entries(pairs):
-        for k, v in sorted(pairs, key=lambda x: display_tag_priority.get(x[1][3], DEFAULT_TAG_PRIORITY)):
+        for k, v in sorted(pairs, key=lambda x: display_tag_priority.get(x[1][3], unknown_tag_priority)):
             print(f"{v[3]} {k} → {v[0]} ~ {v[1]} {v[2]}")
 
     tag_labels = {
         OVERRIDE_TAG: "✏️  manual",
-        "🌱": "🌱  v3",
-        "☘️": "☘️  v3",
-        "🌷": "🌷  v3",
+        "🌱": "🌱  BASIC",
+        "☘️": "☘️  COMMON",
+        "🌷": "🌷  FLUENT",
         OUTPUT_TEXTBOOK_TAG: "📖  textbook",
-        "📚": "📚  v3",
-        "🦉": "🦉  v3",
-        "🌶️": "🌶️  v3",
+        "📚": "📚  ADVANCED",
+        "🦉": "🦉  UNRANKED",
+        "🌶️": "🌶️  NICHE",
     }
 
     print(f"\n{'─'*44}")

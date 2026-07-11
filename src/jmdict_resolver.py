@@ -91,6 +91,7 @@ class JmdictResolver:
         if data is None:
             data = load_json("input/scriptin-jmdict-eng.json", {})
         self._index = {}
+        self._resolve_cache = {}  # selection scoring resolves the same words repeatedly
         for entry in data.get("words", []):
             for form in entry.get("kanji", []) + entry.get("kana", []):
                 text = form.get("text")
@@ -186,6 +187,13 @@ class JmdictResolver:
           word_class  CLASS_VERB < CLASS_ADJECTIVE < CLASS_OTHER
           common      True when the best reading is a JMdict-common pairing
         """
+        if word in self._resolve_cache:
+            return self._resolve_cache[word]
+        result = self._resolve(word)
+        self._resolve_cache[word] = result
+        return result
+
+    def _resolve(self, word):
         ranked = self.reading_candidates(word)
         if not ranked:
             return None
