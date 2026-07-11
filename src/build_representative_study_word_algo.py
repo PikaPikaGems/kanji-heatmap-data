@@ -19,7 +19,14 @@ Special rule – single-kanji word in a top tier wins outright:
   If any candidate contains exactly one kanji (行 or 行く), sits in a top tier
   (BASIC/COMMON), and is a standalone JMdict word, it is chosen immediately —
   the study word should show THIS kanji as a word when the kanji is one.
-  Within this group, normal word scoring applies.
+  Within this group, normal word scoring applies, except that the bare kanji
+  wins TIES through band/JLPT/class: 一 (not 一つ) — both BASIC N5 — while
+  高い (N5) still beats 高 (N1) and 語る (verb) still beats 語.
+
+Phrase fragments are rejected before scoring (resolver.is_phrase_fragment):
+  demonstrative + noun (この人, その様) and standalone-word + particle chunks
+  (常に, 今も, 事になる — the learner should study 常/今/事). Genuine adverbs
+  survive: 特に (特 alone is not a standalone word), 更に (更 reads こう).
 
 Word scoring (lower tuple wins): (validity, band, jlpt, class, type, shipped, freq, len)
   validity  0 standalone JMdict word · 1 affix-only entry (新/しん) · 2 not in
@@ -50,8 +57,12 @@ Reading + meaning (resolved AFTER word selection, via jmdict_resolver):
   Both come from input/scriptin-jmdict-eng.json ONLY — the single source of
   truth. The resolver returns up to 2 common readings joined with ・
   (空 → そら・から) and a short meaning whose [n] blocks align with the split
-  readings (see jmdict_resolver.py). Words JMdict doesn't know fall back to
-  the furigana map for a reading, get an empty meaning, and are reported.
+  readings (see jmdict_resolver.py). Words JMdict only knows as a rare writing
+  get a gated second chance via resolve_fallback — usually-kana words carry a
+  "[⚠️ often kana only]" marker (諄い/くどい), unshipped-glyph variants don't
+  (充塡: canonical 充填 uses 填, which we don't ship), and ✏️ manual picks
+  resolve ungated (昂ぶる). Words JMdict doesn't know at all fall back to the
+  furigana map for a reading, get an empty meaning, and are reported.
 
 Sources:
   input/filtered_kanji.json              → [kanji]  (the kanji set to process)
@@ -217,13 +228,19 @@ STAGE_STARTS_WITH = 0
 STAGE_CONTAINS = 1
 
 
-def load_freq_candidates(kanji):
+def load_freq_candidates(kanji, resolver):
     """Valid freq-ranks candidates for `kanji`: {word, stage, band, tag, jlpt_rank, freq}.
 
     Words attested in fewer than MIN_CORPUS_COVERAGE corpora are dropped unless
-    that would empty the pool (rare kanji often only have such words)."""
+    they resolve as standalone JMdict words (曖昧さ is real despite one corpus —
+    the coverage filter exists to kill corpus junk, and junk never resolves) or
+    dropping them would empty the pool (rare kanji often only have such words)."""
     rows = [r for r in read_freq_rows(kanji) if is_valid_word(r.get(COL_WORD, ""), kanji)]
-    broad = [r for r in rows if corpus_coverage(r) >= MIN_CORPUS_COVERAGE]
+    broad = [
+        r for r in rows
+        if corpus_coverage(r) >= MIN_CORPUS_COVERAGE
+        or resolver_validity(resolver.resolve(r[COL_WORD])) == 0
+    ]
     if broad:
         rows = broad
     candidates = []
@@ -289,12 +306,16 @@ def select_word_for_kanji(kanji, used_words, resolver):
     used_words: set of words already assigned to other kanjis — these are skipped.
     """
     merged = {}  # word → candidate; later sources win: freq-ranks over textbook
-    for cand in load_textbook_candidates(kanji) + load_freq_candidates(kanji):
+    for cand in load_textbook_candidates(kanji) + load_freq_candidates(kanji, resolver):
         merged[cand["word"]] = cand
     resolved_bare = resolver.resolve(kanji)
     if resolved_bare is not None and resolved_bare["standalone"]:
         merged.setdefault(kanji, bare_kanji_candidate(kanji))
-    candidates = [c for c in merged.values() if c["word"] not in used_words]
+    candidates = [
+        c for c in merged.values()
+        if c["word"] not in used_words
+        and not resolver.is_phrase_fragment(c["word"])  # 常に, 今も, この人
+    ]
 
     scored = sorted(
         ((word_score(c, resolver.resolve(c["word"])), c) for c in candidates),
@@ -306,10 +327,22 @@ def select_word_for_kanji(kanji, used_words, resolver):
     # Special rule: a single-kanji standalone word in a top band wins outright —
     # when the kanji IS a common word, that word represents it best (毎 over 毎日).
     # The validity gate keeps affix-only entries out (同じ must beat bare 同).
-    for _score, cand in scored:
+    special = [
+        (score, cand) for score, cand in scored
         if (kanji_count(cand["word"]) == 1 and cand["band"] in TOP_BANDS
-                and resolver_validity(resolver.resolve(cand["word"])) == 0):
-            return [cand["word"], "", "", cand["tag"]]
+            and resolver_validity(resolver.resolve(cand["word"])) == 0)
+    ]
+    if special:
+        best_score, best = special[0]
+        # Within the special rule the bare kanji wins TIES: when it matches the
+        # best qualifying word through band/JLPT/class (一 vs 一つ — both BASIC,
+        # N5, class other), the kanji itself is the word to study (一/いち).
+        # Real differences still decide: 高い (N5) keeps beating 高 (N1), and
+        # 語る (verb) keeps beating 語 on word class.
+        for score, cand in special:
+            if cand["word"] == kanji and score[:5] == best_score[:5]:
+                return [cand["word"], "", "", cand["tag"]]
+        return [best["word"], "", "", best["tag"]]
 
     best = scored[0][1]
     return [best["word"], "", "", best["tag"]]
@@ -375,8 +408,11 @@ def main():
 
     def attach_reading_meaning(entry):
         """Overwrite entry's reading/meaning from the resolver — the pools' own
-        r/e fields inform selection only and must never reach the output."""
-        resolved = resolver.resolve(entry[0])
+        r/e fields inform selection only and must never reach the output.
+        Words whose writing JMdict tags rare get a gated second chance
+        (諄い/くどい ⚠️, 充塡/じゅうてん); manual ✏️ picks resolve ungated."""
+        resolved = resolver.resolve(entry[0]) or resolver.resolve_fallback(
+            entry[0], shipped=SHIPPED, manual=entry[3] == OVERRIDE_TAG)
         if resolved:
             entry[1] = resolved["reading"]
             entry[2] = resolved["meaning"]

@@ -12,9 +12,9 @@
     "🌱"
   ],
   "一": [
-    "一つ",
-    "ひとつ",
-    "one · for one thing",
+    "一",
+    "いち・ひと",
+    "one, 1",
     "🌱"
   ],
   "見": [
@@ -384,9 +384,9 @@
     "🌱"
   ],
   "後": [
-    "後ろ",
-    "うしろ",
-    "back, behind, rear",
+    "後",
+    "あと・のち",
+    "[1] behind, rear [2] later, afterwards",
     "🌱"
   ],
   "関": [
@@ -462,9 +462,9 @@
     "🌱"
   ],
   "実": [
-    "実は",
-    "じつは",
-    "as a matter of fact, by the way, to tell you the truth",
+    "実",
+    "じつ・み",
+    "[1] truth, reality [2] fruit, nut",
     "🌱"
   ],
   "取": [
@@ -1254,9 +1254,9 @@
     "🌱"
   ],
   "常": [
-    "常に",
-    "つねに",
-    "always, constantly",
+    "常",
+    "つね",
+    "usual state of things",
     "🌱"
   ],
   "容": [
@@ -3258,9 +3258,9 @@
     "🌷"
   ],
   "誰": [
-    "誰か",
-    "だれか",
-    "someone, somebody",
+    "誰",
+    "だれ",
+    "who",
     "🌱"
   ],
   "視": [
@@ -4398,9 +4398,9 @@
     "🌷"
   ],
   "嫌": [
-    "嫌い",
-    "きらい",
-    "disliked, hated, disagreeable · tendency, smack (of), touch (of)",
+    "嫌",
+    "いや",
+    "disliking, not wanting, unwilling (to do) · unpleasant, disagreeable, nasty",
     "🌱"
   ],
   "略": [
@@ -4458,10 +4458,10 @@
     "🌱"
   ],
   "丸": [
-    "丸で",
-    "まるで",
-    "quite, entirely, completely · as if, as though, just like",
-    "🌱"
+    "丸い",
+    "まるい",
+    "round, circular, spherical · curved, smooth",
+    "☘️"
   ],
   "武": [
     "武器",
@@ -8366,10 +8366,10 @@
     "☘️"
   ],
   "殊": [
-    "殊に",
-    "ことに",
-    "especially, particularly, unusually · additionally",
-    "🌷"
+    "殊勝",
+    "しゅしょう",
+    "admirable, laudable",
+    "📚"
   ],
   "漁": [
     "漁師",
@@ -8714,10 +8714,10 @@
     "🌷"
   ],
   "遂": [
-    "遂に",
-    "ついに",
-    "finally, in the end, at last · in the end, after all, never (happened)",
-    "🌱"
+    "遂げる",
+    "とげる",
+    "to accomplish, to achieve, to carry out · to arrive at (a certain outcome), to come to, to end with",
+    "🌷"
   ],
   "垣": [
     "垣根",
@@ -11811,10 +11811,10 @@
     "📚"
   ],
   "曖": [
-    "曖昧な",
-    "",
-    "",
-    "📖"
+    "曖昧さ",
+    "あいまいさ",
+    "ambiguity",
+    "🌶️"
   ],
   "汎": [
     "汎用",
@@ -11885,7 +11885,7 @@
   "於": [
     "於いて",
     "おいて",
-    "",
+    "at (a time or place), in, on · in (a situation, matter, etc.), on (a point), when it comes to [⚠️ often kana only]",
     "📖"
   ],
   "楼": [
@@ -12875,10 +12875,10 @@
     "📚"
   ],
   "寡": [
-    "寡占",
-    "かせん",
-    "oligopoly, control of a market",
-    "📖"
+    "寡黙",
+    "かもく",
+    "untalkative, quiet, taciturn",
+    "📚"
   ],
   "毀": [
     "毀損",
@@ -13323,7 +13323,7 @@
   "昂": [
     "昂ぶる",
     "たかぶる",
-    "",
+    "to become aroused (of emotions, nerves, etc.), to become excited, to become stirred up · to be proud, to be haughty, to be pompous",
     "✏️"
   ],
   "冴": [
@@ -13980,7 +13980,7 @@
   "亦": [
     "亦",
     "また",
-    "",
+    "again, once more, once again · also, too, as well [⚠️ often kana only]",
     "📖"
   ],
   "倭": [
@@ -14108,7 +14108,7 @@
   "諄": [
     "諄い",
     "くどい",
-    "",
+    "repetitious, long-winded, tedious · heavy (taste), (overly) rich, strong [⚠️ often kana only]",
     "📖"
   ],
   "頌": [
@@ -14137,7 +14137,7 @@
   "塡": [
     "充塡",
     "じゅうてん",
-    "",
+    "filling (up), replenishing, filling in (a tooth)",
     "📖"
   ]
 }
