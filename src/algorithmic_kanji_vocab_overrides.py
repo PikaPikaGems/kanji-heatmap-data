@@ -31,7 +31,7 @@ freq-ranks/textbook candidate exists and never displace a primary word:
    0. freq-ranks tier BASIC 🌱   (most frequent band; beats ☘️ even with more kanji)
    1. freq-ranks tier COMMON ☘️
    2. freq-ranks tier FLUENT 🌷
-   3. textbook words             raw/kanji-textbook-words/
+   3. textbook words             raw/kanji-textbook-words-min/
    4. freq-ranks tier ADVANCED 📚 (or unknown)
    5. freq-ranks NICHE 🌶️ / UNRANKED 🦉
    6. current production words   input/kanji_vocab.json           (fallback)
@@ -74,7 +74,7 @@ Sources:
   input/filtered_kanji.json                → [kanji]  (the kanji set to process)
   raw/freq-ranks/*.tsv                     → corpus frequency rows (word, gloss,
                                              tier, other_forms with kana spelling)
-  raw/kanji-textbook-words/[kanji].json    → {kanji: {word: [reading, meaning]}}
+  raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning]}}
   input/kanji_vocab.json                   → {kanji: [word, ...]}   (existing fallback)
   input/scriptin-jmdict-eng.json           → JMdict                 (jmdict fallback)
   input/jmdict-furigana-map.json           → {word: {reading: segments}}  (readings)
@@ -779,7 +779,7 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
         "🌱": "🌱  freq-ranks BASIC — most frequent (core everyday words)",
         "☘️": "🍀  freq-ranks COMMON — very frequent",
         "🌷": "🌷  freq-ranks FLUENT — frequent / common",
-        TEXTBOOK_TAG: "📖  textbook — from raw/kanji-textbook-words/",
+        TEXTBOOK_TAG: "📖  textbook — from raw/kanji-textbook-words-min/",
         "📚": "📚  freq-ranks ADVANCED — less common",
         "🦉": "🦉  freq-ranks UNRANKED — rare",
         "🌶️": "🌶️  freq-ranks NICHE — same tier as 🦉",

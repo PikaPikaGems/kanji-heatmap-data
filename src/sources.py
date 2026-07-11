@@ -10,10 +10,9 @@ representative-word selection algorithms.
 import json
 import os
 
-# Default textbook word-pool folder under raw/. Callers can swap it for the full set
-# ("kanji-textbook-words") or an experimental sibling without touching the readers.
-# Override per-run with the TEXTBOOK_SUBDIR env var.
-# "kanji-textbook-words", "kanji-textbook-words-min"
+# Textbook word-pool folder under raw/. Only kanji-textbook-words-min exists (the
+# untrimmed kanji-textbook-words dir was deleted 2026-07-12); the TEXTBOOK_SUBDIR
+# env var remains as an escape hatch for pointing at an experimental sibling.
 TEXTBOOK_SUBDIR = os.environ.get("TEXTBOOK_SUBDIR", "kanji-textbook-words-min")
 
 
@@ -140,8 +139,7 @@ def textbook_candidates(kanji, keep, subdir=TEXTBOOK_SUBDIR):
 def load_textbook_entries(kanji, subdir=TEXTBOOK_SUBDIR):
     """Raw (word, reading, meaning) tuples from raw/{subdir}/{kanji}.json.
 
-    subdir selects the textbook word pool, e.g. "kanji-textbook-words-min" (trimmed)
-    or "kanji-textbook-words" (full)."""
+    subdir selects the textbook word pool (default kanji-textbook-words-min)."""
     data = load_json(f"raw/{subdir}/{kanji}.json", {})
     inner = data.get(kanji, {})
     entries = []
