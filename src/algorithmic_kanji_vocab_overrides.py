@@ -55,7 +55,11 @@ a different-reading word from down to the 📚 tier may replace the second.
 
 Phrase exclusion: words where a grammatical particle (て で に を が は も へ と) appears
 between two kanji sequences are treated as verbal phrases and excluded, so true
-compound words are preferred over phrases like 診て貰う.
+compound words are preferred over phrases like 診て貰う. Two more fragment shapes
+are rejected via resolver.is_phrase_fragment: demonstrative + noun (この人, その様)
+and standalone-word + trailing particle (今も, 常に, 事になる — the learner should
+see 今/常/仕事, not a word with grammar stuck to it). Genuine adverbs survive the
+particle test: 特に (特 alone is not a standalone word), 更に (更 alone reads こう).
 
 Proper-noun demotion: place names, personal names, companies and era names
 (北京, 佐藤, 講談社, 嘉永) score below every ordinary word regardless of frequency
@@ -99,6 +103,7 @@ from sources import (
     freq_key,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments, segment_word
+from jmdict_resolver import JmdictResolver
 
 # NOTE: word_score / is_valid_candidate here intentionally differ from the
 # same-named functions in build_representative_study_word_algo.py — this algorithm
@@ -206,6 +211,10 @@ def has_phrase_bridge(word):
 # unshipped partner (玉 → 玉葱[葱 unshipped]) when an all-shipped option exists.
 SHIPPED = set()
 
+# JmdictResolver over the same loaded JMdict as the candidate index; populated in
+# main(). is_valid_candidate uses it to reject phrase fragments (この人, 今も).
+RESOLVER = None
+
 # Words the furigana step (generate_furigana_algo.py) can actually read; populated
 # in main(). FURIGANA_MAP_WORDS = keys of input/jmdict-furigana-map.json;
 # READABLE_FORMS = every JMdict kanji form that has a kana reading. A candidate
@@ -308,6 +317,8 @@ def is_valid_candidate(word, kanji):
         return False
     if has_phrase_bridge(word):
         return False
+    if RESOLVER is not None and RESOLVER.is_phrase_fragment(word):
+        return False
     return kanji in word
 
 
@@ -402,8 +413,8 @@ def _pick_reading(kana_list, form_text):
     return applicable[0].get('text', '') if applicable else ''
 
 
-def build_jmdict_candidate_index(target_kanji):
-    """Index JMdict (input/scriptin-jmdict-eng.json) as a fallback candidate source.
+def build_jmdict_candidate_index(target_kanji, data):
+    """Index JMdict (`data` = loaded scriptin-jmdict-eng.json) as a fallback source.
 
     Returns (index, word_meaning, readable_forms):
       index        {kanji: [(word, reading, JMDICT_TAG, meaning), ...]} for every
@@ -415,7 +426,6 @@ def build_jmdict_candidate_index(target_kanji):
       readable_forms  every kanji form that has a kana reading (gloss or not) —
                    feeds READABLE_FORMS / has_dictionary_reading.
     """
-    data = load_json('input/scriptin-jmdict-eng.json', {})
     index = {}
     word_meaning = {}
     readable_forms = set()
@@ -693,11 +703,17 @@ def main():
         set(existing_meanings) | set(jmdict_cache) | jsw_words
     )
 
+    # One JMdict load feeds both the resolver (phrase-fragment detection needs it
+    # BEFORE any candidate indexing) and the fallback candidate index.
+    jmdict_data = load_json('input/scriptin-jmdict-eng.json', {})
+    global RESOLVER
+    RESOLVER = JmdictResolver(jmdict_data)
+
     # Primary pool: the freq-ranks corpus dataset, indexed once contains-anywhere.
     freq_index = build_freq_candidate_index(set(all_kanji))
 
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
-    jmdict_index, jmdict_word_meanings, readable_forms = build_jmdict_candidate_index(set(all_kanji))
+    jmdict_index, jmdict_word_meanings, readable_forms = build_jmdict_candidate_index(set(all_kanji), jmdict_data)
     READABLE_FORMS.update(readable_forms)
 
     # Resolved glosses for proper-noun detection: JMdict's full gloss is the most
