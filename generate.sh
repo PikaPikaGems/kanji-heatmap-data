@@ -31,8 +31,3 @@ run python3 src/kanji_build_output_jsons.py
 cp ./input/filtered_kanji.json ./output/filtered_kanji.json
 
 run ./src/kanji_inspect.py
-
-# NOTE: src/fetch_missing_vocab_meanings.py is intentionally NOT run here. It makes
-# live network calls (Jotoba/Jisho) to fill overrides/vocab_meaning-external-dict.json,
-# which would make this build non-deterministic. That cache is committed; run the
-# script by hand only when new words need external meanings.

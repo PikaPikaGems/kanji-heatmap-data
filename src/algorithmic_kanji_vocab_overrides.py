@@ -620,8 +620,8 @@ def main():
     existing_vocab_words = set(w for words in existing_kanji_vocab.values() for w in words)
 
     # A word is only eligible if a meaning is available from some known source.
-    # These are the no-network sources fetch_missing_vocab_meanings.py consults
-    # (excluding this script's own output), so afterward nothing should be missing.
+    # Words missing from all of these fall back to the word itself in the final
+    # build, which prints them in its "Word meaning Not Found" report.
     jmdict_cache  = load_json('input/jmdict-vocab-meaning.json', {})
     external_dict = load_json('overrides/vocab_meaning-external-dict.json', {})
     jsw_algo      = load_json('overrides/japanese_study_words-algo.json', {})

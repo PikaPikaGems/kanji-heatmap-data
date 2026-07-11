@@ -156,8 +156,8 @@ def jmdict_entry_gloss(entry, word=None, definition_count=3):
 # ---------------------------------------------------------------------------
 #
 # Several scripts need "the English meaning of a word": the sample-vocab algorithm
-# (to decide a word is eligible), fetch_missing (to decide a word still needs one),
-# and the final build (to emit it). They used to each hard-code their own source
+# (to decide a word is eligible) and the final build (to emit it). They used to
+# each hard-code their own source
 # ordering, which could disagree. resolve_meaning() fixes the precedence in ONE
 # place; callers just pass whichever source maps they have loaded (absent ones are
 # skipped). Precedence, most authoritative first:

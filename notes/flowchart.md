@@ -41,9 +41,6 @@ flowchart TD
     kanji_representative_words.json)]
 ```
 
-`src/fetch_missing_vocab_meanings.py` is a separate MANUAL tool (it makes live network
-calls). It is not part of `generate.sh`; see §5.
-
 `output/similar-kanjis.json` is a static artifact: its generator
 (`build_similar_kanjis.py`) has been removed from the repo, but the file still ships
 in the release tarball (listed in `constants.output_files`).
@@ -169,7 +166,7 @@ flowchart TB
       a4["vocab_reading-algo.json — algorithmic_kanji_vocab_overrides"]
       a5["vocab_furigana-algo.json — generate_furigana_algo"]
       a6["keywords-algo.json — algorithmic_overrides_keywords"]
-      a7["vocab_meaning-external-dict.json — fetch_missing_vocab_meanings (manual run)"]
+      a7["vocab_meaning-external-dict.json — static cache (its fetch script was removed); hand-edit like a manual override"]
     end
     subgraph MANUAL["Hand-written (authoritative overrides)"]
       m1["keywords.json, component_keyword.json, kanji_vocab.json,
@@ -241,9 +238,9 @@ flowchart TD
 ## 5. Word-meaning resolution
 
 A word's English meaning is resolved by one shared function,
-`sources.resolve_meaning(word, ...)`, used by the sample-vocab algorithm (override
-resolution), the final build, and the manual `fetch_missing` tool. Callers pass
-whichever source maps they have; the precedence is fixed in the function:
+`sources.resolve_meaning(word, ...)`, used by the sample-vocab algorithm and the
+final build. Callers pass whichever source maps they have; the precedence is fixed
+in the function:
 
 ```mermaid
 flowchart LR
@@ -252,9 +249,10 @@ flowchart LR
     o --> m[meaning or None]
 ```
 
-The final build falls back to the word itself when every source misses.
-`fetch_missing_vocab_meanings.py` (manual, network) fills `vocab_meaning-external-dict.json`
-for words still missing a meaning via the Jotoba/Jisho APIs.
+The final build falls back to the word itself when every source misses, and prints
+each such word in a "Word meaning Not Found" report — hand-add those to
+`overrides/vocab_meaning.json`. (`vocab_meaning-external-dict.json` is a frozen cache
+from a since-deleted Jotoba/Jisho fetch script.)
 
 ---
 
