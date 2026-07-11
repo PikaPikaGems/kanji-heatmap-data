@@ -19,18 +19,22 @@ Readings (up to MAX_READINGS, most common first, joined with ・ U+30FB):
                     (はいる 13 senses vs いる 5; しょ 4 vs ふみ 3)
     5. file order   within one entry JMdict curates kana order well
                     (きょう before こんにち, あした before あす)
-  Only clearly-common extra readings join the first (common, not demoted, and
-  ≥2 senses unless the first reading itself has just one — keeps 前 → まえ・ぜん
-  and 毎 → ごと・まい but not 字 → じ・あざ). PREFERRED_FIRST_KANA patches the
-  numerals where JMdict's flattened `common` boolean hides that よん/なな lead
-  (し/しち are avoided for superstition; no in-file signal survives conversion).
+  Only clearly-common extra readings join the first: common, not demoted,
+  ≥2 senses unless the first reading itself has just one (keeps 前 → まえ・ぜん
+  and 毎 → ごと・まい but not 字 → じ・あざ), and the word must be its entry's
+  LEADING kanji form — もと's entry lists 元 first with 本 as an alternative
+  writing, so もと belongs to 元 and never rides along on 本. PREFERRED_FIRST_KANA
+  patches the numerals where JMdict's flattened `common` boolean hides that
+  よん/なな lead (し/しち are avoided for superstition; no in-file signal
+  survives conversion).
 
 Meanings (senses ordered as in JMdict; glosses joined ", "; capped ~150 chars):
   one reading   up to 2 senses joined with " · "  (語 → "word, term · language")
   two readings  first sense of each as "[n] ..." blocks aligned with the split
                 readings ("[1] sky, the air, the heavens [2] emptiness, being
-                empty"); identical blocks collapse to one plain string (四 —
-                both し and よん mean "four, 4").
+                empty"); blocks that mean the same thing — identical, or same
+                leading gloss — collapse to one plain string (四 "four, 4";
+                一 "one, 1"; 入る "to enter, to come in, to go in").
   The meaning sense separator is plain · U+00B7, distinct from the reading
   separator ・ U+30FB, so splitting readings on ・ never touches meanings.
 """
@@ -116,6 +120,10 @@ class JmdictResolver:
                     continue
                 word_common = bool(kanji_form.get("common"))
                 kana_forms = entry.get("kana", [])
+                # Is `word` this entry's canonical (leading) writing? もと's entry
+                # lists 元 first with 本 as an alternative — so もと belongs to 元,
+                # and must not ride along as an extra reading of 本.
+                canonical = entry["kanji"][0].get("text") == word
             else:
                 # the word is itself a kana form (pure-kana word)
                 kana_form = next(
@@ -124,6 +132,7 @@ class JmdictResolver:
                     continue
                 word_common = bool(kana_form.get("common"))
                 kana_forms = [kana_form]
+                canonical = True  # pure-kana word: kana IS the writing
 
             # Entry-level sense count ranks ACROSS entries; within one entry the
             # file's kana order decides, so siblings tie here by construction.
@@ -154,6 +163,7 @@ class JmdictResolver:
                     "common": word_common and bool(kana.get("common")),
                     "standalone": standalone,
                     "demoted": demoted,
+                    "canonical": canonical,
                     "senses": senses,
                     "entry_senses": entry_senses,
                     "_order": (entry_index, kana_index),
@@ -163,6 +173,7 @@ class JmdictResolver:
             not c["common"],
             not c["standalone"],
             c["demoted"],
+            not c["canonical"],  # 本: ほん must outrank もと (whose home is 元)
             -c["entry_senses"],
             c["_order"],
         ))
@@ -200,7 +211,7 @@ class JmdictResolver:
         first = ranked[0]
 
         extras = [c for c in ranked[1:]
-                  if c["common"] and not c["demoted"]
+                  if c["common"] and not c["demoted"] and c["canonical"]
                   and (len(c["senses"]) >= 2 or len(first["senses"]) == 1)]
         picked = [first] + extras
         preferred = PREFERRED_FIRST_KANA.get(word)
@@ -247,6 +258,10 @@ def _build_meaning(picked, glosses_per_sense):
         return " · ".join(sense_text(s) for s in senses)
 
     blocks = [sense_text(c["senses"][0]) for c in picked]
-    if len(set(blocks)) == 1:
-        return blocks[0]  # readings share the sense (四: し/よん) — no [n] needed
+    # Readings that mean the same thing get ONE meaning, not [n] blocks: exact
+    # duplicates (四: し/よん both "four, 4") and near-duplicates whose leading
+    # gloss matches (一: "one, 1"/"one", 入る: "to enter, ..."/"to enter, ...").
+    first_glosses = {_english_glosses(c["senses"][0])[0].strip().lower() for c in picked}
+    if len(set(blocks)) == 1 or len(first_glosses) == 1:
+        return max(blocks, key=len)  # keep the richest phrasing of the shared sense
     return " ".join(f"[{i}] {b}" for i, b in enumerate(blocks, 1))

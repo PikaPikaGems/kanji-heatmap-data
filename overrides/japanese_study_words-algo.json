@@ -49,14 +49,14 @@
   ],
   "本": [
     "本",
-    "もと・ほん",
-    "[1] origin, source, beginning [2] book, volume, script",
+    "ほん",
+    "book, volume, script · this, present, current",
     "🌱"
   ],
   "入": [
     "入る",
     "はいる・いる",
-    "[1] to enter, to come in, to go in [2] to enter, to go in, to get in",
+    "to enter, to come in, to go in",
     "🌱"
   ],
   "出": [
@@ -68,7 +68,7 @@
   "方": [
     "方",
     "ほう・かた",
-    "[1] direction, way, side [2] direction, way",
+    "direction, way, side",
     "🌱"
   ],
   "行": [
@@ -338,7 +338,7 @@
   "店": [
     "店",
     "みせ・てん",
-    "[1] store, shop, establishment [2] store, shop, restaurant",
+    "store, shop, establishment",
     "🌱"
   ],
   "理": [
@@ -1016,7 +1016,7 @@
   "面": [
     "面",
     "めん・つら",
-    "[1] face [2] face, mug",
+    "face, mug",
     "🌱"
   ],
   "番": [
@@ -9273,8 +9273,8 @@
   ],
   "槽": [
     "槽",
-    "ふね",
-    "tank, tub, vat",
+    "そう",
+    "body (of a biwa)",
     "🦉"
   ],
   "伏": [
@@ -9700,8 +9700,8 @@
   ],
   "径": [
     "径",
-    "みち",
-    "road, path, street · route, way",
+    "けい",
+    "diameter",
     "🦉"
   ],
   "陥": [
@@ -10584,8 +10584,8 @@
   ],
   "謀": [
     "謀る",
-    "はかる",
-    "to plan, to attempt, to devise · to plot, to conspire, to scheme",
+    "たばかる",
+    "to work out a plan of deception, to scheme, to take in · to think up a plan, to think over a plan",
     "📖"
   ],
   "挟": [
@@ -10928,8 +10928,8 @@
   ],
   "朴": [
     "朴",
-    "えのき",
-    "Japanese hackberry (Celtis sinensis var. japonica), Chinese nettle tree",
+    "ほお",
+    "Japanese bigleaf magnolia (Magnolia obovata)",
     "🦉"
   ],
   "銅": [
@@ -13766,14 +13766,14 @@
   ],
   "絃": [
     "絃",
-    "つる",
-    "bowstring · string (of shamisen, guitar, violin, etc.)",
+    "げん",
+    "string (of a shamisen, etc.) · stringed instrument",
     "🦉"
   ],
   "毬": [
     "毬",
-    "まり",
-    "ball (for sport, games, etc.) · kemari, type of football played by courtiers in ancient Japan",
+    "いが",
+    "burr (e.g. chestnut), bur, cupule",
     "🦉"
   ],
   "紬": [
@@ -13808,8 +13808,8 @@
   ],
   "鴻": [
     "鴻",
-    "おおとり",
-    "large bird · peng (giant bird said to transform from a fish)",
+    "ひしくい",
+    "bean goose (Anser fabalis)",
     "🦉"
   ],
   "黛": [
@@ -13862,8 +13862,8 @@
   "滉": null,
   "巽": [
     "巽",
-    "たつみ",
-    "southeast",
+    "そん",
+    "xun (one of the trigrams of the I Ching: wind, southeast)",
     "🦉"
   ],
   "惟": null,
@@ -13952,8 +13952,8 @@
   ],
   "鵬": [
     "鵬",
-    "おおとり",
-    "large bird · peng (giant bird said to transform from a fish)",
+    "ほう",
+    "peng (giant bird said to transform from a fish)",
     "🌶️"
   ],
   "柾": [
@@ -13971,8 +13971,8 @@
   ],
   "錘": [
     "錘",
-    "おもり",
-    "weight · sinker",
+    "いわ",
+    "weight (of a fishing net)",
     "🌶️"
   ],
   "尭": null,
@@ -14113,8 +14113,8 @@
   ],
   "頌": [
     "頌",
-    "いわいうた",
-    "festive poem or song · congratulatory form (of waka)",
+    "しょう",
+    "praise · hymn (genre of the Shi Jing)",
     "🦉"
   ],
   "禎": null,

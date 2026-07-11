@@ -43,12 +43,18 @@ GOLDEN_READINGS = {
     "語る": "かたる",
     "書く": "かく",
     "田舎": "いなか",
+    "本": "ほん",          # もと belongs to 元 (its entry's leading form) — not 本
+    "一": "いち・ひと",
+    "方": "ほう・かた",
 }
 
 # word → expected exact meaning string (subset of GOLDEN_READINGS words)
 GOLDEN_MEANINGS = {
     "空": "[1] sky, the air, the heavens [2] emptiness, being empty",
     "四": "four, 4",                     # identical [n] blocks collapse
+    "一": "one, 1",                      # near-duplicate blocks (one, 1 / one) collapse
+    "入る": "to enter, to come in, to go in",  # both readings' senses share "to enter"
+    "方": "direction, way, side",
     "語": "word, term · language",       # 2 senses, · U+00B7 separator
     "書く": "to write, to compose, to pen · to draw, to paint",
 }
