@@ -14,7 +14,9 @@ from jmdict_resolver import (
     CLASS_VERB,
     CLASS_ADJECTIVE,
     CLASS_OTHER,
+    KANA_ONLY_MARKER,
 )
+from sources import load_json
 
 # word → expected ・-joined reading string
 GOLDEN_READINGS = {
@@ -59,6 +61,32 @@ GOLDEN_MEANINGS = {
     "書く": "to write, to compose, to pen · to draw, to paint",
 }
 
+# resolve_fallback cases: rare writings resolve() rejects on purpose.
+# word → (kwargs, expected reading or None, expected meaning or None).
+# `shipped` is filled in main() from input/filtered_kanji.json.
+GOLDEN_FALLBACK = {
+    # usually-kana, no common kanji sibling → resolves with the ⚠️ marker
+    "諄い": ({}, "くどい",
+             "repetitious, long-winded, tedious · heavy (taste), (overly) rich, "
+             "strong" + KANA_ONLY_MARKER),
+    "亦": ({}, "また",
+           "again, once more, once again · also, too, as well" + KANA_ONLY_MARKER),
+    "於いて": ({}, "おいて",
+               "at (a time or place), in, on · in (a situation, matter, etc.), "
+               "on (a point), when it comes to" + KANA_ONLY_MARKER),
+    # glyph variant: canonical 充填 uses 填, which we don't ship — no marker
+    "充塡": ({"shipped": True}, "じゅうてん",
+             "filling (up), replenishing, filling in (a tooth)"),
+    # manual override (✏️): human picked the writing, resolve without gates
+    "昂ぶる": ({"manual": True}, "たかぶる",
+               "to become aroused (of emotions, nerves, etc.), to become excited, "
+               "to become stirred up · to be proud, to be haughty, to be pompous"),
+    # ひめ's common writing is 姫 (shipped) — 媛 must stay unresolved
+    "媛": ({"shipped": True}, None, None),
+    # sK search-only form of 渡る — must stay unresolved
+    "亘る": ({"shipped": True}, None, None),
+}
+
 # word → (word_class, standalone)
 GOLDEN_SHAPE = {
     "書く": (CLASS_VERB, True),
@@ -88,6 +116,22 @@ def main():
         if got != expected:
             failures.append(f"meaning {word}: expected {expected!r}, got {got!r}")
 
+    shipped = set(load_json("input/filtered_kanji.json", []))
+    for word, (kwargs, expected_reading, expected_meaning) in GOLDEN_FALLBACK.items():
+        if kwargs.get("shipped"):
+            kwargs = dict(kwargs, shipped=shipped)
+        result = resolver.resolve_fallback(word, **kwargs)
+        got_reading = result["reading"] if result else None
+        got_meaning = result["meaning"] if result else None
+        if got_reading != expected_reading:
+            failures.append(
+                f"fallback {word}: expected reading {expected_reading!r}, "
+                f"got {got_reading!r}")
+        elif got_meaning != expected_meaning:
+            failures.append(
+                f"fallback {word}: expected meaning {expected_meaning!r}, "
+                f"got {got_meaning!r}")
+
     for word, (expected_class, expected_standalone) in GOLDEN_SHAPE.items():
         result = resolver.resolve(word)
         if result is None:
@@ -102,7 +146,8 @@ def main():
                 f"shape {word}: expected standalone={expected_standalone}, "
                 f"got {result['standalone']}")
 
-    total = len(GOLDEN_READINGS) + len(GOLDEN_MEANINGS) + len(GOLDEN_SHAPE)
+    total = (len(GOLDEN_READINGS) + len(GOLDEN_MEANINGS) + len(GOLDEN_FALLBACK)
+             + len(GOLDEN_SHAPE))
     if failures:
         print(f"FAIL — {len(failures)} of {total} golden checks:")
         for f in failures:
