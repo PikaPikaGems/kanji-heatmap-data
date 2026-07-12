@@ -1,24 +1,18 @@
 """Shared data loading for the kanji-data scripts.
 
-Project-relative path resolution, JSON loading, and the raw word-source readers
-(v3 kanji-words, textbook words, JMdict gloss extraction). The readers return
-unfiltered raw tuples — each caller applies its own validity rules, which differ
-between the sample-vocab and representative-word selection algorithms.
+Project-relative path resolution, JSON loading, the raw word-source readers
+(textbook words, JMdict gloss extraction) and the freq-ranks composite corpus
+frequency. The readers return unfiltered raw tuples — each caller applies its
+own validity rules, which differ between the sample-vocab and
+representative-word selection algorithms.
 """
 
 import json
 import os
 
-# Default v3 word-pool subfolder under raw/kanji-words/. Callers can swap it for an
-# experimental sibling (e.g. "v3b") without touching the readers — mirrors the
-# folder switch the textbook reader exposes via TEXTBOOK_SUBDIR. Override per-run
-# with the V3_SUBDIR env var (e.g. for batch comparison builds).
-V3_SUBDIR = os.environ.get("V3_SUBDIR", "v3c")  # v3b, v3
-
-# Default textbook word-pool folder under raw/. Callers can swap it for the full set
-# ("kanji-textbook-words") or an experimental sibling without touching the readers —
-# mirrors V3_SUBDIR / the v3 reader. Override per-run with the TEXTBOOK_SUBDIR env var.
-# "kanji-textbook-words", "kanji-textbook-words-min"
+# Textbook word-pool folder under raw/. Only kanji-textbook-words-min exists (the
+# untrimmed kanji-textbook-words dir was deleted 2026-07-12); the TEXTBOOK_SUBDIR
+# env var remains as an escape hatch for pointing at an experimental sibling.
 TEXTBOOK_SUBDIR = os.environ.get("TEXTBOOK_SUBDIR", "kanji-textbook-words-min")
 
 
@@ -54,48 +48,103 @@ def write_json(rel_path, data, *, indent=None, separators=None, ensure_ascii=Fal
 
 
 # Internal tag marking a candidate as coming from the textbook word source rather
-# than a v3 frequency band. Shared so both selection algorithms agree on the value.
+# than a corpus frequency band. Shared so both selection algorithms agree on the value.
 TEXTBOOK_TAG = "__textbook__"
 
 
-def load_v3_entries(kanji, subdir=V3_SUBDIR):
-    """Raw (word, reading, tag, meaning) tuples from raw/kanji-words/{subdir}/{kanji}.json.
+# ---------------------------------------------------------------------------
+# freq-ranks corpus data (raw/freq-ranks/*.tsv)
+# ---------------------------------------------------------------------------
+#
+# Each TSV lists the words starting with its key character (kanji AND kana files),
+# with a frequency RANK per corpus (lower = more frequent; NA = absent), a
+# precomputed `tier` band and JLPT level. Both selection algorithms rank
+# same-tier words by the composite frequency below, so it lives here.
 
-    subdir selects the v3 word pool ("v3" by default, "v3b" for an experimental set)."""
-    data = load_json(f"raw/kanji-words/{subdir}/{kanji}.json", [])
-    return [
-        (e.get("w", ""), e.get("r", ""), e.get("t", ""), e.get("e", "")) for e in data
-    ]
+# Per-corpus weight in the composite frequency; 0 drops a corpus. SPOKEN/everyday
+# corpora (conversation, subtitles) weigh more than WRITTEN ones (web, wiki) —
+# a learner's word is better drawn from speech than from text.
+CORPUS_WEIGHTS = {
+    "CEJC_all_conversations": 2.0, "CEJC_small_talk_zatsudan": 2.0,
+    "BCCWJ_LUW_compound": 1.0, "BCCWJ_SUW_short_unit": 1.0,
+    "CommonCrawl_CC100": 0.5, "NWJC_web_corpus": 0.5, "Wikipedia_v2": 0.5,
+    "DaveDoebrick_SliceOfLife": 2.0, "jiten_all_media": 1.5, "jiten_drama": 2.0,
+    "Shoui_anime_jdrama": 1.5, "MarvNC_youtube_v3": 1.5, "Shoui_netflix": 1.5,
+    "DaveDoebrick_netflix_no_names": 1.5,
+}
+
+# Each corpus a word is MISSING from inflates its mean rank by this fraction, so a
+# word seen across many corpora beats an equally-ranked word seen in only one.
+COVERAGE_PENALTY = 0.15
 
 
-def v3_candidates(kanji, keep, subdir=V3_SUBDIR):
-    """v3 (word, reading, tag, meaning) tuples whose (word, reading) passes keep().
+def parse_rank(value):
+    """Parse a corpus rank cell: int rank, or None for NA/blank/garbage."""
+    if not value or value == "NA":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
-    subdir is forwarded to load_v3_entries to pick which v3 folder to read."""
-    return [e for e in load_v3_entries(kanji, subdir) if keep(e[0], e[1])]
+
+def freq_key(row):
+    """Composite corpus frequency for a freq-ranks row — LOWER is better.
+
+    Weighted mean of the per-corpus ranks the word actually has, inflated by
+    COVERAGE_PENALTY for every weighted corpus it is missing from. Infinity when
+    the word appears in no weighted corpus at all (kept only as a last resort)."""
+    num = den = 0.0
+    present = 0
+    weighted_total = 0
+    for col, weight in CORPUS_WEIGHTS.items():
+        if weight <= 0:
+            continue
+        weighted_total += 1
+        r = parse_rank(row.get(col))
+        if r is None:
+            continue
+        num += weight * r
+        den += weight
+        present += 1
+    if den == 0:
+        return float("inf")
+    return (num / den) * (1 + COVERAGE_PENALTY * (weighted_total - present))
+
+
+def corpus_coverage(row):
+    """How many weighted corpora the word appears in (non-NA, weight > 0)."""
+    return sum(
+        1 for col, weight in CORPUS_WEIGHTS.items()
+        if weight > 0 and parse_rank(row.get(col)) is not None
+    )
 
 
 def textbook_candidates(kanji, keep, subdir=TEXTBOOK_SUBDIR):
     """Textbook (word, reading, TEXTBOOK_TAG, meaning) tuples passing keep().
 
-    Each selection algorithm supplies its own `keep(word, reading)` predicate — the
-    validity rules differ (representative-word requires the word to start with the
-    kanji; sample-vocab only requires it to contain the kanji).
+    The caller supplies a `keep(word, reading)` validity predicate. The entries'
+    JLPT level is dropped here — callers that need it (the representative-word
+    algorithm's scoring) read load_textbook_entries directly.
 
     subdir selects which textbook folder under raw/ to read (see load_textbook_entries).
     """
     return [
         (w, r, TEXTBOOK_TAG, e)
-        for w, r, e in load_textbook_entries(kanji, subdir)
+        for w, r, e, _jlpt in load_textbook_entries(kanji, subdir)
         if keep(w, r)
     ]
 
 
 def load_textbook_entries(kanji, subdir=TEXTBOOK_SUBDIR):
-    """Raw (word, reading, meaning) tuples from raw/{subdir}/{kanji}.json.
+    """Raw (word, reading, meaning, jlpt) tuples from raw/{subdir}/{kanji}.json.
 
-    subdir selects the textbook word pool, e.g. "kanji-textbook-words-min" (trimmed)
-    or "kanji-textbook-words" (full)."""
+    Each file value is [reading, meaning, jlptLevel?, tags?] — jlptLevel is a
+    numeric string ("5" = N5 .. "1" = N1), absent or null when untagged, so
+    `jlpt` comes back as int 5..1 or None. The trailing tags field ("kaishi",
+    "uk") is not used by any caller and is dropped.
+
+    subdir selects the textbook word pool (default kanji-textbook-words-min)."""
     data = load_json(f"raw/{subdir}/{kanji}.json", {})
     inner = data.get(kanji, {})
     entries = []
@@ -104,7 +153,8 @@ def load_textbook_entries(kanji, subdir=TEXTBOOK_SUBDIR):
             continue
         reading = val[0] if len(val) >= 1 else ""
         meaning = val[1] if len(val) >= 2 else ""
-        entries.append((word, reading, meaning))
+        jlpt = parse_rank(val[2]) if len(val) >= 3 else None
+        entries.append((word, reading, meaning, jlpt))
     return entries
 
 
@@ -155,20 +205,15 @@ def jmdict_entry_gloss(entry, word=None, definition_count=3):
 # Word-meaning resolution (single source of truth for source precedence)
 # ---------------------------------------------------------------------------
 #
-# Several scripts need "the English meaning of a word": the sample-vocab algorithm
-# (to decide a word is eligible), fetch_missing (to decide a word still needs one),
-# and the final build (to emit it). They used to each hard-code their own source
-# ordering, which could disagree. resolve_meaning() fixes the precedence in ONE
-# place; callers just pass whichever source maps they have loaded (absent ones are
-# skipped). Precedence, most authoritative first:
+# The final build needs "the English meaning of a word" (to emit it). Rather than
+# hard-code a source ordering at the call site, resolve_meaning() fixes the
+# precedence in ONE place; the caller passes whichever source maps it has loaded
+# (absent ones are skipped). Precedence, most authoritative first:
 #
 #   common   jmdict common-form meanings (input/jmdict-vocab-meaning.json)
 #   custom   hand-curated input/vocab_meaning.json + overrides/vocab_meaning.json
 #   algo     overrides/vocab_meaning-algo.json (sample-vocab algorithm output)
-#   external overrides/vocab_meaning-external-dict.json (Jotoba/Jisho cache)
-#   ai       raw/ai-generated/vocab-meanings-ai.json
 #   jmdict_full  any JMdict form (broader than `common`) — gap-filler
-#   jsw      japanese_study_words-algo meanings — gap-filler
 
 
 def resolve_meaning(
@@ -177,37 +222,14 @@ def resolve_meaning(
     common=None,
     custom=None,
     algo=None,
-    external=None,
-    ai=None,
     jmdict_full=None,
-    jsw=None,
 ):
     """First available meaning for `word` across the given source maps, in the fixed
     precedence above. Each argument is a {word: meaning} dict or None. Returns None
     when no source has a (non-empty) meaning."""
-    for src in (common, custom, algo, external, ai, jmdict_full, jsw):
+    for src in (common, custom, algo, jmdict_full):
         if src:
             meaning = src.get(word)
             if meaning:
                 return meaning
     return None
-
-
-def ai_meaning_map(ai_raw):
-    """Normalize raw/ai-generated/vocab-meanings-ai.json ({word: [meaning, ...]} or
-    {word: meaning}) to a flat {word: meaning} map."""
-    return {
-        w: (v[0] if isinstance(v, list) else v)
-        for w, v in ai_raw.items()
-        if (v[0] if isinstance(v, list) else v)
-    }
-
-
-def jsw_meaning_map(jsw_algo):
-    """{word: meaning} from japanese_study_words-algo.json entries ([word, reading,
-    meaning, tag]), skipping entries with no meaning."""
-    return {
-        entry[0]: entry[2]
-        for entry in jsw_algo.values()
-        if entry and len(entry) >= 3 and entry[2]
-    }

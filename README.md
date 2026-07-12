@@ -4,19 +4,11 @@
 
 ### Requirements
 
-Python 3.x:
+Python 3.x (standard library only — no packages to install):
 
 ```bash
 python --version
 # Python 3.13.2
-```
-
-Set up a virtual environment to avoid conflicts with global packages:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-./setup.sh
 ```
 
 ### Overrides
@@ -86,7 +78,7 @@ merged_kanji.json
 missing_components.json
 phonetic_components.json
 scriptin-jmdict-eng.json # From: Jmdict Simplified
-vocab_furigana.json
+vocab_furigana.json      # legacy, no longer read (furigana comes from jmdict-furigana-map)
 vocab_meaning.json
 ```
 
@@ -101,16 +93,8 @@ These files come from the repos which may or may not be public as of writing:
 ### Transform Data
 
 ```bash
-# ----------------
-# Setup environment
-# ----------------
-
 # IMPORTANT: 
 # populate  `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`
-
-# python3 -m venv .venv
-# source .venv/bin/activate
-# ./setup.sh
 
 # ----------------
 # Transform Data Script
@@ -153,11 +137,6 @@ jmdict-vocab-meaning.json
 ```bash
 ./src/kanji_inspect.py
 
-# additional inspection
-# raw/ai-generate/*-ai.json 
-python3 ./src/inspect_nonshipped_words.py
-python3 ./src/inspect_removed_kanji.py
-
 $ head -n 20 raw/kanji-textbook-words/v3/<KANJI>.json
 $ head -n 20 raw/kanji-textbook-words/<KANJI>.json 
 ```
@@ -178,6 +157,7 @@ The input data comes from:
    both under [CC BY-SA 4.0][cc-by-sa-4].
 3. [Jiten Frequency](https://jiten.moe/other), [JPDB Frequency](https://github.com/Kuuuube/yomitan-dictionaries/blob/main/data/jpdbv2_kanji_frequency_2026-02-09.csv), [KKLC Order](https://github.com/vadasambar/kanji_order/blob/master/final_order.txt)
 4. Kanji structure data used to generate similarity search can be found on /raw/structure-info/SOURCES.md.
+5. Kanji confusion/similarity data for the 1945 jouyou kanji comes from Lars Yencken's [kanji-confusion dataset][yencken-kanji-confusion] (see /raw/similarity/README.md), used in `src/build_similar_kanji.py`.
 
 ### JMdict and JMnedict
 
@@ -192,4 +172,5 @@ All derived files are distributed under the same license, as the original licens
 [pika-furi]: https://github.com/PikaPikaGems/jmdict-furigana-map
 [EDRDG-license]: http://www.edrdg.org/edrdg/licence.html
 [jmdict-edict]: https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project
+[yencken-kanji-confusion]: https://lars.yencken.org/datasets/kanji-confusion/
 [jmdict-simplified]: https://github.com/scriptin/jmdict-simplified

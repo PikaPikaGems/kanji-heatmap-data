@@ -1,7 +1,0 @@
-spacy==3.8.14
-ginza==5.2.0
-ja-ginza==5.2.0
-SudachiPy==0.6.11
-SudachiDict-core==20260428
-jamdict
-click

@@ -23,8 +23,7 @@ flowchart TD
     B --> C[algorithmic_kanji_vocab_overrides.py]
     C --> D[generate_furigana_algo.py]
     D --> E[algorithmic_overrides_keywords.py]
-    E --> F[build_similar_kanjis.py]
-    F --> G[kanji_build_output_jsons.py]
+    E --> G[kanji_build_output_jsons.py]
     G --> H[kanji_inspect.py — stats only]
 
     A -.writes.-> a1[(input/filtered_kanji.json
@@ -32,20 +31,25 @@ flowchart TD
     B -.writes.-> b1[(overrides/japanese_study_words-algo.json)]
     C -.writes.-> c1[(overrides/kanji_vocab-algo.json
     vocab_meaning-algo.json
-    vocab_reading-algo.json
-    vocab-with-no-furigana.json)]
+    vocab_reading-algo.json)]
     D -.writes.-> d1[(overrides/vocab_furigana-algo.json)]
     E -.writes.-> e1[(overrides/keywords-algo.json
     debug/debug-keywords.json)]
-    F -.writes.-> f1[(output/similar-kanjis.json)]
     G -.writes.-> g1[(output/kanji_main.json, kanji_extended.json,
     component_keyword.json, extra_kanji_keyword.json, phonetic.json,
     cum_use.json, vocab_meaning.json, vocab_furigana.json,
     kanji_representative_words.json)]
 ```
 
-`src/fetch_missing_vocab_meanings.py` is a separate MANUAL tool (it makes live network
-calls). It is not part of `generate.sh`; see §5.
+`output/similar-kanjis.json` is a static artifact: its generator
+(`build_similar_kanjis.py`) has been removed from the repo, but the file still ships
+in the release tarball (listed in `constants.output_files`).
+
+`generate_furigana_algo.py` is the ONLY step that generates furigana. It computes the
+shipped word set itself (same `get_words` logic as the final build) and covers EVERY
+shipped word — like all `-algo` files it is complete and never consults the manual
+overrides. The final build then just merges the two layers (hand-written
+`overrides/vocab_furigana.json` wins) and aborts if a word is in neither.
 
 ---
 
@@ -56,21 +60,18 @@ flowchart LR
     %% raw inputs
     merged[("🟩 input/merged_kanji.json")]
     remove[("🟩 overrides/kanji_to_remove.json")]
-    v3[("🟩 raw/kanji-words/v3/*")]
-    textbook[("🟩 raw/kanji-textbook-words/* OR
-    raw/kanji-textbook-words-min/* — chosen per script
-    by USE_TEXT_BOOK_MIN")]
+    freqranks[("🟩 raw/freq-ranks/*.tsv — per-corpus frequency
+    ranks + tier + JLPT; the word pool for BOTH
+    selection algorithms")]
+    textbook[("🟩 raw/kanji-textbook-words-min/*
+    (TEXTBOOK_SUBDIR env var; default -min)")]
     jmdict[("🟩 input/scriptin-jmdict-eng.json")]
+    hints[("🟩 overrides/resolver_hints.json — hand-edited
+    readingOrder/meanings corrections for jmdict_resolver
+    + replaceKanjiStudyWords ✏️ study-word pins")]
     furimap[("🟩 input/jmdict-furigana-map.json")]
-    aiwords[("🟩 raw/ai-generated/sample-vocab-ai.json")]
-    aifuri[("🟩 raw/ai-generated/vocab-furigana-ai.json")]
-    aimean[("🟩 raw/ai-generated/vocab-meanings-ai.json")]
-    aistudy[("🟩 raw/ai-generated/japanese-study-words-ai.json")]
-    components[("🟩 raw/kanji_components.txt")]
-    structure[("🟩 raw/structure-info/yagays/* (radical + L/R, T/B)")]
     jpdbfreq[("🟩 raw/JPDB_FREQUENCY_*.csv")]
     keywordsraw[("🟩 raw/kanji-keywords-{j,w,k}.json")]
-    manual[("🟩 raw/manual-inspections.json")]
 
     %% scripts
     S1[build_filtered_kanji_json]
@@ -78,11 +79,10 @@ flowchart LR
     S3[algorithmic_kanji_vocab_overrides]
     S4[generate_furigana_algo]
     SK[algorithmic_overrides_keywords]
-    SS[build_similar_kanjis]
     S6[kanji_build_output_jsons]
 
-    %% intermediate files — all script-written: input/filtered_kanji.json, the
-    %% -algo.json overrides, and the external-dict cache. The hand-written
+    %% intermediate files — all script-written: input/filtered_kanji.json and the
+    %% -algo.json overrides. The hand-written
     %% overrides/*.json (no -algo suffix) that take priority at build time are
     %% authoritative and intentionally omitted from this view (see §3).
     filt[("🟦 input/filtered_kanji.json")]
@@ -90,10 +90,8 @@ flowchart LR
     kv[("🟦 kanji_vocab-algo")]
     vm[("🟦 vocab_meaning-algo")]
     vr[("🟦 vocab_reading-algo")]
-    nofuri[("🟦 vocab-with-no-furigana")]
     vf[("🟦 vocab_furigana-algo")]
     kwalgo[("🟦 keywords-algo")]
-    ext[("🟦 vocab_meaning-external-dict")]
 
     %% outputs
     main[("🟧 output/kanji_main")]
@@ -102,7 +100,6 @@ flowchart LR
     outvf[("🟧 output/vocab_furigana")]
     outvm[("🟧 output/vocab_meaning")]
     compkw[("🟧 output/component_keyword")]
-    simout[("🟧 output/similar-kanjis")]
 
     merged --> S1
     remove --> S1
@@ -111,29 +108,26 @@ flowchart LR
     %% S1 also frequency-orders filtered_kanji.json: Google (in merged) → JPDB → Netflix
 
     filt --> S2
-    v3 --> S2
+    freqranks --> S2
     textbook --> S2
     jmdict --> S2
-    aimean --> S2
-    aistudy --> S2
-    manual --> S2
+    hints --> S2
     furimap --> S2
     S2 --> jsw
 
     filt --> S3
-    v3 --> S3
+    freqranks --> S3
     textbook --> S3
     jmdict --> S3
+    hints --> S3
     furimap --> S3
-    aiwords --> S3
-    aimean --> S3
     jsw --> S3
-    ext --> S3
-    S3 --> kv & vm & vr & nofuri
+    S3 --> kv & vm & vr
 
-    nofuri --> S4
-    aifuri --> S4
+    filt --> S4
+    kv --> S4
     furimap --> S4
+    jmdict --> S4
     vr --> S4
     S4 --> vf
 
@@ -142,11 +136,6 @@ flowchart LR
     filt --> SK
     SK --> kwalgo
 
-    components --> SS
-    structure --> SS
-    filt --> SS
-    SS --> simout
-
     %% final build
     filt --> S6
     merged --> S6
@@ -154,11 +143,8 @@ flowchart LR
     vm --> S6
     vr --> S6
     vf --> S6
-    ext --> S6
-    aimean --> S6
     jsw --> S6
     kwalgo --> S6
-    furimap --> S6
     jmdict --> S6
     S6 --> main & extd & repw & outvf & outvm & compkw
 ```
@@ -168,8 +154,8 @@ flowchart LR
 ## 3. Override files: algorithm-generated vs hand-written
 
 Files in `overrides/` come from two sources. Only these are written by scripts — all
-have the `-algo` suffix (plus the external-dict cache). Every other `overrides/*` file
-is hand-maintained and must not be regenerated.
+have the `-algo` suffix. Every other `overrides/*` file is hand-maintained and must
+not be regenerated.
 
 ```mermaid
 flowchart TB
@@ -180,7 +166,6 @@ flowchart TB
       a4["vocab_reading-algo.json — algorithmic_kanji_vocab_overrides"]
       a5["vocab_furigana-algo.json — generate_furigana_algo"]
       a6["keywords-algo.json — algorithmic_overrides_keywords"]
-      a7["vocab_meaning-external-dict.json — fetch_missing_vocab_meanings (manual run)"]
     end
     subgraph MANUAL["Hand-written (authoritative overrides)"]
       m1["keywords.json, component_keyword.json, kanji_vocab.json,
@@ -193,35 +178,46 @@ At build time the final build prefers manual overrides over the `-algo` files.
 
 ---
 
-## 4. The three selection algorithms (per-kanji logic)
+## 4. The two selection algorithms (per-kanji logic)
 
 ### `build_representative_study_word_algo.py`
-One unique study word per kanji; the word must START with the kanji.
+One unique study word per kanji; the word must START with the kanji
+(textbook words merely CONTAINING it ride along with a stage penalty).
 
 ```mermaid
 flowchart TD
-    K[for each kanji] --> C[collect v3 + textbook candidates
-    that START with kanji, all-Japanese, 1-2 kanji
-    textbook source: full or -min per USE_TEXT_BOOK_MIN]
-    C --> SR{single-kanji word, kanji_count==1,
-    tagged 🌱 or ☘️ — or 🌷 if
-    INCLUDE_TULIP_IN_PRIORITY=True?}
-    SR -- yes --> PICK[pick best among them by word_score — bypasses Rule 1 and 2]
-    SR -- no --> SC[score: source tier, then word-type, then length]
-    SC --> U{best unused word?}
-    U -- yes --> PICK
-    U -- no candidates --> FB[relaxed: textbook word
-    CONTAINING kanji, shortest first]
-    FB --> U2{unused?}
-    U2 -- yes --> PICK
-    U2 -- no --> AI[last resort: ai-generated study word]
-    AI --> PICK
-    PICK --> MEAN[resolve meaning:
-    entry -> jmdict -> scriptin -> ai]
-    MEAN --> MAN[apply manual replaceKanjiStudyWords]
+    K[for each kanji] --> C[collect candidates: freq-ranks kanji.tsv
+    + textbook-min + the bare kanji itself when JMdict
+    says it is a standalone word
+    all-Japanese, 1-2 kanji, unused]
+    C --> F[reject phrase fragments — resolver.is_phrase_fragment:
+    この人, 常に, 今も, 事になる]
+    F --> SC["score tuple (lower wins): validity → stage →
+    band → JLPT → class verb&lt;adj&lt;other → word-type → shipped → freq → len"]
+    SC --> SR{any single-kanji candidate in a
+    top band BASIC/COMMON that resolves standalone?}
+    SR -- "yes — special rule" --> BT{bare kanji ties the best
+    through band/JLPT/class?}
+    BT -- yes --> PICKBARE[pick the bare kanji: 一, 常, 誰]
+    BT -- no --> PICKONE[pick best single-kanji word: 高い, 語る]
+    SR -- no --> PICK[pick best-scored word]
+    PICK --> STRIP[strip trailing する/な from
+    2-kanji stems: 真摯な → 真摯]
+    PICKBARE --> RES
+    PICKONE --> RES
+    STRIP --> RES[reading + meaning from jmdict_resolver ONLY:
+    up to 2 readings ・-joined, sense blocks;
+    resolve_fallback for rare writings — ⚠️ often-kana marker;
+    pool r/e fields never reach the output]
+    RES --> MAN[apply manual replaceKanjiStudyWords ✏️
+    from overrides/resolver_hints.json
+    lenient resolve — the human picked the writing]
     MAN --> DUP{any word maps to 2 kanji?}
     DUP -- yes --> ERR[raise ValueError]
-    DUP -- no --> OUT[(japanese_study_words-algo.json)]
+    DUP -- no --> DROP[drop non-words logged then removed:
+    no JMdict entry at all empty meaning / affix-only
+    妃 卿 哉 → that kanji ships no study word]
+    DROP --> OUT[(japanese_study_words-algo.json)]
 ```
 
 ### `algorithmic_kanji_vocab_overrides.py`
@@ -229,14 +225,14 @@ Up to two SAMPLE words per kanji (kanji can appear anywhere), with reading diver
 
 ```mermaid
 flowchart TD
-    K[for each kanji] --> OV{hand-curated override
-    in sample-vocab-ai.json?}
-    OV -- yes --> RES[use override words] --> EMIT
-    OV -- no --> C[collect v3 + textbook + existing + jmdict
-    candidates that have a meaning available
-    textbook source: full or -min per USE_TEXT_BOOK_MIN]
+    K[for each kanji] --> C[collect candidates: freq-ranks contains-anywhere
+    index over ALL raw/freq-ranks/*.tsv + textbook-min
+    + existing + jmdict fallbacks; phrase fragments rejected
+    via resolver.is_phrase_fragment. A missing meaning/reading
+    only costs score — the final build is the hard gate]
     C --> S1[first word = best score
-    tier, extra-kanji, length, reading, meaning]
+    proper-noun demotion, then tier, extra-kanji, length, reading, meaning
+    hand-curated picks live in overrides/kanji_vocab.json, applied at BUILD time]
     S1 --> S2[second word = best score
     + bonus for DIFFERENT kanji reading
     only if itself high-frequency]
@@ -247,46 +243,36 @@ flowchart TD
     RP -- no --> EMIT
     ALT --> EMIT[emit 1-2 words]
     EMIT --> W[(kanji_vocab-algo + vocab_meaning-algo
-    + vocab_reading-algo + vocab-with-no-furigana)]
+    + vocab_reading-algo)]
 ```
 
-### `build_similar_kanjis.py`
-Visually similar kanji by shared components (IDF-weighted, position-aware).
-
-```mermaid
-flowchart TD
-    L[component set per kanji:
-    yagays kanji2radical, else kanji_components.txt;
-    normalise radical variants, drop trivial strokes] --> W[IDF-weight components
-    over the shipped set: rare component = high weight]
-    W --> IDX[invert: component -> kanjis]
-    IDX --> K[for each kanji, sorted]
-    K --> SC[score each candidate sharing a component:
-    weighted cosine of component vectors
-    + same-slot bonus from yagays L/R, T/B]
-    SC --> F[keep score >= 0.35, order most→least similar, cap 10]
-    F --> OUT[(output/similar-kanjis.json)]
-```
+Readings and meanings for the STUDY words come from `src/jmdict_resolver.py`
+(JMdict only — pool reading/meaning fields never reach the output). Per-word
+hand corrections for the resolver (leading reading, replacement meaning) and the
+`replaceKanjiStudyWords` ✏️ study-word pins live in
+`overrides/resolver_hints.json`, not in code.
 
 ---
 
 ## 5. Word-meaning resolution
 
 A word's English meaning is resolved by one shared function,
-`sources.resolve_meaning(word, ...)`, used by the sample-vocab algorithm (override
-resolution), the final build, and the manual `fetch_missing` tool. Callers pass
-whichever source maps they have; the precedence is fixed in the function:
+`sources.resolve_meaning(word, ...)`, called per word by the final build. The
+caller passes whichever source maps it has; the precedence is fixed in the function:
 
 ```mermaid
 flowchart LR
     w[word] --> R[sources.resolve_meaning]
-    R --> o["common → custom → algo → external → ai → jmdict_full → jsw"]
+    R --> o["common → custom → algo → jmdict_full"]
     o --> m[meaning or None]
 ```
 
-The final build falls back to the word itself when every source misses.
-`fetch_missing_vocab_meanings.py` (manual, network) fills `vocab_meaning-external-dict.json`
-for words still missing a meaning via the Jotoba/Jisho APIs.
+The final build is the single hard gate: `dump_all_vocab_meanings` RAISES if any
+shipped word resolves to no meaning (add it to `overrides/vocab_meaning.json`), and
+`dump_all_vocab_furigana` RAISES if any has no reading (bare `[[word]]`; add it to
+`overrides/vocab_furigana.json`). Because of this, the sample-vocab algorithm does
+NOT pre-filter candidates by meaning/reading availability — a missing one only
+costs score, so eligibility can never drift from what the build actually resolves.
 
 ---
 

@@ -4,6 +4,9 @@
 /raw/kanji-textbook-words-min/*
 /raw/freq-ranks/*
 
+diff-sample-vocab.md
+diff-study-words.md
+
 /debug/*
 !/debug/.keep
 

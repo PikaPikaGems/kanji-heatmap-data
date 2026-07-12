@@ -5,8 +5,7 @@ Manual one-off helper for hand-filling meanings of obscure words.
 Given a full JMdict-simplified JSON file as its single argument, it looks up the
 English glosses (up to DEFINITION_COUNT) for the hardcoded WORDS_TO_FIND set —
 rare/uncommon words that the automated meaning sources miss — and prints them as
-ready-to-paste `"word": "meaning",` lines for overrides/vocab_meaning-external-dict.json
-(or the manual vocab_meaning overrides).
+ready-to-paste `"word": "meaning",` lines for overrides/vocab_meaning.json.
 
 Not part of the build pipeline; edit WORDS_TO_FIND and re-run as needed:
   ./src/uncommon_vocab_meaning.py /path/to/jmdict-eng.json

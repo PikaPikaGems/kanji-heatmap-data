@@ -53,6 +53,46 @@ def kata_to_hira(text):
     return "".join(result)
 
 
+# Corpus word lists contain phrase fragments that pass every structural check:
+# a demonstrative glued to a noun (この人, その様) and a standalone word with a
+# trailing particle (今も, 常に, 事になる). Both selection algorithms reject them
+# via the two helpers below — a study/sample word must be a word, not a word
+# plus grammar.
+
+# Kana prefixes that glue a modifier onto a noun without making a new word:
+# demonstratives (この人, その様) and the bare adjective いい (いい人, いい子).
+FRAGMENT_PREFIXES = (
+    "この", "その", "あの", "どの", "こんな", "そんな", "あんな", "どんな",
+    "いい",
+)
+
+# Trailing particle chunks (longest first, so になる wins over に). Deliberately
+# NOT here: か (誰か is a real word), ば (conditional, 例えば), い (adjective
+# okurigana, 赤い/高い), bare ない (少ない/危ない are real adjectives — only the
+# particle+ない compounds がない/もない/でもない are safe to match).
+PARTICLE_TAILS = (
+    "でもない", "ではない", "じゃない",
+    "になる", "にする", "となる", "とする", "がある", "もある", "がない", "もない",
+    "にでも", "には", "にも", "とも", "でも", "から", "まで", "など", "って", "たち",
+    "に", "も", "は", "が", "を", "と", "で", "へ", "や", "の", "て",
+)
+
+
+def particle_attached_stem(word):
+    """The all-kanji stem of a word that is just kanji + a trailing particle chunk
+    (常に → 常, 事になる → 事, 本当に → 本当), or None when the word isn't shaped
+    like that (高い, 例えば, 神様). Shape check only — the caller decides whether
+    the stem is a real standalone word (常/つね yes → 常に is 常+に; 特 is only a
+    prefix → 特に is a genuine adverb)."""
+    for tail in PARTICLE_TAILS:
+        if word.endswith(tail):
+            stem = word[: -len(tail)]
+            if stem and all(is_kanji_char(c) for c in stem):
+                return stem
+            return None
+    return None
+
+
 def reading_of_kanji_in_segments(kanji, segments):
     """Return the reading attached to the furigana span containing `kanji`, or None.
 
