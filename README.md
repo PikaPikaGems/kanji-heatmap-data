@@ -94,11 +94,8 @@ These files come from the repos which may or may not be public as of writing:
 
 ```bash
 # IMPORTANT: 
-# populate  `./raw/kanji-textbook-words/*.json` and `./raw/kanji-words/v3/*.json`
-
-# ----------------
-# Transform Data Script
-# ----------------
+# populate: "./raw/kanji-textbook-words-min/<KANJI>.json
+# populate: "./raw/freq-ranks/<KANJI>.tsv
 
 # See: notes/flowchart.md
 ./generate.sh
@@ -136,9 +133,53 @@ jmdict-vocab-meaning.json
 
 ```bash
 ./src/kanji_inspect.py
+```
+Note the directories and files required for generating sample vocabulary and study words
 
-$ head -n 20 raw/kanji-textbook-words/v3/<KANJI>.json
-$ head -n 20 raw/kanji-textbook-words/<KANJI>.json 
+Textbook words
+```
+$ head -n 20 raw/kanji-textbook-words-min/<KANJI>.json
+```
+
+Example: 
+
+```json
+{
+  "肩": {
+    "肩": [
+      "かた", # reading
+      "shoulder", # definition
+      "3", # JLPT
+      "kaishi" # tags
+    ],
+    "肩凝り": [
+      "かたこり",
+      "stiff shoulders"
+    ],
+    "肩章": [
+      "けんしょう",
+      "epaulet, shoulder strap"
+    ]
+  }
+}
+```
+
+```
+
+High Frequency Words
+
+```
+$ head -n 20 raw/freq-ranks/<KANJI>.tsv
+```
+
+Example: 
+
+```json
+japanese_word   english_gloss   CEJC_all_conversations  CEJC_small_talk_zatsudan        BCCWJ_LUW_compound      BCCWJ_SUW_short_unit     CommonCrawl_CC100       NWJC_web_corpus Wikipedia_v2    DaveDoebrick_SliceOfLife        jiten_all_media jiten_drama      Shoui_anime_jdrama      MarvNC_youtube_v3       Shoui_netflix   DaveDoebrick_netflix_no_names   jlpt_level       tier    other_forms
+対      versus; against; vs.    1780    1578    7378    1365    3032    2627    544     2876    2947    4055    1478    1919     1409    1340    3       BASIC   對; たい
+対する  to face (each other); to be facing      769     872     1104    121     185     283     24738   1736    1071    1429     8269    173     16106   912     3       BASIC   たいする
+対して  for; in regard to; per  NA      NA      NA      NA      NA      NA      NA      NA      1050    1253    NA      NA       NA      NA      1       BASIC   對して; たいして
+対応    correspondence (to); equivalence        951     1677    905     464     195     340     534     4380    1748    1709     2934    395     2705    2408    1       BASIC   たいおう
 ```
 
 ## Prepare release
