@@ -12,8 +12,9 @@ Constraints:
 Candidate pool: raw/freq-ranks/{kanji}.tsv — every word starting with the kanji,
 with a frequency rank in each of 14 corpora, a precomputed `tier` band (BASIC >
 COMMON > FLUENT > ADVANCED > NICHE > UNRANKED), and a JLPT level where known.
-Textbook words (raw/kanji-textbook-words-min) are merged in as a mid band —
-they mostly matter for the ~219 kanji that have no freq-ranks file at all.
+Textbook words (raw/kanji-textbook-words-min, which carry their own JLPT level)
+are merged in as a mid band — they mostly matter for the ~219 kanji that have
+no freq-ranks file at all.
 
 Special rule – single-kanji word in a top tier wins outright:
   If any candidate contains exactly one kanji (行 or 行く), sits in a top tier
@@ -28,13 +29,19 @@ Phrase fragments are rejected before scoring (resolver.is_phrase_fragment):
   (常に, 今も, 事になる — the learner should study 常/今/事). Genuine adverbs
   survive: 特に (特 alone is not a standalone word), 更に (更 reads こう).
 
-Word scoring (lower tuple wins): (validity, band, jlpt, class, type, shipped, freq, len)
+Word scoring (lower tuple wins):
+    (validity, stage, band, jlpt, class, type, shipped, freq, len)
   validity  0 standalone JMdict word · 1 affix-only entry (新/しん) · 2 not in
-            JMdict — outranks everything: unresolvable words ship empty meanings
-            and affix-only entries aren't real standalone words
+            JMdict — outranks everything, so a real word from a lower tier always
+            wins first. A kanji whose only pick is validity 1 or 2 has it DROPPED
+            after selection (see below): it ships no study word rather than a
+            non-word (affix-only) or an empty meaning (no JMdict entry)
+  stage     words STARTING with the kanji beat words merely containing it
+            (the textbook contains-pool safety net below)
   band      frequency tier band (textbook words sit at ADVANCED level)
   jlpt      N5 easiest first, untagged last — the strongest "teach this first"
-            signal (空 N5 beats 空く N4; 高い N5 beats 高 N1)
+            signal (空 N5 beats 空く N4; 高い N5 beats 高 N1); from the word's
+            freq-ranks row, or the textbook's own jlpt field for textbook words
   class     verb < adjective < other (語る beats 語 when JLPT ties)
   type      1 kanji + kana < bare single kanji < 2-kanji compound
             (okurigana beats bare kanji: 高い > 高, 書く > 書)
@@ -61,15 +68,16 @@ Reading + meaning (resolved AFTER word selection, via jmdict_resolver):
   get a gated second chance via resolve_fallback — usually-kana words carry a
   "[⚠️ often kana only]" marker (諄い/くどい), unshipped-glyph variants don't
   (充塡: canonical 充填 uses 填, which we don't ship), and ✏️ manual picks
-  resolve ungated (昂ぶる). Words JMdict doesn't know at all fall back to the
-  furigana map for a reading, get an empty meaning, and are reported.
+  resolve ungated (昂ぶる). Words JMdict doesn't know at all get an empty meaning;
+  together with affix-only picks (妃 卿 哉) they are logged and then DROPPED from
+  the output before writing — the kanji ships no study word rather than a non-word.
 
 Sources:
   input/filtered_kanji.json              → [kanji]  (the kanji set to process)
   raw/freq-ranks/[kanji].tsv             → tab-separated corpus frequency rows
-  raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning]}}
+  raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning, jlpt, tags]}}
   input/scriptin-jmdict-eng.json         → JMdict JSON (words[].kanji/kana/sense)
-  raw/manual-inspections.json            → {replaceKanjiStudyWords: {kanji: word}}
+  overrides/resolver_hints.json          → {replaceKanjiStudyWords: {kanji: word}} ✏️ pins
   input/jmdict-furigana-map.json         → {word: {reading: segments}}  (fallback readings)
 
 Output: overrides/japanese_study_words-algo.json
@@ -87,7 +95,6 @@ from sources import (
     load_json,
     write_json,
     resolve_path,
-    textbook_candidates,
     load_textbook_entries,
     freq_key,
     corpus_coverage,
@@ -259,27 +266,25 @@ def load_freq_candidates(kanji, resolver):
     return candidates
 
 
-def _textbook_cand(word, stage):
+def _textbook_cand(word, stage, jlpt):
     return {
         "word": word,
         "stage": stage,
         "band": TEXTBOOK_BAND,
         "tag": OUTPUT_TEXTBOOK_TAG,
-        "jlpt_rank": JLPT_UNTAGGED_RANK,
+        "jlpt_rank": JLPT_UNTAGGED_RANK if jlpt is None else 5 - jlpt,
         "freq": float("inf"),
     }
 
 
 def load_textbook_candidates(kanji):
     """Textbook candidates containing `kanji`, same dict shape as freq ones;
-    words starting with the kanji get STAGE_STARTS_WITH, the rest STAGE_CONTAINS."""
-    entries = textbook_candidates(
-        kanji,
-        lambda w, r: is_all_japanese(w) and kanji in w and 1 <= kanji_count(w) <= 2,
-    )
+    words starting with the kanji get STAGE_STARTS_WITH, the rest STAGE_CONTAINS.
+    The pool's own JLPT level feeds the score's jlpt slot, same as freq-ranks'."""
     return [
-        _textbook_cand(w, STAGE_STARTS_WITH if w[0] == kanji else STAGE_CONTAINS)
-        for w, _r, _t, _e in entries
+        _textbook_cand(w, STAGE_STARTS_WITH if w[0] == kanji else STAGE_CONTAINS, jlpt)
+        for w, _r, _e, jlpt in load_textbook_entries(kanji)
+        if is_all_japanese(w) and kanji in w and 1 <= kanji_count(w) <= 2
     ]
 
 
@@ -298,7 +303,7 @@ def bare_kanji_candidate(kanji):
 
 
 OUTPUT_TEXTBOOK_TAG = "📖"
-OVERRIDE_TAG = "✏️"  # manual study-word override (from raw/manual-inspections.json)
+OVERRIDE_TAG = "✏️"  # manual study-word override (replaceKanjiStudyWords in overrides/resolver_hints.json)
 
 
 def select_word_for_kanji(kanji, used_words, resolver):
@@ -361,7 +366,7 @@ def load_kanji_list():
 
 
 def load_manual_replace_words():
-    data = load_json("raw/manual-inspections.json", {})
+    data = load_json("overrides/resolver_hints.json", {})
     return {k: v.strip() for k, v in data.get("replaceKanjiStudyWords", {}).items()}
 
 
@@ -406,13 +411,14 @@ def main():
 
     result = {}
     used_words = set()  # enforces uniqueness across all kanjis
-    missing_jmdict = []  # selected words JMdict doesn't know (pool r/e never leaks)
 
     def attach_reading_meaning(entry):
         """Overwrite entry's reading/meaning from the resolver — the pools' own
         r/e fields inform selection only and must never reach the output.
         Words whose writing JMdict tags rare get a gated second chance
-        (諄い/くどい ⚠️, 充塡/じゅうてん); manual ✏️ picks resolve ungated."""
+        (諄い/くどい ⚠️, 充塡/じゅうてん); manual ✏️ picks resolve ungated.
+        A word that resolves nowhere gets an empty meaning here and is dropped
+        from the output below (see the post-pins non-word removal)."""
         resolved = resolver.resolve(entry[0]) or resolver.resolve_fallback(
             entry[0], shipped=SHIPPED, manual=entry[3] == OVERRIDE_TAG)
         if resolved:
@@ -421,7 +427,6 @@ def main():
         else:
             entry[1] = jmdict_readings.get(entry[0], "")
             entry[2] = ""
-            missing_jmdict.append(entry[0])
         return entry
 
     for kanji in all_kanji:
@@ -436,7 +441,7 @@ def main():
 
         result[kanji] = entry
 
-    # --- Apply manual word overrides from raw/manual-inspections.json ---
+    # --- Apply manual word overrides (replaceKanjiStudyWords in overrides/resolver_hints.json) ---
     for kanji, word in manual_words.items():
         if kanji not in result:
             continue
@@ -453,28 +458,43 @@ def main():
     if collisions:
         raise ValueError(
             "Duplicate representative study words after applying "
-            "replaceKanjiStudyWords from raw/manual-inspections.json — each word "
+            "replaceKanjiStudyWords from overrides/resolver_hints.json — each word "
             f"must map to exactly one kanji: {collisions}"
         )
+
+    # --- Drop non-words (computed AFTER overrides, so pinned fixes count) -------
+    # Two kinds of pick are not real standalone study words and are removed from
+    # the output entirely — the kanji then ships no study word (joins "Without
+    # word") rather than a bad one. Both are logged first, so a curator can add a
+    # real word to replaceKanjiStudyWords (overrides/resolver_hints.json) if wanted.
+    no_entry = [(k, v) for k, v in result.items() if v and not v[2]]
+    non_standalone = [
+        (k, v) for k, v in result.items()
+        if v and (r := resolver.resolve(v[0])) is not None and not r["standalone"]
+    ]
+
+    print(f"\n  Study words with NO JMdict entry ({len(no_entry)}) — DROPPED:")
+    print("  JMdict doesn't know these words at all (they resolve nowhere and would")
+    print("  ship an empty meaning), so they are removed and the kanji ships no study")
+    print("  word. Add a real word in replaceKanjiStudyWords (overrides/resolver_hints.json).")
+    for k, v in no_entry:
+        print(f"    {v[3]} {k} → {v[0]}")
+
+    print(f"\n  Study words that are not standalone words ({len(non_standalone)}) — DROPPED:")
+    print("  JMdict lists these only as a prefix/suffix/counter (e.g. 妃/ひ 'princess'")
+    print("  is a suffix), never used on their own, so they are removed and the kanji")
+    print("  ships no study word. Add a real word in replaceKanjiStudyWords")
+    print("  (overrides/resolver_hints.json).")
+    for k, v in non_standalone:
+        print(f"    {v[3]} {k} → {v[0]} ~ {v[1]} {v[2]}")
+
+    for k, _ in no_entry + non_standalone:
+        result[k] = None
 
     out_path = write_json("overrides/japanese_study_words-algo.json", result, indent=2)
     print(f"Written: {out_path}")
 
     print_report(result, all_kanji, resolver)
-
-    print(f"\n  Selected words missing from JMdict ({len(missing_jmdict)}):")
-    for word in missing_jmdict:
-        print(f"    {word}")
-
-    # Kanji whose ONLY viable pick is an affix-only entry (validity 1) — the user
-    # wants standalone study words, so these are candidates for manual overrides.
-    non_standalone = [
-        (k, v) for k, v in result.items()
-        if v and (r := resolver.resolve(v[0])) is not None and not r["standalone"]
-    ]
-    print(f"\n  Non-standalone picks — affix-only JMdict entries ({len(non_standalone)}):")
-    for k, v in non_standalone:
-        print(f"    {v[3]} {k} → {v[0]} ~ {v[1]} {v[2][:60]}")
 
 
 def print_report(result, all_kanji, resolver):
@@ -584,56 +604,103 @@ def print_report(result, all_kanji, resolver):
         else:
             print(f"    {kc} kanji: {n}  ({pct:.1f}%)")
 
-    def stat_line(label, n, indent="    "):
-        print(f"{indent}{label}: {n}  ({n/total*100:.1f}%)" if total else f"{indent}{label}: 0")
+    def stat_line(label, n, indent="    ", members=None):
+        pct = f"  ({n/total*100:.1f}%)" if total else ""
+        # members: (kanji, word) pairs, printed inline so small outlier buckets
+        # are inspectable straight from the log.
+        listing = "  " + " ".join(f"{k}→{w}" for k, w in members) if members else ""
+        print(f"{indent}{label}: {n}{pct}{listing}")
 
     # POS buckets over the study word's best JMdict reading (a word with both
-    # verb and noun senses counts as a verb — see classify_pos).
+    # verb and noun senses counts as a verb — see classify_pos). The "no POS tags"
+    # bucket is words with no partOfSpeech tags on the standard resolve path: these
+    # ship fine via the rare-writing fallback (resolve_fallback gives a reading +
+    # meaning but no POS), so it is NOT the same as "no JMdict entry" (those are
+    # dropped above). The bucket key stays a fixed string; only the label differs.
     def pos_bucket(word):
         tags = resolver.pos_profile(word)
-        return classify_pos(tags) if tags else "not in JMdict"
+        return classify_pos(tags) if tags else "no POS tags"
 
-    pos_counts = Counter(pos_bucket(w) for w in words)
-    adj_all = sum(pos_counts[b] for b in ("i-adjective", "na-adjective", "adjective (other)"))
+    pos_groups = {}
+    for k, v in result.items():
+        if v is not None:
+            pos_groups.setdefault(pos_bucket(v[0]), []).append((k, v[0]))
+    pos_counts = {bucket: len(pairs) for bucket, pairs in pos_groups.items()}
+    adj_all = sum(pos_counts.get(b, 0)
+                  for b in ("i-adjective", "na-adjective", "adjective (other)"))
+
+    def takes_suru(word):
+        # A word that can take する ("vs", "vs-i", "vs-s", "vs-c"). Most such words
+        # are nouns/na-adjectives that verbalise (勉強 → 勉強する); a handful spell
+        # する in the word itself (察する).
+        return any(p.startswith("vs") for p in resolver.pos_profile(word))
+
+    # Split the verb bucket into words that ARE a plain verb vs words that only
+    # become verbs by attaching する. classify_pos already counts 察する (vs-s) as
+    # a verb, so the verb bucket contains both kinds.
+    verb_pairs = pos_groups.get("verb", [])
+    verb_suru = sum(1 for _k, w in verb_pairs if takes_suru(w))
+    verb_plain = len(verb_pairs) - verb_suru
+
+    # Every する-capable word across ALL buckets (勉強 sits in noun, 察する in verb),
+    # and how many literally contain する in the writing (察する) vs attach it (勉強).
+    suru_all = sum(1 for w in words if takes_suru(w))
+    suru_literal = sum(1 for w in words if takes_suru(w) and "する" in w)
+
     print(f"\n  Word class (JMdict POS)")
-    stat_line("verb", pos_counts["verb"])
+    stat_line("verb", pos_counts.get("verb", 0))
+    stat_line("plain verbs (書く, 語る)", verb_plain, indent="      ")
+    stat_line("する verbs (verbalise with する: 察する, 愛する)", verb_suru, indent="      ")
     stat_line("adjective (all)", adj_all)
-    stat_line("i-adjective", pos_counts["i-adjective"], indent="      ")
-    stat_line("na-adjective", pos_counts["na-adjective"], indent="      ")
-    stat_line("other adjective", pos_counts["adjective (other)"], indent="      ")
-    stat_line("noun", pos_counts["noun"])
-    stat_line("other (adverbs, numerals, expressions…)", pos_counts["other"])
-    stat_line("not in JMdict", pos_counts["not in JMdict"])
+    stat_line("i-adjective", pos_counts.get("i-adjective", 0), indent="      ")
+    stat_line("na-adjective", pos_counts.get("na-adjective", 0), indent="      ")
+    stat_line("other adjective", pos_counts.get("adjective (other)", 0),
+              indent="      ", members=pos_groups.get("adjective (other)"))
+    stat_line("noun", pos_counts.get("noun", 0))
+    stat_line("other (adverbs, numerals, expressions…)", pos_counts.get("other", 0))
+    stat_line("no POS tags (rare-writing, resolves via fallback — ships fine)",
+              pos_counts.get("no POS tags", 0), members=pos_groups.get("no POS tags"))
+    # Cross-cutting tally (overlaps the buckets above; does not add to 100%).
+    stat_line("する-capable overall (any bucket: 勉強→勉強する, 察する)", suru_all)
+    print(f"        of which spell する in the word itself (察する): {suru_literal}; "
+          f"the rest attach it (勉強 → 勉強する): {suru_all - suru_literal}")
+
+    # Textbook pools ({word: jlpt} per kanji), shared by the JLPT breakdown
+    # (fallback level for words freq-ranks doesn't rank) and the overlap stat.
+    tb_pool_cache = {}
+    def textbook_pool(kanji):
+        if kanji not in tb_pool_cache:
+            tb_pool_cache[kanji] = {w: j for w, _r, _e, j in load_textbook_entries(kanji)}
+        return tb_pool_cache[kanji]
 
     # JLPT level from the freq-ranks row of the word itself (TSVs are keyed by
-    # the word's first character, so the lookup works for ✏️/📖 picks too).
+    # the word's first character, so the lookup works for ✏️/📖 picks too),
+    # falling back to the textbook pool's own jlpt field.
     rows_cache = {}
-    def jlpt_of(word):
+    def jlpt_of(kanji, word):
         first = word[0]
         if first not in rows_cache:
             rows_cache[first] = read_freq_rows(first)
         for row in rows_cache[first]:
             if row.get(COL_WORD) == word:
-                return parse_rank(row.get(COL_JLPT))
-        return None
+                jlpt = parse_rank(row.get(COL_JLPT))
+                if jlpt is not None:
+                    return jlpt
+        return textbook_pool(kanji).get(word)
 
-    jlpt_counts = Counter(jlpt_of(w) for w in words)
-    print(f"\n  JLPT level (freq-ranks jlpt_level)")
+    jlpt_counts = Counter(
+        jlpt_of(k, v[0]) for k, v in result.items() if v is not None
+    )
+    print(f"\n  JLPT level (freq-ranks jlpt_level, else the textbook's)")
     for level in (5, 4, 3, 2, 1):
         stat_line(f"N{level}", jlpt_counts.get(level, 0))
     stat_line("no JLPT tag", jlpt_counts.get(None, 0))
 
     # Textbook overlap: 📖-tagged words came from the textbook pool alone; count
     # how many words tagged from freq-ranks ALSO sit in their kanji's textbook pool.
-    tb_pool_cache = {}
-    def in_textbook_pool(kanji, word):
-        if kanji not in tb_pool_cache:
-            tb_pool_cache[kanji] = {w for w, _r, _e in load_textbook_entries(kanji)}
-        return word in tb_pool_cache[kanji]
-
     overlap_counts = Counter(
         v[3] for k, v in result.items()
-        if v is not None and v[3] != OUTPUT_TEXTBOOK_TAG and in_textbook_pool(k, v[0])
+        if v is not None and v[3] != OUTPUT_TEXTBOOK_TAG and v[0] in textbook_pool(k)
     )
     n_overlap = sum(overlap_counts.values())
     print(f"\n  Textbook overlap")

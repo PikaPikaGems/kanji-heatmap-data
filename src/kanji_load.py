@@ -293,18 +293,30 @@ def dump_all_vocab_furigana(all_words):
 
     vocab_furigana = {}
     missing = []
+    unreadable = []  # has a furigana entry but it's bare [[word]] (kanji, no reading)
 
     for word in all_words:
         furigana = furigana_source_overrides.get(word) or furigana_source_algo.get(word)
-        if furigana:
-            vocab_furigana[word] = furigana
-        else:
+        if not furigana:
             missing.append(word)
+            continue
+        vocab_furigana[word] = furigana
+        # generate_furigana_algo emits [[word]] (no reading) for words it can't
+        # align. That used to be pre-filtered out of selection; now it must fail
+        # the build so a truly unreadable word never ships with bare furigana.
+        if furigana == [[word]] and any(japanese.is_kanji_char(ch) for ch in word):
+            unreadable.append(word)
 
-    if missing:
+    if missing or unreadable:
+        parts = []
+        if missing:
+            parts.append(f"no furigana at all ({len(missing)}): {' '.join(missing)}")
+        if unreadable:
+            parts.append(f"bare [[word]], no reading ({len(unreadable)}): {' '.join(unreadable)}")
         raise Exception(
-            f"No furigana for {len(missing)} word(s) — "
-            f"run 'python3 src/generate_furigana_algo.py' first: {' '.join(missing)}"
+            "Un-readable sample word(s) — run "
+            "'python3 src/generate_furigana_algo.py' first; if no reading can be "
+            "derived, add one to overrides/vocab_furigana.json. " + "  ".join(parts)
         )
 
     utils.dump_json(OUT_VOCAB_FURIGANA_PATH, vocab_furigana)
@@ -354,18 +366,20 @@ def dump_all_vocab_meanings(all_words):
         )
         if not meaning:
             not_found.append(word)
-            vocab_meanings[word] = word
         else:
             vocab_meanings[word] = meaning
 
+    # Every shipped sample word must resolve to a meaning. The selection algorithm
+    # no longer pre-filters candidates by meaning-availability, so this is the single
+    # hard gate: a word with no meaning anywhere is a data gap to fix (add it to
+    # overrides/vocab_meaning.json), not something to ship as word==meaning.
     if not_found:
+        detail = "\n".join(f"    {word_to_kanji.get(w, [])}: {w}" for w in not_found)
         kanjis = "".join("".join(word_to_kanji.get(w, [])) for w in not_found)
-        print(f"Word meaning Not Found ({len(not_found)}): {kanjis}")
-
-        print("----- not found words -----")
-        for word in not_found:
-            print(f"{word_to_kanji.get(word, [])}: {word}")
-        print("----- not found words -----")
+        raise Exception(
+            f"No meaning for {len(not_found)} sample word(s) — add them to "
+            f"overrides/vocab_meaning.json (kanji: {kanjis}):\n{detail}"
+        )
 
     print("in common meaning source only:", count_common_source_only)
     print("in custom meaning source only:", count_custom_source_only)

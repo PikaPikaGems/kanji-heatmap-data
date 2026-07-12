@@ -67,12 +67,11 @@ flowchart LR
     (TEXTBOOK_SUBDIR env var; default -min)")]
     jmdict[("🟩 input/scriptin-jmdict-eng.json")]
     hints[("🟩 overrides/resolver_hints.json — hand-edited
-    readingOrder/meanings corrections for jmdict_resolver")]
+    readingOrder/meanings corrections for jmdict_resolver
+    + replaceKanjiStudyWords ✏️ study-word pins")]
     furimap[("🟩 input/jmdict-furigana-map.json")]
     jpdbfreq[("🟩 raw/JPDB_FREQUENCY_*.csv")]
     keywordsraw[("🟩 raw/kanji-keywords-{j,w,k}.json")]
-    manual[("🟩 raw/manual-inspections.json —
-    incl. replaceKanjiStudyWords pins")]
 
     %% scripts
     S1[build_filtered_kanji_json]
@@ -113,7 +112,6 @@ flowchart LR
     textbook --> S2
     jmdict --> S2
     hints --> S2
-    manual --> S2
     furimap --> S2
     S2 --> jsw
 
@@ -212,10 +210,14 @@ flowchart TD
     resolve_fallback for rare writings — ⚠️ often-kana marker;
     pool r/e fields never reach the output]
     RES --> MAN[apply manual replaceKanjiStudyWords ✏️
+    from overrides/resolver_hints.json
     lenient resolve — the human picked the writing]
     MAN --> DUP{any word maps to 2 kanji?}
     DUP -- yes --> ERR[raise ValueError]
-    DUP -- no --> OUT[(japanese_study_words-algo.json)]
+    DUP -- no --> DROP[drop non-words logged then removed:
+    no JMdict entry at all empty meaning / affix-only
+    妃 卿 哉 → that kanji ships no study word]
+    DROP --> OUT[(japanese_study_words-algo.json)]
 ```
 
 ### `algorithmic_kanji_vocab_overrides.py`
@@ -225,9 +227,9 @@ Up to two SAMPLE words per kanji (kanji can appear anywhere), with reading diver
 flowchart TD
     K[for each kanji] --> C[collect candidates: freq-ranks contains-anywhere
     index over ALL raw/freq-ranks/*.tsv + textbook-min
-    + existing + jmdict fallbacks — must have a meaning
-    available and a dictionary reading; phrase fragments
-    rejected via resolver.is_phrase_fragment]
+    + existing + jmdict fallbacks; phrase fragments rejected
+    via resolver.is_phrase_fragment. A missing meaning/reading
+    only costs score — the final build is the hard gate]
     C --> S1[first word = best score
     proper-noun demotion, then tier, extra-kanji, length, reading, meaning
     hand-curated picks live in overrides/kanji_vocab.json, applied at BUILD time]
@@ -246,7 +248,8 @@ flowchart TD
 
 Readings and meanings for the STUDY words come from `src/jmdict_resolver.py`
 (JMdict only — pool reading/meaning fields never reach the output). Per-word
-hand corrections for the resolver (leading reading, replacement meaning) live in
+hand corrections for the resolver (leading reading, replacement meaning) and the
+`replaceKanjiStudyWords` ✏️ study-word pins live in
 `overrides/resolver_hints.json`, not in code.
 
 ---
@@ -254,20 +257,22 @@ hand corrections for the resolver (leading reading, replacement meaning) live in
 ## 5. Word-meaning resolution
 
 A word's English meaning is resolved by one shared function,
-`sources.resolve_meaning(word, ...)`, used by the sample-vocab algorithm and the
-final build. Callers pass whichever source maps they have; the precedence is fixed
-in the function:
+`sources.resolve_meaning(word, ...)`, called per word by the final build. The
+caller passes whichever source maps it has; the precedence is fixed in the function:
 
 ```mermaid
 flowchart LR
     w[word] --> R[sources.resolve_meaning]
-    R --> o["common → custom → algo → jmdict_full → jsw"]
+    R --> o["common → custom → algo → jmdict_full"]
     o --> m[meaning or None]
 ```
 
-The final build falls back to the word itself when every source misses, and prints
-each such word in a "Word meaning Not Found" report — hand-add those to
-`overrides/vocab_meaning.json`.
+The final build is the single hard gate: `dump_all_vocab_meanings` RAISES if any
+shipped word resolves to no meaning (add it to `overrides/vocab_meaning.json`), and
+`dump_all_vocab_furigana` RAISES if any has no reading (bare `[[word]]`; add it to
+`overrides/vocab_furigana.json`). Because of this, the sample-vocab algorithm does
+NOT pre-filter candidates by meaning/reading availability — a missing one only
+costs score, so eligibility can never drift from what the build actually resolves.
 
 ---
 

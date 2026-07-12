@@ -123,21 +123,26 @@ def corpus_coverage(row):
 def textbook_candidates(kanji, keep, subdir=TEXTBOOK_SUBDIR):
     """Textbook (word, reading, TEXTBOOK_TAG, meaning) tuples passing keep().
 
-    Each selection algorithm supplies its own `keep(word, reading)` predicate — the
-    validity rules differ (representative-word requires the word to start with the
-    kanji; sample-vocab only requires it to contain the kanji).
+    The caller supplies a `keep(word, reading)` validity predicate. The entries'
+    JLPT level is dropped here — callers that need it (the representative-word
+    algorithm's scoring) read load_textbook_entries directly.
 
     subdir selects which textbook folder under raw/ to read (see load_textbook_entries).
     """
     return [
         (w, r, TEXTBOOK_TAG, e)
-        for w, r, e in load_textbook_entries(kanji, subdir)
+        for w, r, e, _jlpt in load_textbook_entries(kanji, subdir)
         if keep(w, r)
     ]
 
 
 def load_textbook_entries(kanji, subdir=TEXTBOOK_SUBDIR):
-    """Raw (word, reading, meaning) tuples from raw/{subdir}/{kanji}.json.
+    """Raw (word, reading, meaning, jlpt) tuples from raw/{subdir}/{kanji}.json.
+
+    Each file value is [reading, meaning, jlptLevel?, tags?] — jlptLevel is a
+    numeric string ("5" = N5 .. "1" = N1), absent or null when untagged, so
+    `jlpt` comes back as int 5..1 or None. The trailing tags field ("kaishi",
+    "uk") is not used by any caller and is dropped.
 
     subdir selects the textbook word pool (default kanji-textbook-words-min)."""
     data = load_json(f"raw/{subdir}/{kanji}.json", {})
@@ -148,7 +153,8 @@ def load_textbook_entries(kanji, subdir=TEXTBOOK_SUBDIR):
             continue
         reading = val[0] if len(val) >= 1 else ""
         meaning = val[1] if len(val) >= 2 else ""
-        entries.append((word, reading, meaning))
+        jlpt = parse_rank(val[2]) if len(val) >= 3 else None
+        entries.append((word, reading, meaning, jlpt))
     return entries
 
 
@@ -199,18 +205,15 @@ def jmdict_entry_gloss(entry, word=None, definition_count=3):
 # Word-meaning resolution (single source of truth for source precedence)
 # ---------------------------------------------------------------------------
 #
-# Several scripts need "the English meaning of a word": the sample-vocab algorithm
-# (to decide a word is eligible) and the final build (to emit it). They used to
-# each hard-code their own source
-# ordering, which could disagree. resolve_meaning() fixes the precedence in ONE
-# place; callers just pass whichever source maps they have loaded (absent ones are
-# skipped). Precedence, most authoritative first:
+# The final build needs "the English meaning of a word" (to emit it). Rather than
+# hard-code a source ordering at the call site, resolve_meaning() fixes the
+# precedence in ONE place; the caller passes whichever source maps it has loaded
+# (absent ones are skipped). Precedence, most authoritative first:
 #
 #   common   jmdict common-form meanings (input/jmdict-vocab-meaning.json)
 #   custom   hand-curated input/vocab_meaning.json + overrides/vocab_meaning.json
 #   algo     overrides/vocab_meaning-algo.json (sample-vocab algorithm output)
 #   jmdict_full  any JMdict form (broader than `common`) — gap-filler
-#   jsw      japanese_study_words-algo meanings — gap-filler
 
 
 def resolve_meaning(
@@ -220,24 +223,13 @@ def resolve_meaning(
     custom=None,
     algo=None,
     jmdict_full=None,
-    jsw=None,
 ):
     """First available meaning for `word` across the given source maps, in the fixed
     precedence above. Each argument is a {word: meaning} dict or None. Returns None
     when no source has a (non-empty) meaning."""
-    for src in (common, custom, algo, jmdict_full, jsw):
+    for src in (common, custom, algo, jmdict_full):
         if src:
             meaning = src.get(word)
             if meaning:
                 return meaning
     return None
-
-
-def jsw_meaning_map(jsw_algo):
-    """{word: meaning} from japanese_study_words-algo.json entries ([word, reading,
-    meaning, tag]), skipping entries with no meaning."""
-    return {
-        entry[0]: entry[2]
-        for entry in jsw_algo.values()
-        if entry and len(entry) >= 3 and entry[2]
-    }

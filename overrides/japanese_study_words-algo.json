@@ -690,9 +690,9 @@
     "🌱"
   ],
   "覧": [
-    "一覧",
-    "いちらん",
-    "look, glance, sight · summary, list, table",
+    "ご覧になる",
+    "ごらんになる",
+    "to see, to look, to watch · to try to ...",
     "📖"
   ],
   "先": [
@@ -1704,10 +1704,10 @@
     "☘️"
   ],
   "然": [
-    "然して",
-    "さして",
-    "(not) particularly, (not) especially, (not) very",
-    "📖"
+    "然",
+    "しか",
+    "like that, as such · yeah, uh-huh",
+    "📚"
   ],
   "直": [
     "直ぐに",
@@ -2922,10 +2922,10 @@
     "☘️"
   ],
   "造": [
-    "造船",
-    "ぞうせん",
-    "shipbuilding",
-    "📚"
+    "造る",
+    "つくる",
+    "to make, to produce, to manufacture · to prepare (food), to brew (alcohol)",
+    "📖"
   ],
   "害": [
     "害",
@@ -3144,10 +3144,10 @@
     "🌱"
   ],
   "札": [
-    "札束",
-    "さつたば",
-    "bundle of banknotes, stack of bills · large sum of money",
-    "✏️"
+    "札",
+    "ふだ",
+    "ticket, token, check · label, tag",
+    "🌷"
   ],
   "康": [
     "小康",
@@ -3444,10 +3444,10 @@
     "🌷"
   ],
   "超": [
-    "超過",
-    "ちょうか",
-    "excess, surplus, exceeding (a limit, estimate, etc.)",
-    "📚"
+    "超す",
+    "こす",
+    "to cross over (e.g. mountain), to go across · to get over (e.g. hardship)",
+    "📖"
   ],
   "居": [
     "居る",
@@ -5007,7 +5007,7 @@
     "則る",
     "のっとる",
     "to follow (a rule, precedent, style, etc.), to conform to, to be in accordance with",
-    "✏️"
+    "📚"
   ],
   "是": [
     "是非",
@@ -6115,9 +6115,9 @@
     "🌷"
   ],
   "慮": [
-    "配慮",
-    "はいりょ",
-    "consideration, concern, attention",
+    "遠慮",
+    "えんりょ",
+    "reserve, constraint, restraint · declining, refraining",
     "📖"
   ],
   "揃": [
@@ -7292,7 +7292,7 @@
     "🦉"
   ],
   "械": [
-    "器械",
+    "機械",
     "きかい",
     "machine, mechanism · instrument, appliance, apparatus",
     "📖"
@@ -7613,7 +7613,7 @@
     "皇帝",
     "こうてい",
     "emperor",
-    "✏️"
+    "☘️"
   ],
   "妊": [
     "避妊",
@@ -8552,10 +8552,10 @@
     "☘️"
   ],
   "亜": [
-    "亜鉛",
-    "あえん",
-    "zinc (Zn)",
-    "📚"
+    "亜科",
+    "あか",
+    "subfamily",
+    "📖"
   ],
   "睡": [
     "睡眠",
@@ -9309,10 +9309,10 @@
     "🌷"
   ],
   "堅": [
-    "堅持",
-    "けんじ",
-    "holding on to, sticking to",
-    "📚"
+    "堅い",
+    "かたい",
+    "hard, solid, tough · stiff, tight, wooden",
+    "📖"
   ],
   "虎": [
     "虎",
@@ -9429,9 +9429,9 @@
     "🌱"
   ],
   "殖": [
-    "殖民",
-    "しょくみん",
-    "colonization, colonisation",
+    "殖える",
+    "ふえる",
+    "to increase, to multiply",
     "📖"
   ],
   "穫": [
@@ -9474,7 +9474,7 @@
     "朗らか",
     "ほがらか",
     "cheerful, merry, sunny · bright (sky, day, etc.), fine, clear",
-    "✏️"
+    "📚"
   ],
   "烈": [
     "烈火",
@@ -9952,10 +9952,10 @@
     "🌷"
   ],
   "徐": [
-    "徐脈",
-    "じょみゃく",
-    "bradycardia, infrequent pulse",
-    "📚"
+    "徐行",
+    "じょこう",
+    "going slowly (esp. to enable a vehicle to stop immediately), going at a reduced speed, slowing down",
+    "📖"
   ],
   "鼓": [
     "鼓動",
@@ -9964,9 +9964,9 @@
     "🌷"
   ],
   "附": [
-    "附随",
-    "ふずい",
-    "being incident to, being accompanied by, being collateral with",
+    "附属",
+    "ふぞく",
+    "being attached (to), being affiliated (to), belonging (to) · attached school, affiliated school",
     "📖"
   ],
   "蘭": [
@@ -10636,10 +10636,10 @@
     "☘️"
   ],
   "喧": [
-    "喧騒",
-    "けんそう",
-    "tumult, great noise, clatter",
-    "✏️"
+    "喧嘩",
+    "けんか",
+    "quarrel, brawl, fight",
+    "🌱"
   ],
   "琴": [
     "琴",
@@ -10675,7 +10675,7 @@
     "椎骨",
     "ついこつ",
     "vertebra, vertebrae",
-    "✏️"
+    "📖"
   ],
   "廻": null,
   "訟": [
@@ -11148,10 +11148,10 @@
     "☘️"
   ],
   "煎": [
-    "煎ずる",
-    "せんずる",
-    "to boil, to decoct, to infuse",
-    "📚"
+    "煎る",
+    "いる",
+    "to roast, to parch, to toast",
+    "📖"
   ],
   "淳": null,
   "砕": [
@@ -11209,9 +11209,9 @@
     "☘️"
   ],
   "耗": [
-    "損耗",
-    "そんもう",
-    "wear, loss",
+    "消耗",
+    "しょうもう",
+    "exhaustion, consumption, using up",
     "📖"
   ],
   "膳": [
@@ -11509,10 +11509,10 @@
     "☘️"
   ],
   "掌": [
-    "掌握",
-    "しょうあく",
-    "grasping, seizing, holding",
-    "📚"
+    "掌",
+    "てのひら",
+    "palm (of the hand)",
+    "📖"
   ],
   "峡": [
     "峡",
@@ -11641,10 +11641,10 @@
     "🌷"
   ],
   "瓦": [
-    "瓦解",
-    "がかい",
-    "collapse, downfall",
-    "✏️"
+    "瓦",
+    "かわら",
+    "roof tile",
+    "📚"
   ],
   "悦": [
     "悦楽",
@@ -11968,7 +11968,7 @@
     "均衡",
     "きんこう",
     "equilibrium, balance",
-    "✏️"
+    "📖"
   ],
   "轄": [
     "轄",
@@ -12061,10 +12061,10 @@
     "☘️"
   ],
   "猟": [
-    "狩猟",
-    "しゅりょう",
-    "hunting",
-    "✏️"
+    "猟",
+    "りょう",
+    "hunting, shooting · game, quarry",
+    "📚"
   ],
   "且": [
     "且つ",
@@ -12100,7 +12100,7 @@
     "爵位",
     "しゃくい",
     "peerage, court rank",
-    "✏️"
+    "🌶️"
   ],
   "綻": [
     "綻びる",
@@ -12162,12 +12162,7 @@
     "affirmation · affirmative",
     "🌷"
   ],
-  "妃": [
-    "妃",
-    "ひ",
-    "princess, consort",
-    "📚"
-  ],
+  "妃": null,
   "舶": [
     "舶",
     "つむ",
@@ -12529,10 +12524,10 @@
     "📖"
   ],
   "筈": [
-    "筈",
-    "はず",
-    "should (be), bound (to be), expected (to be) · nock (of a bow)",
-    "🌱"
+    "手筈",
+    "てはず",
+    "arrangements, plan, programme",
+    "📖"
   ],
   "諮": [
     "諮る",
@@ -12673,9 +12668,9 @@
     "📖"
   ],
   "濫": [
-    "濫費",
-    "らんぴ",
-    "wasteful spending, lavish spending, dissipation",
+    "濫用",
+    "らんよう",
+    "abuse, misuse, misappropriation",
     "📖"
   ],
   "塀": [
@@ -12817,12 +12812,7 @@
     "to supply (goods, money, etc.), to cover (costs), to pay · to give board, to provide meals",
     "📚"
   ],
-  "卿": [
-    "卿",
-    "きょう",
-    "Lord, Sir · state minister (under the ritsuryō system)",
-    "📚"
-  ],
+  "卿": null,
   "惰": [
     "惰性",
     "だせい",
@@ -13040,10 +13030,10 @@
     "📚"
   ],
   "繭": [
-    "繭を掛ける",
-    "まゆをかける",
-    "to spin a cocoon",
-    "📖"
+    "繭",
+    "まゆ",
+    "cocoon",
+    "📚"
   ],
   "畏": [
     "畏まりました",
@@ -13423,12 +13413,7 @@
   "茉": null,
   "眸": null,
   "圭": null,
-  "哉": [
-    "哉",
-    "かな",
-    "how!, what!, alas!",
-    "🌷"
-  ],
+  "哉": null,
   "袈": [
     "袈裟",
     "けさ",
@@ -13814,12 +13799,7 @@
     "Karafuto (Japanese name for Sakhalin)",
     "🌶️"
   ],
-  "亘": [
-    "数キロに亘る",
-    "",
-    "",
-    "📖"
-  ],
+  "亘": null,
   "楊": [
     "楊枝",
     "ようじ",

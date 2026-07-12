@@ -11,12 +11,13 @@ Selection rules:
 - Must contain at least one kanji
 - Prefer fewer kanji in word (minimum 1)
 - 2-3 chars ideal (no preference between them); 4 okay; 5 allowed; 6+ not allowed
-- A meaning must be available from some known source — either the candidate's own
-  meaning or one of the local dictionaries (input/vocab_meaning.json, jmdict cache,
-  japanese_study_words-algo). Words with no definition anywhere are never selected.
-- A dictionary reading must exist (furigana map, or JMdict whole-word / per-span) —
-  corpus phrase fragments like 犬五匹 or 森様御夫妻 that would ship bare furigana
-  are ignored as if they didn't exist (see has_dictionary_reading).
+- Meaning/reading availability is NOT pre-filtered here. Candidates with no meaning
+  or reading merely score worse (no_meaning_penalty / no_reading_penalty) and win
+  only when a kanji has nothing better. The final build is the single hard gate:
+  kanji_load.dump_all_vocab_meanings raises if any shipped word has no resolvable
+  meaning, and dump_all_vocab_furigana raises if any has no reading — so a data gap
+  fails the build loudly (fix it in overrides/vocab_meaning.json / vocab_furigana.json)
+  instead of being silently pre-filtered and drifting from what the build resolves.
 
 Kanji listed in overrides/kanji_to_remove.json are skipped entirely.
 
@@ -74,13 +75,10 @@ Sources:
   input/filtered_kanji.json                → [kanji]  (the kanji set to process)
   raw/freq-ranks/*.tsv                     → corpus frequency rows (word, gloss,
                                              tier, other_forms with kana spelling)
-  raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning]}}
+  raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning, jlpt, tags]}}
   input/kanji_vocab.json                   → {kanji: [word, ...]}   (existing fallback)
   input/scriptin-jmdict-eng.json           → JMdict                 (jmdict fallback)
   input/jmdict-furigana-map.json           → {word: {reading: segments}}  (readings)
-  Meaning sources (a word is eligible only if one has its meaning):
-    input/vocab_meaning.json, input/jmdict-vocab-meaning.json,
-    overrides/japanese_study_words-algo.json
 
 Outputs (overrides/): kanji_vocab-algo.json, vocab_meaning-algo.json,
   vocab_reading-algo.json
@@ -104,7 +102,7 @@ from sources import (
     freq_key,
     parse_rank,
 )
-from japanese import is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments, segment_word
+from japanese import is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments
 from jmdict_resolver import JmdictResolver
 
 # NOTE: word_score / is_valid_candidate here intentionally differ from the
@@ -217,29 +215,9 @@ SHIPPED = set()
 # main(). is_valid_candidate uses it to reject phrase fragments (この人, 今も).
 RESOLVER = None
 
-# Words the furigana step (generate_furigana_algo.py) can actually read; populated
-# in main(). FURIGANA_MAP_WORDS = keys of input/jmdict-furigana-map.json;
-# READABLE_FORMS = every JMdict kanji form that has a kana reading. A candidate
-# readable by neither route would ship bare [[word]] furigana (corpus phrase
-# fragments like 犬五匹, 森様御夫妻), so it is ignored as if it didn't exist.
-FURIGANA_MAP_WORDS = set()
-READABLE_FORMS = set()
-
 # {word: jlpt_level (5..1)} for every freq-ranks row that carries one; populated
 # by build_freq_candidate_index. Only used for the report's JLPT breakdown.
 WORD_JLPT = {}
-
-
-def has_dictionary_reading(word):
-    """True if a real reading exists for `word` somewhere the furigana generator
-    looks: the furigana map, a whole-word JMdict kana form, or — mirroring the
-    per-span fallback — a JMdict kana form for every kanji span (必須の → 必須+の)."""
-    if word in FURIGANA_MAP_WORDS or word in READABLE_FORMS:
-        return True
-    return all(
-        not is_kanji_span or text in READABLE_FORMS
-        for text, is_kanji_span in segment_word(word)
-    )
 
 
 def has_nonshipped_kanji(word):
@@ -425,25 +403,18 @@ def _pick_reading(kana_list, form_text):
 def build_jmdict_candidate_index(target_kanji, data):
     """Index JMdict (`data` = loaded scriptin-jmdict-eng.json) as a fallback source.
 
-    Returns (index, word_meaning, readable_forms):
+    Returns (index, word_meaning):
       index        {kanji: [(word, reading, JMDICT_TAG, meaning), ...]} for every
                    >=2-char JMdict word containing a target kanji. Search-only (sK)
                    and ateji forms are skipped. Rescues rare kanji whose only real
                    vocabulary lives in the full dictionary (楠 → 石楠花, 凜 → 凜々).
       word_meaning {word: meaning} for every JMdict form (kept for callers that
                    need to resolve meanings outside the index).
-      readable_forms  every kanji form that has a kana reading (gloss or not) —
-                   feeds READABLE_FORMS / has_dictionary_reading.
     """
     index = {}
     word_meaning = {}
-    readable_forms = set()
     seen = {}  # kanji -> set of words already added (dedupe across entries)
     for entry in data.get('words', []):
-        if entry.get('kana'):
-            readable_forms.update(
-                k.get('text', '') for k in entry.get('kanji', [])
-            )
         if jmdict_entry_gloss(entry) is None:  # entry has no English gloss at all
             continue
         kana_list = entry.get('kana', [])
@@ -468,8 +439,7 @@ def build_jmdict_candidate_index(target_kanji, data):
                         continue
                     bucket.add(text)
                     index.setdefault(ch, []).append((text, reading, JMDICT_TAG, meaning))
-    readable_forms.discard('')
-    return index, word_meaning, readable_forms
+    return index, word_meaning
 
 
 def kanji_reading_in_word(kanji, word, word_reading, furigana_map):
@@ -537,19 +507,16 @@ def readings_equivalent(r1, r2):
     return d1 == d2 or _gemination_equivalent(d1, d2)
 
 
-def _gather_sorted_candidates(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index):
+def _gather_sorted_candidates(kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index):
     """All valid candidates for `kanji`, deduped per word (best score kept) and
-    sorted best-first. Only words with a meaning available somewhere are kept."""
+    sorted best-first. Meaning/reading availability is not filtered here — missing
+    either just costs score (see word_score); the final build is the hard gate."""
     freq = freq_index.get(kanji, [])
     textbook = load_textbook_candidates(kanji)
     existing = load_existing_candidates(kanji, existing_kanji_vocab, existing_meanings)
     jmdict = jmdict_index.get(kanji, [])
 
-    candidates = [
-        c for c in (freq + textbook + existing + jmdict)
-        if (c[3] or c[0] in known_meaning_words)  # c[3] = own meaning, c[0] = word
-        and has_dictionary_reading(c[0])  # unreadable corpus fragments don't exist
-    ]
+    candidates = freq + textbook + existing + jmdict
 
     best_by_word = {}
     for w, r, t, e in candidates:
@@ -635,14 +602,14 @@ def _log_diversity_replacement(kanji, first, first_reading, second, all_candidat
     replace_logs.append((kanji, first, first_reading, second, second_kr, best_passed, passed_kr))
 
 
-def select_vocab_for_kanji(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index, furigana_map, replace_logs=None):
+def select_vocab_for_kanji(kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index, furigana_map, replace_logs=None):
     """Return up to 2 best (word, reading, tag, meaning) tuples for this kanji.
 
-    Only words with a meaning available somewhere are considered: either the
-    candidate carries its own meaning (e) or the word is in known_meaning_words.
+    All valid candidates are considered; a missing meaning or reading only costs
+    score (word_score), and the final build fails loudly if a shipped word has none.
     """
     all_candidates = _gather_sorted_candidates(
-        kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index
+        kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index
     )
     if not all_candidates:
         return []
@@ -699,18 +666,9 @@ def main():
         existing_kanji_vocab = json.load(f)
     existing_vocab_words = set(w for words in existing_kanji_vocab.values() for w in words)
 
-    # A word is only eligible if a meaning is available from some known source.
-    # Words missing from all of these fall back to the word itself in the final
-    # build, which prints them in its "Word meaning Not Found" report.
-    jmdict_cache  = load_json('input/jmdict-vocab-meaning.json', {})
-    jsw_algo      = load_json('overrides/japanese_study_words-algo.json', {})
-    jsw_words = {
-        entry[0] for entry in jsw_algo.values()
-        if entry and len(entry) >= 3 and entry[2]
-    }
-    known_meaning_words = (
-        set(existing_meanings) | set(jmdict_cache) | jsw_words
-    )
+    # Loaded only for proper-noun gloss detection (PN_GLOSS_LOOKUP below). Meaning
+    # availability is no longer pre-filtered — the final build is the hard gate.
+    jmdict_cache = load_json('input/jmdict-vocab-meaning.json', {})
 
     # One JMdict load feeds both the resolver (phrase-fragment detection needs it
     # BEFORE any candidate indexing) and the fallback candidate index.
@@ -722,8 +680,7 @@ def main():
     freq_index = build_freq_candidate_index(set(all_kanji))
 
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
-    jmdict_index, jmdict_word_meanings, readable_forms = build_jmdict_candidate_index(set(all_kanji), jmdict_data)
-    READABLE_FORMS.update(readable_forms)
+    jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(set(all_kanji), jmdict_data)
 
     # Resolved glosses for proper-noun detection: JMdict's full gloss is the most
     # revealing ("Shinano (former province ...)"), so it overlays the local caches.
@@ -733,10 +690,8 @@ def main():
             (w, m) for w, m in gloss_src.items() if isinstance(m, str)
         )
 
-    # Per-kanji furigana, used to give the second word a different reading and to
-    # know which words the furigana step can read at all.
+    # Per-kanji furigana, used to give the second word a different reading.
     furigana_map = load_json('input/jmdict-furigana-map.json', {})
-    FURIGANA_MAP_WORDS.update(furigana_map)
 
     kanji_vocab_result = {}
     vocab_meaning_result = {}
@@ -746,7 +701,7 @@ def main():
     replace_logs = []
 
     for kanji in all_kanji:
-        selected = select_vocab_for_kanji(kanji, known_meaning_words, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index, furigana_map, replace_logs)
+        selected = select_vocab_for_kanji(kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index, furigana_map, replace_logs)
         if not selected:
             continue
 
@@ -826,10 +781,23 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
     for k in sorted(kanji_counts):
         print(f"    {k} kanji: {kanji_counts[k]}  ({kanji_counts[k]/total*100:.1f}%)")
 
+    # Textbook pools ({word: jlpt} per kanji), shared by the JLPT breakdown
+    # (fallback level for words freq-ranks doesn't rank) and the overlap stat.
+    tb_pool_cache = {}
+    def textbook_pool(kanji):
+        if kanji not in tb_pool_cache:
+            tb_pool_cache[kanji] = {w: j for w, _r, _e, j in load_textbook_entries(kanji)}
+        return tb_pool_cache[kanji]
+
     # JLPT level from the word's own freq-ranks row (WORD_JLPT covers every corpus
-    # word, so textbook/existing/jmdict-tagged picks get counted too when ranked).
-    jlpt_counts = Counter(WORD_JLPT.get(w) for w, _, _ in selected_all)
-    print(f"\n  JLPT level (freq-ranks jlpt_level)")
+    # word, so textbook/existing/jmdict-tagged picks get counted too when ranked),
+    # falling back to the textbook pool's own jlpt field.
+    def jlpt_of(kanji, word):
+        jlpt = WORD_JLPT.get(word)
+        return jlpt if jlpt is not None else textbook_pool(kanji).get(word)
+
+    jlpt_counts = Counter(jlpt_of(k, w) for w, _, k in selected_all)
+    print(f"\n  JLPT level (freq-ranks jlpt_level, else the textbook's)")
     for level in (5, 4, 3, 2, 1):
         n = jlpt_counts.get(level, 0)
         print(f"    N{level}: {n}  ({n/total*100:.1f}%)")
@@ -838,15 +806,9 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
 
     # Textbook overlap: 📖-tagged words came from the textbook pool alone; count
     # how many words tagged from another source ALSO sit in their kanji's pool.
-    tb_pool_cache = {}
-    def in_textbook_pool(kanji, word):
-        if kanji not in tb_pool_cache:
-            tb_pool_cache[kanji] = {w for w, _r, _e in load_textbook_entries(kanji)}
-        return word in tb_pool_cache[kanji]
-
     overlap_counts = Counter(
         t for w, t, k in selected_all
-        if t != TEXTBOOK_TAG and in_textbook_pool(k, w)
+        if t != TEXTBOOK_TAG and w in textbook_pool(k)
     )
     n_overlap = sum(overlap_counts.values())
     print(f"\n  Textbook overlap")
