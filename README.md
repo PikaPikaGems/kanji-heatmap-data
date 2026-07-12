@@ -164,7 +164,6 @@ Example:
 }
 ```
 
-```
 
 High Frequency Words
 
