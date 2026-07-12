@@ -853,6 +853,22 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
         print(f"\n  With 0 words ({len(without_vocab)}):")
         print(f"  {''.join(sorted(without_vocab))}")
 
+    # Copy-paste kanji strings: one long line per group worth inspecting by hand
+    # (multi-kanji words + the rare/fallback tiers). Kanji are the assignment
+    # targets, ordered by sort_key so the string matches the groups printed above.
+    def kanji_str(items):
+        return ''.join(k for _, _, k in sorted(items, key=sort_key))
+    copy_groups = [
+        ("4-kanji words", [i for i in selected_all if kanji_count(i[0]) == 4]),
+        ("5-kanji words", [i for i in selected_all if kanji_count(i[0]) == 5]),
+        ("🌶️  NICHE",      [i for i in selected_all if i[1] == '🌶️']),
+        ("📋  existing",    [i for i in selected_all if i[1] == EXISTING_TAG]),
+        ("📕  jmdict",      [i for i in selected_all if i[1] == JMDICT_TAG]),
+    ]
+    print(f"\n  Copy-paste kanji strings")
+    for title, items in copy_groups:
+        print(f"    {title} ({len(items)}): {kanji_str(items)}")
+
 
 if __name__ == '__main__':
     main()
