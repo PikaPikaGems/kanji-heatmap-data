@@ -107,6 +107,8 @@ from sources import (
     freq_key,
     corpus_coverage,
     parse_rank,
+    FREQ_TIER_TAG as TIER_TAG,
+    DEFAULT_FREQ_TIER_TAG as DEFAULT_TIER_TAG,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count
 from jmdict_resolver import JmdictResolver, CLASS_OTHER, classify_pos
@@ -137,14 +139,9 @@ TIER_BAND = {
 DEFAULT_TIER_BAND = 5
 TEXTBOOK_BAND = 3
 
-# Emoji written into each entry's tag slot, by freq-ranks tier (🌱 most frequent
-# → 🦉 rarest) — glyphs kept stable across data-source migrations so old and new
-# outputs stay comparable.
-TIER_TAG = {
-    "BASIC": "🌱", "COMMON": "☘️", "FLUENT": "🌷",
-    "ADVANCED": "📚", "NICHE": "🌶️", "UNRANKED": "🦉",
-}
-DEFAULT_TIER_TAG = "🦉"
+# The tier → tag-emoji map lives in sources (shared with kanji_vocab_algo); this
+# script keeps its own numeric TIER_BAND above. TIER_TAG/DEFAULT_TIER_TAG are the
+# imported aliases (see the sources import at the top).
 
 # Bands eligible for the special rule (single-kanji standalone word wins outright).
 TOP_BANDS = {TIER_BAND["BASIC"], TIER_BAND["COMMON"]}

@@ -52,6 +52,17 @@ def write_json(rel_path, data, *, indent=None, separators=None, ensure_ascii=Fal
 TEXTBOOK_TAG = "__textbook__"
 
 
+# The freq-ranks `tier` column mapped to its display emoji (most frequent 🌱 → rarest
+# 🦉). Shared so both selection algorithms and their reports use identical glyphs; each
+# script still layers its own numeric ordering on top (study-word TIER_BAND, sample-vocab
+# TAG_PRIORITY). A tier the column doesn't name falls back to DEFAULT_FREQ_TIER_TAG.
+FREQ_TIER_TAG = {
+    "BASIC": "🌱", "COMMON": "☘️", "FLUENT": "🌷",
+    "ADVANCED": "📚", "NICHE": "🌶️", "UNRANKED": "🦉",
+}
+DEFAULT_FREQ_TIER_TAG = "🦉"
+
+
 # ---------------------------------------------------------------------------
 # freq-ranks corpus data (raw/freq-ranks/*.tsv)
 # ---------------------------------------------------------------------------

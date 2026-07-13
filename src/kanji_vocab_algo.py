@@ -99,6 +99,8 @@ from sources import (
     textbook_candidates,
     load_textbook_entries,
     TEXTBOOK_TAG,
+    FREQ_TIER_TAG,
+    DEFAULT_FREQ_TIER_TAG,
     freq_key,
     parse_rank,
 )
@@ -308,15 +310,6 @@ def is_valid_candidate(word, kanji):
     if RESOLVER is not None and RESOLVER.is_phrase_fragment(word):
         return False
     return kanji in word
-
-
-# Emoji tag per freq-ranks tier — glyphs and TAG_PRIORITY slots kept stable across
-# data-source migrations, so scoring, reports and the shipped tags stay comparable.
-FREQ_TIER_TAG = {
-    'BASIC': '🌱', 'COMMON': '☘️', 'FLUENT': '🌷',
-    'ADVANCED': '📚', 'NICHE': '🌶️', 'UNRANKED': '🦉',
-}
-DEFAULT_FREQ_TIER_TAG = '🦉'
 
 
 def _kana_spelling(other_forms):
