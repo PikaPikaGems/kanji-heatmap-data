@@ -274,6 +274,20 @@ def dump_kanji_representative_words():
             "(or add a reading to overrides/vocab_furigana.json). " + "  ".join(parts)
         )
 
+    # How rich the shipped study words are. Reading/meaning formats come from
+    # jmdict_resolver: a ・-joined reading means two readings were kept; a "[1]…[2]…"
+    # meaning means those two readings have distinct senses; a " · " means one reading
+    # with two senses. (Sample vocab never use these formats — their gloss is a flat
+    # JMdict list.)
+    shipped = [e for e in merged.values() if e is not None]
+    two_readings = sum(1 for e in shipped if "・" in e[1])
+    block_defs = sum(1 for e in shipped if "[2]" in e[2])
+    dot_senses = sum(1 for e in shipped if " · " in e[2])
+    print(f"Study words ({len(shipped)}):")
+    print(f"  two readings (・, e.g. なか・ちゅう):        {two_readings}")
+    print(f"  two reading-aligned defs ([1]…[2]…):        {block_defs}")
+    print(f"  one reading, two senses ( · ):              {dot_senses}")
+
     utils.dump_json(OUT_KANJI_REPRESENTATIVE_WORDS_PATH, merged)
 
 
