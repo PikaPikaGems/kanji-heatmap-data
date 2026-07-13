@@ -10,7 +10,7 @@ Reads input/merged_kanji.json and writes two ordered lists of kanji characters:
                               ordered by frequency (Google → JPDB → Netflix) —
                               the single source of truth for "which kanji ship"
                               AND the order downstream scripts iterate. Because
-                              build_representative_study_word_algo assigns shared
+                              japanese_study_words_algo assigns shared
                               study words first-come-first-served by this order,
                               frequency-ordering gives common kanji first pick.
 

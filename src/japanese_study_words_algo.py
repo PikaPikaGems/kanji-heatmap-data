@@ -80,11 +80,19 @@ Sources:
   overrides/resolver_hints.json          → {replaceKanjiStudyWords: {kanji: word}} ✏️ pins
   input/jmdict-furigana-map.json         → {word: {reading: segments}}  (fallback readings)
 
+The manual {kanji: word} pins in overrides/japanese_study_words.json are NOT read
+here — they are merged onto this file's output at BUILD time
+(kanji_load.dump_kanji_representative_words), reusing this module's
+resolve_manual_pin_entries() so the reading/meaning derivation lives in one place.
+Keeping the -algo output free of that override matches kanji_vocab / keywords: the
+algo file is pure, the manual override merges later, and a collision throws for a
+human to fix.
+
 Output: overrides/japanese_study_words-algo.json
   { kanji: [word, reading, meaning, tag] }   (null when no valid word found)
-  tag = tier emoji (🌱☘️🌷📚🌶️🦉), 📖 textbook, ✏️ manual override
+  tag = tier emoji (🌱☘️🌷📚🌶️🦉), 📖 textbook, ✏️ manual override (replaceKanjiStudyWords)
 
-Run from project root: python3 src/build_representative_study_word_algo.py
+Run from project root: python3 src/japanese_study_words_algo.py
 """
 
 import csv
@@ -99,6 +107,8 @@ from sources import (
     freq_key,
     corpus_coverage,
     parse_rank,
+    FREQ_TIER_TAG as TIER_TAG,
+    DEFAULT_FREQ_TIER_TAG as DEFAULT_TIER_TAG,
 )
 from japanese import is_all_japanese, is_kanji_char, kanji_count
 from jmdict_resolver import JmdictResolver, CLASS_OTHER, classify_pos
@@ -108,7 +118,7 @@ from jmdict_resolver import JmdictResolver, CLASS_OTHER, classify_pos
 # ---------------------------------------------------------------------------
 
 # NOTE: word_score / is_valid_candidate here intentionally differ from the
-# same-named functions in algorithmic_kanji_vocab_overrides.py — this algorithm
+# same-named functions in kanji_vocab_algo.py — this algorithm
 # requires the word to START with the kanji and scores by word-shape, while the
 # sample-vocab algorithm only requires the kanji to appear anywhere.
 
@@ -129,14 +139,9 @@ TIER_BAND = {
 DEFAULT_TIER_BAND = 5
 TEXTBOOK_BAND = 3
 
-# Emoji written into each entry's tag slot, by freq-ranks tier (🌱 most frequent
-# → 🦉 rarest) — glyphs kept stable across data-source migrations so old and new
-# outputs stay comparable.
-TIER_TAG = {
-    "BASIC": "🌱", "COMMON": "☘️", "FLUENT": "🌷",
-    "ADVANCED": "📚", "NICHE": "🌶️", "UNRANKED": "🦉",
-}
-DEFAULT_TIER_TAG = "🦉"
+# The tier → tag-emoji map lives in sources (shared with kanji_vocab_algo); this
+# script keeps its own numeric TIER_BAND above. TIER_TAG/DEFAULT_TIER_TAG are the
+# imported aliases (see the sources import at the top).
 
 # Bands eligible for the special rule (single-kanji standalone word wins outright).
 TOP_BANDS = {TIER_BAND["BASIC"], TIER_BAND["COMMON"]}
@@ -306,6 +311,22 @@ OUTPUT_TEXTBOOK_TAG = "📖"
 OVERRIDE_TAG = "✏️"  # manual study-word override (replaceKanjiStudyWords in overrides/resolver_hints.json)
 
 
+def frequency_tag(kanji, word):
+    """The real frequency-tier badge for `word` (🌱☘️🌷📚🌶️🦉 / 📖), tagged the same
+    way the algo tags a non-pinned pick: its own freq-ranks row (keyed by the word's
+    first character) decides the tier; a word no corpus ranks falls back to 📖 when
+    the kanji's textbook pool lists it, else 🦉 (UNRANKED).
+
+    Used at build time to REPLACE the ✏️ manual-override tag with a real badge in the
+    OUTPUT json — logs keep ✏️ (see print_report) to mark which picks were manual."""
+    for row in read_freq_rows(word[0]):
+        if row.get(COL_WORD) == word:
+            return TIER_TAG.get(row.get(COL_TIER, ""), DEFAULT_TIER_TAG)
+    if any(w == word for w, _r, _e, _j in load_textbook_entries(kanji)):
+        return OUTPUT_TEXTBOOK_TAG
+    return DEFAULT_TIER_TAG
+
+
 def select_word_for_kanji(kanji, used_words, resolver):
     """Return the best [word, "", "", tag] for this kanji, or None. Reading and
     meaning are attached later by the caller (always from the resolver).
@@ -402,6 +423,57 @@ def strip_junk_suffix(entry, used_words, resolver):
     return entry
 
 
+def attach_reading_meaning(entry, resolver, shipped, jmdict_readings):
+    """Overwrite entry's reading/meaning ([1]/[2]) from the resolver — the pools'
+    own r/e fields inform selection only and must never reach the output. Words whose
+    writing JMdict tags rare get a gated second chance (諄い/くどい ⚠️, 充塡/じゅうてん);
+    manual ✏️ picks resolve ungated. A word that resolves nowhere gets an empty
+    meaning (and, in the algo path, is dropped from the output below — see the
+    post-pins non-word removal). Mutates and returns `entry`.
+
+    This is the single derivation used for BOTH the algo's own picks and the manual
+    pins (replaceKanjiStudyWords here, japanese_study_words.json at build time via
+    resolve_manual_pin_entries), so reading/meaning are derived identically."""
+    resolved = resolver.resolve(entry[0]) or resolver.resolve_fallback(
+        entry[0], shipped=shipped, manual=entry[3] == OVERRIDE_TAG)
+    if resolved:
+        entry[1] = resolved["reading"]
+        entry[2] = resolved["meaning"]
+    else:
+        entry[1] = jmdict_readings.get(entry[0], "")
+        entry[2] = ""
+    return entry
+
+
+def apply_manual_pins(result, pins, resolve_pin):
+    """Apply a {kanji: word} manual-pin map to `result`, expanding each pin into a
+    full [word, reading, meaning, tag] entry via `resolve_pin`. A pin for an
+    unshipped kanji (not in result) is skipped."""
+    for kanji, word in pins.items():
+        if kanji not in result:
+            continue
+        result[kanji] = resolve_pin(word)
+
+
+def resolve_manual_pin_entries(pins):
+    """Turn a {kanji: word} manual-pin map into {kanji: [word, reading, meaning, ✏️]},
+    deriving reading/meaning exactly as the algo does (attach_reading_meaning).
+
+    The build step (kanji_load.dump_kanji_representative_words) calls this to merge
+    overrides/japanese_study_words.json onto the -algo output WITHOUT re-running the
+    whole selection, so that override file can stay a plain {kanji: word} map and the
+    derivation logic lives here only. Builds its own resolver/shipped/readings context
+    because it runs in a separate process from main()."""
+    resolver = JmdictResolver()
+    shipped = set(load_kanji_list())
+    jmdict_readings = load_jmdict_readings()
+    return {
+        kanji: attach_reading_meaning([word, "", "", OVERRIDE_TAG],
+                                      resolver, shipped, jmdict_readings)
+        for kanji, word in pins.items()
+    }
+
+
 def main():
     all_kanji = load_kanji_list()
     SHIPPED.update(all_kanji)  # enable the all-shipped study-word preference
@@ -412,23 +484,6 @@ def main():
     result = {}
     used_words = set()  # enforces uniqueness across all kanjis
 
-    def attach_reading_meaning(entry):
-        """Overwrite entry's reading/meaning from the resolver — the pools' own
-        r/e fields inform selection only and must never reach the output.
-        Words whose writing JMdict tags rare get a gated second chance
-        (諄い/くどい ⚠️, 充塡/じゅうてん); manual ✏️ picks resolve ungated.
-        A word that resolves nowhere gets an empty meaning here and is dropped
-        from the output below (see the post-pins non-word removal)."""
-        resolved = resolver.resolve(entry[0]) or resolver.resolve_fallback(
-            entry[0], shipped=SHIPPED, manual=entry[3] == OVERRIDE_TAG)
-        if resolved:
-            entry[1] = resolved["reading"]
-            entry[2] = resolved["meaning"]
-        else:
-            entry[1] = jmdict_readings.get(entry[0], "")
-            entry[2] = ""
-        return entry
-
     for kanji in all_kanji:
         entry = select_word_for_kanji(kanji, used_words, resolver)
 
@@ -436,20 +491,25 @@ def main():
             entry = strip_junk_suffix(entry, used_words, resolver)
 
         if entry:
-            entry = attach_reading_meaning(entry)
+            entry = attach_reading_meaning(entry, resolver, SHIPPED, jmdict_readings)
             used_words.add(entry[0])
 
         result[kanji] = entry
 
-    # --- Apply manual word overrides (replaceKanjiStudyWords in overrides/resolver_hints.json) ---
-    for kanji, word in manual_words.items():
-        if kanji not in result:
-            continue
-        result[kanji] = attach_reading_meaning([word, "", "", OVERRIDE_TAG])
+    # --- Apply replaceKanjiStudyWords manual pins (overrides/resolver_hints.json) ---
+    # Reading/meaning are derived here, so the override file is just {kanji: word}.
+    # The other manual source, overrides/japanese_study_words.json, is NOT applied
+    # here — it merges onto this file's output at build time (see the module docstring
+    # and kanji_load.dump_kanji_representative_words).
+    def resolve_pin(word):
+        return attach_reading_meaning([word, "", "", OVERRIDE_TAG],
+                                      resolver, SHIPPED, jmdict_readings)
 
-    # Overrides are applied without the per-selection uniqueness check above, so a
-    # manual word can collide with one already chosen for another kanji. Fail loudly
-    # here (at the source) instead of downstream in kanji_load.
+    apply_manual_pins(result, manual_words, resolve_pin)  # resolver_hints.json
+
+    # Pins are applied without the per-selection uniqueness check above, so a manual
+    # word can collide with one already chosen for another kanji. Fail loudly here
+    # (at the source) instead of downstream in kanji_load.
     word_to_kanjis = {}
     for kanji, entry in result.items():
         if entry:
@@ -457,9 +517,9 @@ def main():
     collisions = {w: ks for w, ks in word_to_kanjis.items() if len(ks) > 1}
     if collisions:
         raise ValueError(
-            "Duplicate representative study words after applying "
-            "replaceKanjiStudyWords from overrides/resolver_hints.json — each word "
-            f"must map to exactly one kanji: {collisions}"
+            "Duplicate representative study words after applying replaceKanjiStudyWords "
+            "pins (overrides/resolver_hints.json) — each word must map to exactly "
+            f"one kanji: {collisions}"
         )
 
     # --- Drop non-words (computed AFTER overrides, so pinned fixes count) -------

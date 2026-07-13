@@ -38,6 +38,26 @@ def word_kanji_keywords(kanji_extended, representative_words, shipped):
     return result
 
 
+def assert_unique_keywords(kanji_main):
+    """Every kanji's keyword (kanji_main[kanji][0]) must be unique — two kanji sharing
+    a keyword makes them indistinguishable in the UI. The keyword algo reserves names
+    to avoid collisions, but a manual overrides/keywords.json entry can reintroduce one,
+    so fail loudly here (fix the clash in overrides/keywords.json). Empty keywords are
+    ignored (a separate concern)."""
+    keyword_to_kanjis = {}
+    for kanji, info in kanji_main.items():
+        keyword = info[0]
+        if keyword:
+            keyword_to_kanjis.setdefault(keyword, []).append(kanji)
+    duplicates = {kw: ks for kw, ks in keyword_to_kanjis.items() if len(ks) > 1}
+    if duplicates:
+        raise ValueError(
+            "Duplicate kanji keywords — each keyword must map to exactly one kanji "
+            "(fix the clash in overrides/keywords.json): "
+            + ", ".join(f"{kw!r} → {''.join(ks)}" for kw, ks in duplicates.items())
+        )
+
+
 def main():
     automated_all_words = kanji_load.load_automated_kanji_vocab()
     override_all_algo_words = kanji_load.load_vocab_algo_override()
@@ -89,6 +109,9 @@ def main():
     # ***********************
     # Dump extracted information
     # ***********************
+    # Loud gates before shipping: keyword uniqueness here; study-word uniqueness and
+    # reading/gloss completeness inside dump_kanji_representative_words below.
+    assert_unique_keywords(kanji_main_reformatted)
     kanji_load.dump_to_main_kanji_info(kanji_main_reformatted)
     kanji_load.dump_to_extended_kanji_info(kanji_extended_reformatted)
     kanji_load.dump_kanji_representative_words()

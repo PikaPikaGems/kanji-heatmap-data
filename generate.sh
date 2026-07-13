@@ -21,11 +21,27 @@ run() {
     echo "------------------------------------------------------------------"
 }
 
+# Like run(), but the step's own (verbose) output goes to a dedicated log file so
+# generate-log.txt stays short — only the START/END banner and a pointer to the
+# per-step log remain in the main log.
+run_to() {
+    local step_log="$1"; shift
+    echo ""
+    echo "------------------------------------------------------------------"
+    echo ">>> START  $*   (output → $step_log)"
+    echo "------------------------------------------------------------------"
+    "$@" > "$step_log" 2>&1
+    echo "<<< END    $*   (see $step_log)"
+    echo "------------------------------------------------------------------"
+}
+
+mkdir -p logs
+
 run python3 src/build_filtered_kanji_json.py
-run python3 src/build_representative_study_word_algo.py
-run python3 src/algorithmic_kanji_vocab_overrides.py
+run_to logs/study-words-algo-log.txt python3 src/japanese_study_words_algo.py
+run_to logs/sample-vocabs-algo.txt python3 src/kanji_vocab_algo.py
 run python3 src/generate_furigana_algo.py
-run python3 src/algorithmic_overrides_keywords.py
+run python3 src/keywords_algo.py
 run python3 src/build_similar_kanji.py
 run python3 src/kanji_build_output_jsons.py
 

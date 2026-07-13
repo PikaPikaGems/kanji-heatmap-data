@@ -1,7 +1,7 @@
 """Keyword sourcing shared by the keyword algorithm and the final build.
 
 `raw_keyword` picks a single best English keyword for a kanji from the same raw
-sources `algorithmic_overrides_keywords.py` uses (priority j → k → w), and
+sources `keywords_algo.py` uses (priority j → k → w), and
 `base_keyword` falls back to the keyword the build derives from input/merged_kanji.json.
 
 The build uses these to supply keywords for kanji that appear as component parts or

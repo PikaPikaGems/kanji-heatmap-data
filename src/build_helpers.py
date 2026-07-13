@@ -7,7 +7,7 @@ without triggering a full build.
 """
 
 import kanji_extract
-from japanese import reading_of_kanji_in_segments
+from japanese import reading_of_kanji_in_segments, readings_equivalent
 
 
 def get_words(kanji, override_words, override_algo_words, automated_words, count=2):
@@ -74,7 +74,7 @@ def furigana_stats(kanji_extended, kanji_data, vocab_furigana):
                 return "kun"
         return "unknown"
 
-    same = different_both_on = different_both_kun = different_mixed = different_unknown = skipped = 0
+    same = rendaku_same = different_both_on = different_both_kun = different_mixed = different_unknown = skipped = 0
 
     for kanji, extended in kanji_extended.items():
         words = extended[9]
@@ -88,6 +88,10 @@ def furigana_stats(kanji_extended, kanji_data, vocab_furigana):
             continue
         if r1 == r2:
             same += 1
+        elif readings_equivalent(r1, r2):
+            # Same reading once 連濁 (げつ/げっ) or 促音 (と/ど) is accounted for —
+            # reported alongside the exact count rather than as "different".
+            rendaku_same += 1
         else:
             t1, t2 = classify_reading(r1, kanji), classify_reading(r2, kanji)
             if t1 == "on" and t2 == "on":
@@ -99,15 +103,17 @@ def furigana_stats(kanji_extended, kanji_data, vocab_furigana):
             else:
                 different_mixed += 1
 
-    total = same + different_both_on + different_both_kun + different_mixed + different_unknown
+    total = same + rendaku_same + different_both_on + different_both_kun + different_mixed + different_unknown
     if total == 0:
         print("No kanji with 2 sample words and furigana found.")
         return
 
-    diff = total - same
+    equiv_same = same + rendaku_same
+    diff = total - equiv_same
     print(f"\n--- Furigana Reading Stats ({total} kanji) ---")
-    print(f"  Same reading:      {same:4d} ({same / total * 100:.1f}%)")
-    print(f"  Different reading: {diff:4d} ({diff / total * 100:.1f}%)")
+    print(f"  Same reading (exact):          {same:4d} ({same / total * 100:.1f}%)")
+    print(f"  Same reading (incl. 連濁/促音): {equiv_same:4d} ({equiv_same / total * 100:.1f}%)  [+{rendaku_same} rendaku/gemination]")
+    print(f"  Different reading:             {diff:4d} ({diff / total * 100:.1f}%)")
     if diff:
         print(f"    Both onyomi:     {different_both_on:4d} ({different_both_on / total * 100:.1f}%)")
         print(f"    Both kunyomi:    {different_both_kun:4d} ({different_both_kun / total * 100:.1f}%)")

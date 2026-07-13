@@ -21,7 +21,7 @@ final build uses (kanji_extract.get_keyword, no overrides), rather than read bac
 from output/kanji_main.json. That removes the build → keywords-algo → build cycle:
 this script no longer depends on a prior build artifact.
 
-Run from the project root: python3 src/algorithmic_overrides_keywords.py
+Run from the project root: python3 src/keywords_algo.py
 """
 
 import json

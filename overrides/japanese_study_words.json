@@ -1,15 +1,9 @@
 {
-  "食": [
-    "食べる",
-    "たべる",
-    "to eat, to live on (e.g. a salary), to live off",
-    "🌱"
-  ],
-  "雰": ["雰囲気", "ふんいき", "atmosphere, mood", "📚"],
-  "莉": ["茉莉花", "まつりか", "jasmine flower", "📚"],
-  "輔": ["輔佐", "ほさ", "assistance, support, aide", "📚"],
-  "汰": ["淘汰", "とうた", "selection; weeding out, elimination, culling", "📚"],
-  "馨": ["馨しい", "かぐわしい", "fragrant, sweet-smelling", "📚"],
-  "瑚": ["珊瑚", "さんご", "coral", "📚"],
-  "決": ["決める", "きめる", "to decide; to choose; to determine", "🌱"]
+  "雰": "雰囲気",
+  "莉": "茉莉花",
+  "輔": "輔佐",
+  "馨": "馨しい",
+  "瑚": "珊瑚"
 }
+
+
