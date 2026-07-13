@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
 Task: Better Sample Vocabulary
-Selects up to two sample words per kanji and writes overrides/kanji_vocab-algo.json
-and vocab_reading-algo.json. (English glosses are no longer emitted here — the final
-build resolves every gloss straight from JMdict. Furigana for the selected words is
-generated afterwards by src/generate_furigana_algo.py, which computes the shipped
-word set itself.)
+Selects up to two sample words per kanji and writes overrides/kanji_vocab-algo.json.
+English glosses are no longer emitted here — the final build resolves every gloss
+straight from JMdict. Furigana for the selected words is generated on the fly by
+the final build (kanji_load.dump_all_vocab_furigana → generate_furigana_algo).
 
 Selection rules:
 - Word must be >= 2 characters (hiragana included)
@@ -91,7 +90,7 @@ Sources:
   input/scriptin-jmdict-eng.json           → JMdict                 (jmdict fallback)
   input/jmdict-furigana-map.json           → {word: {reading: segments}}  (readings)
 
-Outputs (overrides/): kanji_vocab-algo.json, vocab_reading-algo.json
+Outputs: overrides/kanji_vocab-algo.json
 
 Run from the project root: python3 src/kanji_vocab_algo.py
 """
@@ -727,7 +726,6 @@ def main():
     furigana_map = load_json('input/jmdict-furigana-map.json', {})
 
     kanji_vocab_result = {}
-    vocab_reading_result = {}
 
     selected_all = []  # (word, tag, kanji, reading) for stats
     word_gloss = {}    # {word: gloss} for selected words, for the report only
@@ -742,8 +740,6 @@ def main():
 
         for w, r, t, e in selected:
             selected_all.append((w, t, kanji, r if r and r != '-' else ''))
-            if r and r != '-':
-                vocab_reading_result[w] = r
             if w not in word_gloss:
                 g = e or jmdict_word_meanings.get(w, '')
                 word_gloss[w] = g if isinstance(g, str) else str(g)
@@ -755,7 +751,6 @@ def main():
         print(f"Written: {path} ({len(data)} entries)")
 
     write_and_report('overrides/kanji_vocab-algo.json', kanji_vocab_result)
-    write_and_report('overrides/vocab_reading-algo.json', vocab_reading_result)
 
     print_report(
         selected_all, kanji_vocab_result, all_kanji, existing_vocab_words,

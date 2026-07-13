@@ -40,7 +40,6 @@ mkdir -p logs
 run python3 src/build_filtered_kanji_json.py
 run_to logs/study-words-algo-log.txt python3 src/japanese_study_words_algo.py
 run_to logs/sample-vocabs-algo.txt python3 src/kanji_vocab_algo.py
-run python3 src/generate_furigana_algo.py
 run python3 src/keywords_algo.py
 run python3 src/build_similar_kanji.py
 run python3 src/kanji_build_output_jsons.py

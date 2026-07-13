@@ -35,7 +35,6 @@ IN_VOCAB_ALGO_OVERRIDES_PATH = os.path.join(const.dir_overrides, "kanji_vocab-al
 IN_VOCAB_FURIGANA_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_furigana.json"
 )
-IN_VOCAB_FURIGANA_ALGO_PATH = os.path.join(const.dir_overrides, "vocab_furigana-algo.json")
 IN_VOCAB_MEANING_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_meaning.json"
 )
@@ -298,17 +297,21 @@ def dump_kanji_representative_words():
 # Functions to dump word details in particular
 # *********************************
 def dump_all_vocab_furigana(all_words):
-    """Merge furigana for the shipped words into output/vocab_furigana.json.
+    """Generate furigana for the shipped words into output/vocab_furigana.json.
 
-    Two layers only: overrides/vocab_furigana.json (hand-curated, authoritative)
-    then overrides/vocab_furigana-algo.json (written by generate_furigana_algo.py,
-    the single place furigana is generated). Nothing is generated or picked here;
-    a word covered by neither layer aborts the build.
+    Hand-curated overrides/vocab_furigana.json wins; everything else is generated
+    on the fly via generate_furigana_algo (furigana map + reading hints + JMdict
+    fallback). A word covered by neither — or left as bare [[word]] with kanji —
+    aborts the build.
     """
+    import generate_furigana_algo as furigana_algo
+
     furigana_source_overrides = utils.get_data_from_file(
         IN_VOCAB_FURIGANA_OVERRIDES_PATH
     )
-    furigana_source_algo = utils.get_data_from_file(IN_VOCAB_FURIGANA_ALGO_PATH)
+    # Generate only for words not already pinned manually.
+    to_generate = [w for w in all_words if w not in furigana_source_overrides]
+    furigana_source_algo = furigana_algo.build_furigana_for_words(to_generate)
 
     vocab_furigana = {}
     missing = []
@@ -333,9 +336,8 @@ def dump_all_vocab_furigana(all_words):
         if unreadable:
             parts.append(f"bare [[word]], no reading ({len(unreadable)}): {' '.join(unreadable)}")
         raise Exception(
-            "Un-readable sample word(s) — run "
-            "'python3 src/generate_furigana_algo.py' first; if no reading can be "
-            "derived, add one to overrides/vocab_furigana.json. " + "  ".join(parts)
+            "Un-readable sample word(s) — if no reading can be derived, add one to "
+            "overrides/vocab_furigana.json. " + "  ".join(parts)
         )
 
     utils.dump_json(OUT_VOCAB_FURIGANA_PATH, vocab_furigana)
