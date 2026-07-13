@@ -277,15 +277,18 @@ flowchart TD
     K[for each kanji] --> C[collect candidates: freq-ranks contains-anywhere
     index over ALL raw/freq-ranks/*.tsv + textbook-min
     + existing input/kanji_vocab.json + full-JMdict fallback.
-    reject phrase bridges 診て貰う and resolver.is_phrase_fragment;
+    reject phrase bridges 診て貰う, resolver.is_phrase_fragment,
+    and JMdict exp + が/を/に + kana-verb phrases 音がする / 恋をする / ご覧になる;
     2-5 chars, ≥1 kanji. missing meaning/reading only costs score]
     C --> DEDUP[dedupe per word: keep best score across sources
     textbook word also in corpus keeps the better tier]
     DEDUP --> S1["first word = best word_score (lower wins):
-    proper-noun demotion → tier → extra-kanji → length band → shipped → len"]
+    proper-noun demotion → effective_tier → extra-kanji → length band → shipped → len
+    effective_tier = tag priority + kanji-count surcharge
+    1–2:+0, 3:+1, 4–5:+5 — so ☘️ 2-kanji beats 🌱 3-kanji"]
     S1 --> S2[second word = best second_score
-    + bonus for a DIFFERENT kanji reading,
-    but only when the candidate is itself high-freq 🌱☘️🌷.
+    + bonus for a DIFFERENT kanji reading when the candidate is
+    high-freq 🌱☘️🌷 OR JLPT N5–N2.
     prefer a primary freq-ranks/textbook candidate]
     S2 --> RP{pair redundant?
     one contains other / same kanji set}
@@ -295,6 +298,8 @@ flowchart TD
     ALT --> EMIT[emit 1-2 words]
     EMIT --> W[(kanji_vocab-algo + vocab_meaning-algo
     + vocab_reading-algo)]
+    EMIT --> STATS[report also prints Furigana Reading Stats
+    same vs different reading for the selected pairs]
 ```
 
 Hand-curated sample picks in `overrides/kanji_vocab.json` win at BUILD time
