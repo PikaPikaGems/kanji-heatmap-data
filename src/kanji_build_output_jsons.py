@@ -143,6 +143,17 @@ def main():
     )
     kanji_load.dump_extra_kanji_keywords(extra_keywords)
 
+    # Positive confirmation of the gates that already passed above (each one aborts the
+    # build on failure): reaching here means all sample words carry furigana + meaning,
+    # all study words carry a reading + gloss, and every keyword / study word is unique.
+    study_word_count = sum(1 for e in representative_words.values() if e is not None)
+    print()
+    print("🎉 Build gates all passed 🥳")
+    print(f"  ✅ {len(all_words)} sample words — every one has furigana + english meaning")
+    print(f"  ✅ {study_word_count} kanji with a study word — every one has a reading + gloss")
+    print(f"  ✅ {len(kanji_main_reformatted)} kanji keywords — all unique")
+    print("  ✅ study words — all unique")
+
     print("Done.")
 
 
