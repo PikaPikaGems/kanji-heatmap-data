@@ -358,6 +358,7 @@ keyword — `assert_unique_keywords` fails the build if they do.
 ## 7. Similar-kanji neighbors (`build_similar_kanji.py`)
 
 `output/similar-kanjis.json` is generated (not static): for each shipped kanji, its
-most-similar shipped kanji, most-similar first (max 10). Jouyou kanji get a merged
-stroke-edit-distance + radical-overlap list (reciprocal-rank fusion over
-`raw/similarity/*.csv`); non-jouyou kanji fall back to a component-overlap measure.
+most-similar shipped kanji, most-similar first (at most 10; lists may be shorter).
+Kanji covered by `raw/similarity/dkanjistat.json` use Kanjistat optimal-transport
+distance, gated by a distance ceiling and stroke-count delta; the rest fall back
+to the kanjidict phonetic / radical+IDS heuristic.

@@ -1,6 +1,7 @@
-
 # Similarity Data 1
 From: https://lars.yencken.org/datasets/kanji-confusion/
+
+Kept for reference / evaluation. The live build (`src/build_similar_kanji.py`) no longer merges these CSVs; see Similarity Data 2 below.
 
 ```
 Yencken, Lars (2010) Orthographic support for passing the reading hurdle in Japanese. PhD Thesis, University of Melbourne, Melbourne, Australia
@@ -29,7 +30,7 @@ distractors: [主, 任, 往, 柱]
 selected: [任]
 ```
 
-# Kanji Similarify Sets
+# Kanji Similarity Sets
 
 ```
 jyouyou__strokeEditDistance.csv (224kb)
@@ -45,7 +46,10 @@ Each line begins with the “pivot” kanji which is the basis for comparison. I
 衛 偉 0.75 衝 0.625 違 0.625 街 0.5625 停 0.5625 程 0.5625 ...
 ```
 
-# Similarity Data 2
+# Similarity Data 2 (primary build input)
 
-https://github.com/lennart-finke/kanjidist-visualiser/blob/master/data/dkanjistat.json
-https://github.com/lennart-finke/kanjidist-visualiser/tree/master/data
+`dkanjistat.json` — Kanjistat hierarchical optimal-transport distances (lower = more similar). This is the primary source used by `src/build_similar_kanji.py` for shipped kanji it covers (~2134 of 2426), gated by a distance ceiling and stroke-count delta.
+
+- https://github.com/lennart-finke/kanjidist-visualiser/blob/master/data/dkanjistat.json
+- https://github.com/lennart-finke/kanjidist-visualiser/tree/master/data
+- Package / method: https://github.com/dschuhmacher/kanjistat
