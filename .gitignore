@@ -22,5 +22,6 @@ diff-study-words.md
 temp/
 
 generate-log*.txt
+logs/
 
 __pycache__/
