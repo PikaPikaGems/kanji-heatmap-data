@@ -927,7 +927,7 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
     one_word_items = [(w, t, k) for w, t, k in selected_all if k in one_word_kanji]
     advanced_items = [(w, t, k) for w, t, k in selected_all if t == '📚']
     unranked_items = [(w, t, k) for w, t, k in selected_all if t == '🦉']
-    three_kanji_items = [(w, t, k) for w, t, k in selected_all if kanji_count(w) == 3)
+    three_kanji_items = [(w, t, k) for w, t, k in selected_all if kanji_count(w) == 3]
     four_plus_items = [(w, t, k) for w, t, k in selected_all if kanji_count(w) >= 4]
     five_char_items = [(w, t, k) for w, t, k in selected_all if len(w) == 5]
     nonshipped_items = [(w, t, k) for w, t, k in selected_all if has_nonshipped_kanji(w)]
