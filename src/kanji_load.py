@@ -280,13 +280,16 @@ def dump_kanji_representative_words():
     # with two senses. (Sample vocab never use these formats — their gloss is a flat
     # JMdict list.)
     shipped = [e for e in merged.values() if e is not None]
-    two_readings = sum(1 for e in shipped if "・" in e[1])
-    block_defs = sum(1 for e in shipped if "[2]" in e[2])
+    kanji_two_readings = "".join(k for k, e in merged.items() if e is not None and "・" in e[1])
+    kanji_block_defs = "".join(k for k, e in merged.items() if e is not None and "[2]" in e[2])
     dot_senses = sum(1 for e in shipped if " · " in e[2])
     print(f"Study words ({len(shipped)}):")
-    print(f"  two readings (・, e.g. なか・ちゅう):        {two_readings}")
-    print(f"  two reading-aligned defs ([1]…[2]…):        {block_defs}")
+    print(f"  two readings (・, e.g. なか・ちゅう):        {len(kanji_two_readings)}")
+    print(f"  two reading-aligned defs ([1]…[2]…):        {len(kanji_block_defs)}")
     print(f"  one reading, two senses ( · ):              {dot_senses}")
+    # Concatenated kanji for easy copy-paste (e.g. to spot-check or bulk-edit).
+    print(f"  kanji with two readings:\n    {kanji_two_readings}")
+    print(f"  kanji with two reading-aligned defs ([1]…[2]…):\n    {kanji_block_defs}")
 
     utils.dump_json(OUT_KANJI_REPRESENTATIVE_WORDS_PATH, merged)
 
