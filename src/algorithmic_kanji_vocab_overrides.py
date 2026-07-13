@@ -11,9 +11,9 @@ Selection rules:
 - Must contain at least one kanji
 - Prefer fewer kanji in word (minimum 1)
 - 2-3 chars ideal (no preference between them); 4 okay; 5 allowed; 6+ not allowed
-- Meaning/reading availability is NOT pre-filtered here. Candidates with no meaning
-  or reading merely score worse (no_meaning_penalty / no_reading_penalty) and win
-  only when a kanji has nothing better. The final build is the single hard gate:
+- Meaning/reading availability is NOT scored or pre-filtered here. Every source
+  supplies a gloss and the furigana map is the authoritative reading, so a candidate
+  is never penalised for a blank meaning/reading. The final build is the single hard gate:
   kanji_load.dump_all_vocab_meanings raises if any shipped word has no resolvable
   meaning, and dump_all_vocab_furigana raises if any has no reading — so a data gap
   fails the build loudly (fix it in overrides/vocab_meaning.json / vocab_furigana.json)
@@ -280,16 +280,17 @@ def word_score(word, tag, e="", r=""):
     ts = TAG_PRIORITY.get(tag, DEFAULT_TAG_PRIORITY)
     extra_kanji = kc - 1  # 0 = best (exactly 1 kanji)
     length_penalty = 0 if n <= 3 else (1 if n == 4 else 2)  # 2-3 ideal, 4 okay, 5 allowed
-    no_reading_penalty = 0 if (r and r != '-') else 1
-    no_meaning_penalty = 0 if e else 1
     # Proper nouns lead the tuple: they lose to ANY ordinary word, whatever the
     # tier, and are picked only when a kanji has nothing else (媛 → 愛媛県).
-    # all_shipped (has_nonshipped) is a LATE tiebreaker — after tier, kanji-count,
-    # length, reading and meaning — so an all-shipped word is preferred only among
-    # otherwise-equal candidates (玉葱☘️ → 玉子☘️). A kanji whose only good word has an
-    # unshipped partner keeps it rather than dropping to a structurally worse word.
+    # all_shipped (has_nonshipped) is a LATE tiebreaker — after tier, kanji-count
+    # and length — so an all-shipped word is preferred only among otherwise-equal
+    # candidates (玉葱☘️ → 玉子☘️). A kanji whose only good word has an unshipped
+    # partner keeps it rather than dropping to a structurally worse word.
+    # (Reading/meaning availability is NOT scored: every source supplies a gloss and
+    # the furigana map is the authoritative reading; the final build is the hard gate
+    # that fails loudly on a genuinely missing meaning/reading.)
     return (is_proper_noun(word, e, r), ts, extra_kanji, length_penalty,
-            no_reading_penalty, no_meaning_penalty, has_nonshipped_kanji(word), n)
+            has_nonshipped_kanji(word), n)
 
 
 def is_valid_candidate(word, kanji):
