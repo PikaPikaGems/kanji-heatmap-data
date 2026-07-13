@@ -306,6 +306,27 @@ def dump_kanji_representative_words():
             f"exactly one kanji: {duplicates}"
         )
 
+    # Every shipped study word must carry BOTH a reading and an english gloss. The algo
+    # drops its own no-reading/no-meaning picks to None, but a manual pin merged here is
+    # not subject to that drop — so a pin whose word resolves nowhere would otherwise
+    # ship blank. Fail loudly (add/fix the word in overrides/japanese_study_words.json,
+    # or a reading in overrides/vocab_furigana.json).
+    no_reading = [(k, e[0]) for k, e in merged.items() if e is not None and not e[1]]
+    no_meaning = [(k, e[0]) for k, e in merged.items() if e is not None and not e[2]]
+    if no_reading or no_meaning:
+        parts = []
+        if no_reading:
+            parts.append(f"missing reading ({len(no_reading)}): "
+                         + ", ".join(f"{k}→{w}" for k, w in no_reading))
+        if no_meaning:
+            parts.append(f"missing english gloss ({len(no_meaning)}): "
+                         + ", ".join(f"{k}→{w}" for k, w in no_meaning))
+        raise ValueError(
+            "Representative study word(s) with no reading/meaning — every shipped "
+            "study word must have both. Fix the pin in overrides/japanese_study_words.json "
+            "(or add a reading to overrides/vocab_furigana.json). " + "  ".join(parts)
+        )
+
     utils.dump_json(OUT_KANJI_REPRESENTATIVE_WORDS_PATH, merged)
 
 
