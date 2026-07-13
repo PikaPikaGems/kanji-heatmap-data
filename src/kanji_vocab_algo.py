@@ -83,7 +83,7 @@ Sources:
 Outputs (overrides/): kanji_vocab-algo.json, vocab_meaning-algo.json,
   vocab_reading-algo.json
 
-Run from the project root: python3 src/algorithmic_kanji_vocab_overrides.py
+Run from the project root: python3 src/kanji_vocab_algo.py
 """
 
 import csv
@@ -109,7 +109,7 @@ from japanese import (
 from jmdict_resolver import JmdictResolver
 
 # NOTE: word_score / is_valid_candidate here intentionally differ from the
-# same-named functions in build_representative_study_word_algo.py — this algorithm
+# same-named functions in japanese_study_words_algo.py — this algorithm
 # only requires the kanji to appear anywhere in the word and scores by length
 # bands + reading/meaning availability, while that one requires a starting kanji.
 

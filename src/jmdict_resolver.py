@@ -75,7 +75,7 @@ DEMOTE_MISC = {"form", "arch", "dated", "obs", "rare", "obsc", "poet"}
 #                 `common` flag gets it wrong (四: よん, 七: なな)
 #   meanings      {word: meaning} — full replacement for a generated meaning
 # The file's third key, replaceKanjiStudyWords ({kanji: word} ✏️ study-word
-# pins), is read by build_representative_study_word_algo, not by the resolver.
+# pins), is read by japanese_study_words_algo, not by the resolver.
 HINTS_PATH = "overrides/resolver_hints.json"
 
 # Appended to resolve_fallback meanings for usually-kana words (諄い, 亦, 於いて),

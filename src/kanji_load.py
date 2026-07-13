@@ -268,7 +268,7 @@ def dump_kanji_representative_words():
       overrides/japanese_study_words.json      → {kanji: word}  manual pins (win)
 
     Reading/meaning for each manual pin are derived with the SAME resolver the algo
-    uses (build_representative_study_word_algo.resolve_manual_pin_entries), so the
+    uses (japanese_study_words_algo.resolve_manual_pin_entries), so the
     override file stays a plain {kanji: word} map. Throws on duplicate words so a
     human can inspect and fix the collision rather than shipping a silent clash.
 
@@ -277,7 +277,7 @@ def dump_kanji_representative_words():
     which picks were manual stays visible there.
     """
     # Lazy import: the resolver it constructs loads JMdict, so only pay for it here.
-    import build_representative_study_word_algo as study_words
+    import japanese_study_words_algo as study_words
 
     merged = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_ALGO_PATH)
     pins = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_PATH)  # {kanji: word}

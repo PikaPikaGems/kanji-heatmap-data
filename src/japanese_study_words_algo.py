@@ -92,7 +92,7 @@ Output: overrides/japanese_study_words-algo.json
   { kanji: [word, reading, meaning, tag] }   (null when no valid word found)
   tag = tier emoji (🌱☘️🌷📚🌶️🦉), 📖 textbook, ✏️ manual override (replaceKanjiStudyWords)
 
-Run from project root: python3 src/build_representative_study_word_algo.py
+Run from project root: python3 src/japanese_study_words_algo.py
 """
 
 import csv
@@ -116,7 +116,7 @@ from jmdict_resolver import JmdictResolver, CLASS_OTHER, classify_pos
 # ---------------------------------------------------------------------------
 
 # NOTE: word_score / is_valid_candidate here intentionally differ from the
-# same-named functions in algorithmic_kanji_vocab_overrides.py — this algorithm
+# same-named functions in kanji_vocab_algo.py — this algorithm
 # requires the word to START with the kanji and scores by word-shape, while the
 # sample-vocab algorithm only requires the kanji to appear anywhere.
 
