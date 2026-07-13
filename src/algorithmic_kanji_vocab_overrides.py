@@ -102,7 +102,10 @@ from sources import (
     freq_key,
     parse_rank,
 )
-from japanese import is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments
+from japanese import (
+    is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments,
+    readings_equivalent,
+)
 from jmdict_resolver import JmdictResolver
 
 # NOTE: word_score / is_valid_candidate here intentionally differ from the
@@ -466,48 +469,6 @@ def is_redundant_pair(w1, w2):
     return {c for c in w1 if is_kanji_char(c)} == {c for c in w2 if is_kanji_char(c)}
 
 
-RENDAKU = {
-    'が': 'か', 'ぎ': 'き', 'ぐ': 'く', 'げ': 'け', 'ご': 'こ',
-    'ざ': 'さ', 'じ': 'し', 'ず': 'す', 'ぜ': 'せ', 'ぞ': 'そ',
-    'だ': 'た', 'ぢ': 'ち', 'づ': 'つ', 'で': 'て', 'ど': 'と',
-    'ば': 'は', 'び': 'ひ', 'ぶ': 'ふ', 'べ': 'へ', 'ぼ': 'ほ',
-    'ぱ': 'は', 'ぴ': 'ひ', 'ぷ': 'ふ', 'ぺ': 'へ', 'ぽ': 'ほ',
-}
-GEMINATING_MORA = set('つちくき')
-
-
-def _derendaku(reading):
-    """Devoice the first kana (連濁): が→か, ど→と. Leaves unvoiced readings alone."""
-    return RENDAKU.get(reading[0], reading[0]) + reading[1:] if reading else reading
-
-
-def _gemination_equivalent(a, b):
-    """True if one reading is the gemination (促音) of the other: げっ↔げつ, きっ↔き.
-
-    The contracted form ends in っ; the base ends in the same stem, optionally plus a
-    geminating mora (つ/ち/く/き). Only fires when one side ends in っ, so genuinely
-    distinct readings (が vs かく) are never collapsed.
-    """
-    if not a.endswith('っ'):
-        a, b = b, a
-    if not a.endswith('っ'):
-        return False
-    stem = a[:-1]
-    return b == stem or any(b == stem + mora for mora in GEMINATING_MORA)
-
-
-def readings_equivalent(r1, r2):
-    """True if two kanji readings are phonologically the same once rendaku (連濁) and
-    gemination (促音) are accounted for — so げつ/げっ (月曜/月謝) and と/ど (土地/土曜)
-    count as one reading, while genuinely distinct readings (画: が/かく) stay apart."""
-    if not r1 or not r2:
-        return False
-    if r1 == r2:
-        return True
-    d1, d2 = _derendaku(r1), _derendaku(r2)
-    return d1 == d2 or _gemination_equivalent(d1, d2)
-
-
 def _gather_sorted_candidates(kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index):
     """All valid candidates for `kanji`, deduped per word (best score kept) and
     sorted best-first. Meaning/reading availability is not filtered here — missing
@@ -699,6 +660,7 @@ def main():
     vocab_reading_result = {}
 
     selected_all = []  # (word, tag, kanji) for stats
+    word_gloss = {}    # {word: gloss} for selected words, for the report only
     replace_logs = []
 
     for kanji in all_kanji:
@@ -714,6 +676,9 @@ def main():
                 vocab_reading_result[w] = r
             if e and w not in existing_meanings:
                 vocab_meaning_result[w] = e
+            if w not in word_gloss:
+                g = e or existing_meanings.get(w, '')
+                word_gloss[w] = g if isinstance(g, str) else str(g)
 
     _print_replace_logs(replace_logs)
 
@@ -725,14 +690,15 @@ def main():
     write_and_report('overrides/vocab_meaning-algo.json', vocab_meaning_result)
     write_and_report('overrides/vocab_reading-algo.json', vocab_reading_result)
 
-    print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words)
+    print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words, word_gloss)
 
 
-def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words):
+def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words, word_gloss):
     """Print selection statistics: tier/length/kanji-count/JLPT breakdowns, the
-    textbook overlap, and the 1-word / 📚 / 🦉 / 3+kanji / 5-char / no-word word
-    groups (big groups print compactly — count + kanji only). Read-only over the
-    selection results — it does not affect the written output files."""
+    textbook overlap, and the 1-word / 📚 / 🦉 / 3+kanji / 5-char / non-shipped /
+    no-word word groups (big groups print compactly — count + kanji only). The
+    non-shipped group lists word + gloss (word_gloss). Read-only over the selection
+    results — it does not affect the written output files."""
     total = len(selected_all)
     unique = len({w for w, _, _ in selected_all})
     without_vocab = [k for k in all_kanji if k not in kanji_vocab_result]
@@ -843,12 +809,28 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
         items = sorted(items, key=sort_key)
         print(f"\n  {title} ({len(items)}): {''.join(k for _, _, k in items)}")
 
+    def print_nonshipped_group(items):
+        # Picks whose word drags in a kanji we don't ship: target kanji, the
+        # unshipped kanji(s), source tag, word, gloss — so a bad pull-in can be
+        # spotted and pinned. Tolerated by design (see has_nonshipped_kanji), but
+        # worth eyeballing for proper nouns that slipped through (嵯峨野線, 珊瑚海).
+        if not items:
+            return
+        items = sorted(items, key=sort_key)
+        print(f"\n  Non-shipped-kanji words ({len(items)}):")
+        for w, t, k in items:
+            unshipped = ''.join(c for c in w if is_kanji_char(c) and c not in SHIPPED)
+            g = word_gloss.get(w, '')
+            print(f"    {k} [{unshipped}] {display_tag(t)} {w}  {g[:50]}")
+        print(f"  {''.join(k for _, _, k in items)}")
+
     one_word_kanji = {k for k, v in kanji_vocab_result.items() if len(v) == 1}
     print_word_group("With 1 word",  [(w, t, k) for w, t, k in selected_all if k in one_word_kanji])
     print_word_group_compact("📚  ADVANCED words", [(w, t, k) for w, t, k in selected_all if t == '📚'])
     print_word_group("🦉  UNRANKED words", [(w, t, k) for w, t, k in selected_all if t == '🦉'])
     print_word_group_compact("3+ kanji words", [(w, t, k) for w, t, k in selected_all if kanji_count(w) >= 3])
     print_word_group("5-char words", [(w, t, k) for w, t, k in selected_all if len(w) == 5])
+    print_nonshipped_group([(w, t, k) for w, t, k in selected_all if has_nonshipped_kanji(w)])
 
     if without_vocab:
         print(f"\n  With 0 words ({len(without_vocab)}):")

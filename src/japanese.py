@@ -106,6 +106,48 @@ def reading_of_kanji_in_segments(kanji, segments):
     return None
 
 
+RENDAKU = {
+    'が': 'か', 'ぎ': 'き', 'ぐ': 'く', 'げ': 'け', 'ご': 'こ',
+    'ざ': 'さ', 'じ': 'し', 'ず': 'す', 'ぜ': 'せ', 'ぞ': 'そ',
+    'だ': 'た', 'ぢ': 'ち', 'づ': 'つ', 'で': 'て', 'ど': 'と',
+    'ば': 'は', 'び': 'ひ', 'ぶ': 'ふ', 'べ': 'へ', 'ぼ': 'ほ',
+    'ぱ': 'は', 'ぴ': 'ひ', 'ぷ': 'ふ', 'ぺ': 'へ', 'ぽ': 'ほ',
+}
+GEMINATING_MORA = set('つちくき')
+
+
+def _derendaku(reading):
+    """Devoice the first kana (連濁): が→か, ど→と. Leaves unvoiced readings alone."""
+    return RENDAKU.get(reading[0], reading[0]) + reading[1:] if reading else reading
+
+
+def _gemination_equivalent(a, b):
+    """True if one reading is the gemination (促音) of the other: げっ↔げつ, きっ↔き.
+
+    The contracted form ends in っ; the base ends in the same stem, optionally plus a
+    geminating mora (つ/ち/く/き). Only fires when one side ends in っ, so genuinely
+    distinct readings (が vs かく) are never collapsed.
+    """
+    if not a.endswith('っ'):
+        a, b = b, a
+    if not a.endswith('っ'):
+        return False
+    stem = a[:-1]
+    return b == stem or any(b == stem + mora for mora in GEMINATING_MORA)
+
+
+def readings_equivalent(r1, r2):
+    """True if two kanji readings are phonologically the same once rendaku (連濁) and
+    gemination (促音) are accounted for — so げつ/げっ (月曜/月謝) and と/ど (土地/土曜)
+    count as one reading, while genuinely distinct readings (画: が/かく) stay apart."""
+    if not r1 or not r2:
+        return False
+    if r1 == r2:
+        return True
+    d1, d2 = _derendaku(r1), _derendaku(r2)
+    return d1 == d2 or _gemination_equivalent(d1, d2)
+
+
 def segment_word(word):
     """Split a word into contiguous (text, is_kanji_span) spans.
 
