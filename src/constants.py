@@ -14,6 +14,7 @@ dir_in = "input"
 dir_out = "output"
 dir_releases = "releases"
 dir_overrides = "overrides"
+dir_debug = "debug"
 
 archive_file = "kanji-heatmap-data.tar.gz"
 

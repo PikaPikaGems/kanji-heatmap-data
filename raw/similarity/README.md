@@ -1,3 +1,5 @@
+
+# Similarity Data 1
 From: https://lars.yencken.org/datasets/kanji-confusion/
 
 ```
@@ -42,3 +44,8 @@ Each line begins with the “pivot” kanji which is the basis for comparison. I
 教 赦 0.727273 政 0.636364 攻 0.636364 孝 0.636364 契 0.636364 ...
 衛 偉 0.75 衝 0.625 違 0.625 街 0.5625 停 0.5625 程 0.5625 ...
 ```
+
+# Similarity Data 2
+
+https://github.com/lennart-finke/kanjidist-visualiser/blob/master/data/dkanjistat.json
+https://github.com/lennart-finke/kanjidist-visualiser/tree/master/data

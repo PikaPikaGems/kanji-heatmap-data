@@ -45,16 +45,9 @@ tar -xzf ./input/jmdict-furigana-map.json.tar.gz -C ./input/
 Download and prepare the Simplified JMdict JSON file from [Jmdict Simplified][jmdict-simplified]
 
 ```
-# if all words
 curl --output-dir input -OL https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1%2B20250324123350/jmdict-eng-3.6.1+20250324123350.json.tgz
 tar -xzf ./input/jmdict-eng-3.6.1+20250324123350.json.tgz -C ./input/
 mv input/jmdict-eng-3.6.1.json input/scriptin-jmdict-eng.json
-
-# If common words only
-curl --output-dir input -OL https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1%2B20250324123350/jmdict-eng-common-3.6.1+20250324123350.json.tgz
-tar -xzf ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz -C ./input/
-mv input/jmdict-eng-common-3.6.1.json input/scriptin-jmdict-eng.json
-
 ```
 
 Remove the files which you don't need anymore, to reduce clutter

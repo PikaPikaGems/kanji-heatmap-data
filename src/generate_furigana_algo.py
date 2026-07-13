@@ -1,61 +1,47 @@
 #!/usr/bin/env python3
 """
-Generates overrides/vocab_furigana-algo.json: the algorithm's furigana for EVERY
-shipped sample word.
+Furigana generation for shipped sample words.
 
-Per the overrides convention, this -algo file is complete and self-contained — it
-never looks at the hand-written overrides/vocab_furigana.json. The final build
-(kanji_load.dump_all_vocab_furigana) layers that manual file ON TOP of this one
-(human wins), and aborts if a word is covered by neither.
+The final build (kanji_load.dump_all_vocab_furigana) is the only caller that ships
+furigana: it generates algo furigana here, then layers overrides/vocab_furigana.json
+on top (human wins), and aborts if a word is covered by neither.
 
-This script is the ONLY place furigana is generated or a reading variant is picked.
-
-The word set is computed here exactly as the final build computes it: for each kanji
-in input/filtered_kanji.json, up to two sample words by source priority
-(overrides/kanji_vocab.json → overrides/kanji_vocab-algo.json → input/kanji_vocab.json;
-see build_helpers.get_words). Entries for words no longer shipped are pruned, so this
-file always mirrors what the build needs.
+This module is the ONLY place furigana is generated or a reading variant is picked.
 
 Furigana format matches output/vocab_furigana.json:
   "word": [["kanji_span", "reading"], ["kana_span"], ...]
 
 Priority for obtaining the furigana:
   1. input/jmdict-furigana-map.json (JmdictFurigana) – correct per-kanji segments.
-     Among a word's reading variants the one matching overrides/vocab_reading-algo.json
-     is preferred (words like 上手 have several readings; the naive first pick is
-     how じょうて once shipped instead of じょうず).
+     Among a word's reading variants the one matching a reading hint is preferred
+     (words like 上手 have several readings; the naive first pick is how じょうて
+     once shipped instead of じょうず). Hints come from freq-ranks other_forms kana,
+     falling back to JMdict's primary reading — the same signals the sample-vocab
+     algo uses when it records a candidate reading.
   2. JMdict (input/scriptin-jmdict-eng.json) reading + regex alignment – fallback
   3. JMdict per-kanji-span lookup – for suffixed headwords JMdict lists only as the
      stem (必須の → 必須 + の, 表彰する → 表彰 + する)
 
-Words covered by none of these are written as [[word]] (no reading) and reported
-so they can be hand-curated into overrides/vocab_furigana.json. Also reported:
-entries whose reading disagrees with overrides/vocab_reading-algo.json (mostly
-jukujikun the map can only lump, and proper nouns the map lacks). Words already
-covered by the manual override are excluded from both reports — they're curated.
+Words covered by none of these are returned as [[word]] (no reading) so the final
+build can fail loudly (or a human can pin them in overrides/vocab_furigana.json).
 
 The map (1) is essential: the alignment fallback cannot split a run of adjacent
 kanji (e.g. 天気), so it would otherwise lump the whole reading onto one span
 (天気 → てんき) instead of 天 → てん, 気 → き.
 
-For the alignment fallback the reading is aligned to the word by treating kana spans
-as literal anchors and kanji spans as regex capture groups, then matched against the
-full hiragana reading.
-
-Run from the project root: python3 src/generate_furigana_algo.py
+Optional CLI (diagnostics only — does not write a cache):
+  python3 src/generate_furigana_algo.py
 """
 
-import json
+import csv
+import glob
 import re
 
-import kanji_load
-from build_helpers import get_words
 from sources import resolve_path, load_json
-from japanese import is_kanji_char, kata_to_hira, segment_word
+from japanese import is_kanji_char, is_all_japanese, kanji_count, kata_to_hira, segment_word
 
 # NOTE: the full JMdict dump (108MB) is only needed for the words NOT covered by
-# input/jmdict-furigana-map.json. It is loaded lazily inside main() so the common
-# case (everything in the map) runs without it.
+# input/jmdict-furigana-map.json. It is loaded lazily inside build_furigana_for_words.
 
 
 def align_reading(word, reading):
@@ -119,6 +105,48 @@ def load_scriptin_readings():
                     lookup[text] = kata_to_hira(kana.get("text", ""))
                     break
     return lookup
+
+
+def _kana_spelling(other_forms):
+    """First kana-only token from a TSV `other_forms` cell ("御金; おかね" → おかね)."""
+    for token in (other_forms or "").split(";"):
+        token = token.strip()
+        if token and is_all_japanese(token) and kanji_count(token) == 0:
+            return token
+    return ""
+
+
+def build_reading_hints(words=None):
+    """{word: reading} hints for disambiguating multi-reading furigana-map entries.
+
+    Prefers freq-ranks `other_forms` kana (same signal the sample-vocab algo stores
+    on candidates), then fills gaps from JMdict's primary reading. If `words` is
+    given, only those keys are returned.
+    """
+    hints = {}
+    for path in sorted(glob.glob(resolve_path("raw/freq-ranks/*.tsv"))):
+        with open(path, encoding="utf-8") as f:
+            for row in csv.DictReader(f, delimiter="\t"):
+                word = row.get("japanese_word", "")
+                if not word or word in hints:
+                    continue
+                if words is not None and word not in words:
+                    continue
+                kana = _kana_spelling(row.get("other_forms", ""))
+                if kana:
+                    hints[word] = kata_to_hira(kana)
+
+    needed = None if words is None else [w for w in words if w not in hints]
+    if needed or words is None:
+        jmdict = load_scriptin_readings()
+        if words is None:
+            for word, reading in jmdict.items():
+                hints.setdefault(word, reading)
+        else:
+            for word in needed:
+                if word in jmdict:
+                    hints[word] = jmdict[word]
+    return hints
 
 
 def generate_furigana(word, readings):
@@ -197,104 +225,76 @@ def segments_reading(segments):
     return kata_to_hira("".join(s[1] if len(s) == 2 else s[0] for s in segments))
 
 
-def shipped_sample_words():
-    """The exact word set the final build ships furigana for: up to two sample words
-    per kanji in input/filtered_kanji.json (see build_helpers.get_words)."""
-    kanji_data = kanji_load.load_filtered_kanji_data()
-    manual_vocab = kanji_load.load_vocab_override()
-    algo_vocab = kanji_load.load_vocab_algo_override()
-    automated_vocab = kanji_load.load_automated_kanji_vocab()
+def build_furigana_for_words(words, word_readings=None):
+    """Generate furigana segments for every word in `words`.
 
-    words = set()
-    for kanji in kanji_data:
-        words.update(get_words(kanji, manual_vocab, algo_vocab, automated_vocab))
-    return words
-
-
-def main():
+    `word_readings` is an optional {word: reading} hint map for multi-variant
+    furigana-map entries; when omitted, hints are built via build_reading_hints.
+    Returns {word: segments} in the same key order as `words`.
+    """
+    needed = list(words)
+    word_set = set(needed)
     furigana_map = load_json("input/jmdict-furigana-map.json")
-    word_readings = load_json("overrides/vocab_reading-algo.json")  # disambiguate multi-reading words
+    if word_readings is None:
+        word_readings = build_reading_hints(word_set)
 
-    needed = sorted(shipped_sample_words())
-
-    out_path = resolve_path("overrides/vocab_furigana-algo.json")
-    cache = load_json("overrides/vocab_furigana-algo.json")
-    result = {w: cache[w] for w in needed if w in cache}
-    pruned = len(cache) - len(result)
-
-    # Repair pass 1: replace lumped whole-word entries (天気 → てんき) with the map's
-    # correct per-kanji segmentation. Jukujikun (lumped in the map too) and
-    # already-correct entries are left untouched.
-    repaired_lumped = 0
-    for word, segments in list(result.items()):
-        if is_lumped_multikanji(segments) and word in furigana_map:
-            fixed = pick_map_segments(furigana_map[word], word_readings.get(word))
-            if fixed != segments:
-                result[word] = fixed
-                repaired_lumped += 1
-
-    # Repair pass 2: cached entries whose reading contradicts the word's intended
-    # reading (overrides/vocab_reading-algo.json) are re-picked from the map when it
-    # has a variant with that reading (e.g. a stale 竜馬 → りょうま over りゅうめ).
-    repaired_reading = 0
-    for word, segments in list(result.items()):
-        want = word_readings.get(word)
-        if not want or segments_reading(segments) == kata_to_hira(want):
-            continue
-        if word in furigana_map:
-            fixed = pick_map_segments(furigana_map[word], want)
-            if fixed != segments and segments_reading(fixed) == kata_to_hira(want):
-                result[word] = fixed
-                repaired_reading += 1
-
-    # Generate the words not yet covered.
-    todo = [w for w in needed if w not in result]
-    from_map = 0
+    result = {}
     uncovered = []
-    for word in todo:
+    for word in needed:
         if word in furigana_map:
             result[word] = pick_map_segments(furigana_map[word], word_readings.get(word))
-            from_map += 1
         else:
             uncovered.append(word)
 
-    # Only the leftover words need the full JMdict dump — load it lazily.
     if uncovered:
         print(f"Loading JMdict for {len(uncovered)} uncovered words...")
         readings = load_scriptin_readings()
         for word in uncovered:
             result[word] = generate_furigana(word, readings)
 
-    result = {w: result[w] for w in needed}  # sorted key order for stable diffs
+    return {w: result[w] for w in needed}
 
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(result, f, ensure_ascii=False, indent=4)
 
-    print(f"\nWritten: {out_path} ({len(result)} entries)")
-    print(f"  pruned entries no longer shipped: {pruned}")
-    print(f"  repaired: lumped via map {repaired_lumped}, wrong reading via map {repaired_reading}")
-    print(f"  new: from map {from_map}, via JMdict lookup {len(uncovered)}")
+def main():
+    """Diagnostic only: report bare / hard-to-align words; does not write a cache."""
+    import kanji_load
+    from build_helpers import get_words
 
-    # Quality report over the whole file: what still needs a human eye
-    # (candidates for overrides/vocab_furigana.json). Words that manual file
-    # already covers are someone's deliberate call — skip them.
+    kanji_data = kanji_load.load_filtered_kanji_data()
+    manual_vocab = kanji_load.load_vocab_override()
+    algo_vocab = kanji_load.load_vocab_algo_override()
+    automated_vocab = kanji_load.load_automated_kanji_vocab()
+    needed = sorted({
+        w
+        for kanji in kanji_data
+        for w in get_words(kanji, manual_vocab, algo_vocab, automated_vocab)
+    })
+
+    word_readings = build_reading_hints(set(needed))
+    result = build_furigana_for_words(needed, word_readings)
     manual_furigana = load_json("overrides/vocab_furigana.json")
-    bare = [w for w in result
-            if w not in manual_furigana
-            and result[w] == [[w]] and any(is_kanji_char(ch) for ch in w)]
+
+    bare = [
+        w for w in result
+        if w not in manual_furigana
+        and result[w] == [[w]] and any(is_kanji_char(ch) for ch in w)
+    ]
     mismatched = [
         w for w in result
         if w not in manual_furigana
         and word_readings.get(w)
         and segments_reading(result[w]) != kata_to_hira(word_readings[w])
     ]
+    print(f"Furigana for {len(result)} shipped sample words (not written; final build ships)")
     if bare:
         print(f"  no reading found (need manual furigana): {len(bare)}")
         print(f"    {' '.join(bare)}")
     if mismatched:
-        print(f"  reading differs from vocab_reading-algo (jukujikun lumps / proper nouns / check by hand): {len(mismatched)}")
+        print(f"  reading differs from hint (jukujikun lumps / proper nouns / check by hand): {len(mismatched)}")
         for w in mismatched:
             print(f"    {w}: {segments_reading(result[w])} vs intended {word_readings[w]}")
+    if not bare and not mismatched:
+        print("  all readable; no hint mismatches outside manual overrides")
 
 
 if __name__ == "__main__":

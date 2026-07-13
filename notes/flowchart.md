@@ -11,10 +11,13 @@ Legend:
 
 `input/` is externally maintained and git-ignored; the build only reads from it.
 
-Each `*_algo.py` generator is named after the `-algo.json` file it writes
+Each committed `*_algo.py` generator is named after the `-algo.json` file it writes
 (`kanji_vocab_algo.py` → `kanji_vocab-algo.json`) and is **pure**: it never reads
 its hand-written override counterpart. Those manual overrides are merged on top at
-build time by `kanji_build_output_jsons.py` (see §3, §4).
+build time by `kanji_build_output_jsons.py` (see §3, §4). Furigana and meanings are
+generated on the fly in the final build (no intermediate cache files) — only
+hand pins in `overrides/vocab_furigana.json` / `overrides/vocab_meaning.json` win
+over the generated layer.
 
 ---
 
@@ -26,8 +29,7 @@ The full build is offline and deterministic. Each step writes files the next rea
 flowchart TD
     A[build_filtered_kanji_json.py] --> B[japanese_study_words_algo.py]
     B --> C[kanji_vocab_algo.py]
-    C --> D[generate_furigana_algo.py]
-    D --> E[keywords_algo.py]
+    C --> E[keywords_algo.py]
     E --> F[build_similar_kanji.py]
     F --> G[kanji_build_output_jsons.py]
     G --> H[kanji_inspect.py — stats only]
@@ -35,9 +37,7 @@ flowchart TD
     A -.writes.-> a1[(input/filtered_kanji.json
     input/all_kanjis.json)]
     B -.writes.-> b1[(overrides/japanese_study_words-algo.json)]
-    C -.writes.-> c1[(overrides/kanji_vocab-algo.json
-    vocab_reading-algo.json)]
-    D -.writes.-> d1[(overrides/vocab_furigana-algo.json)]
+    C -.writes.-> c1[(overrides/kanji_vocab-algo.json)]
     E -.writes.-> e1[(overrides/keywords-algo.json
     debug/debug-keywords.json)]
     F -.writes.-> f1[(output/similar-kanjis.json)]
@@ -47,11 +47,12 @@ flowchart TD
     kanji_representative_words.json)]
 ```
 
-`generate_furigana_algo.py` is the ONLY step that generates furigana. It computes the
-shipped word set itself (same `get_words` logic as the final build) and covers EVERY
-shipped word — like all `-algo` files it is complete and never consults the manual
-overrides. The final build then just merges the two layers (hand-written
-`overrides/vocab_furigana.json` wins) and aborts if a word is in neither.
+Furigana is generated inside the final build (`dump_all_vocab_furigana` →
+`generate_furigana_algo.build_furigana_for_words`): furigana map + reading hints
+(freq-ranks / JMdict) + alignment fallback. Hand-written
+`overrides/vocab_furigana.json` wins; the build aborts if a word is still bare
+`[[word]]` or missing. Meanings follow the same pattern (JMdict on the fly +
+`overrides/vocab_meaning.json`).
 
 `kanji_build_output_jsons.py` is the single hard gate. It raises loudly on:
 - a shipped sample word with no resolvable meaning (`dump_all_vocab_meanings`) or no
@@ -81,6 +82,7 @@ flowchart LR
     furimap[("🟩 input/jmdict-furigana-map.json")]
     jpdbfreq[("🟩 raw/JPDB_FREQUENCY_*.csv")]
     keywordsraw[("🟩 raw/kanji-keywords-{j,w,k}.json")]
+    vfman[("🟩 overrides/vocab_furigana.json — manual furigana pins")]
 
     %% hand-written manual overrides that merge at BUILD time (kanji_vocab / study-word
     %% analog of the -algo files) — shown here because they feed S6, not the algos.
@@ -91,19 +93,14 @@ flowchart LR
     S1[build_filtered_kanji_json]
     S2[japanese_study_words_algo]
     S3[kanji_vocab_algo]
-    S4[generate_furigana_algo]
     SK[keywords_algo]
     S6[kanji_build_output_jsons]
 
-    %% intermediate files — all script-written: input/filtered_kanji.json and the
-    %% -algo.json overrides. The hand-written overrides/*.json (no -algo suffix) that
-    %% take priority at build time are authoritative; the two that matter to the algos'
-    %% outputs (kanji_vocab, japanese_study_words) are drawn above.
+    %% intermediate files — script-written: input/filtered_kanji.json and the
+    %% committed -algo.json overrides. Furigana/meanings are generated inside S6.
     filt[("🟦 input/filtered_kanji.json")]
     jsw[("🟦 japanese_study_words-algo")]
     kv[("🟦 kanji_vocab-algo")]
-    vr[("🟦 vocab_reading-algo")]
-    vf[("🟦 vocab_furigana-algo")]
     kwalgo[("🟦 keywords-algo")]
 
     %% outputs
@@ -133,27 +130,21 @@ flowchart LR
     textbook --> S3
     jmdict --> S3
     furimap --> S3
-    S3 --> kv & vr
-
-    filt --> S4
-    kv --> S4
-    furimap --> S4
-    jmdict --> S4
-    vr --> S4
-    S4 --> vf
+    S3 --> kv
 
     merged --> SK
     keywordsraw --> SK
     filt --> SK
     SK --> kwalgo
 
-    %% final build
+    %% final build — generates furigana/meanings on the fly
     filt --> S6
     merged --> S6
     kv --> S6
     kvman --> S6
-    vr --> S6
-    vf --> S6
+    vfman --> S6
+    furimap --> S6
+    freqranks --> S6
     jsw --> S6
     jswman --> S6
     kwalgo --> S6
@@ -172,17 +163,16 @@ hint, not the `-algo` counterpart).
 
 ## 3. Override files: algorithm-generated vs hand-written
 
-Files in `overrides/` come from two sources. Only these are written by scripts — all
-have the `-algo` suffix. Every other `overrides/*` file is hand-maintained and must
-not be regenerated.
+Files in `overrides/` come from two sources. Only these are written by scripts and
+committed — all have the `-algo` suffix. Every other `overrides/*` file is
+hand-maintained and must not be regenerated. Furigana and meanings have no `-algo`
+cache; they are generated inside the final build.
 
 ```mermaid
 flowchart TB
-    subgraph ALGO["Written by scripts (do NOT hand-edit)"]
+    subgraph ALGO["Written by scripts & committed (do NOT hand-edit)"]
       a1["japanese_study_words-algo.json — japanese_study_words_algo"]
       a2["kanji_vocab-algo.json — kanji_vocab_algo"]
-      a4["vocab_reading-algo.json — kanji_vocab_algo"]
-      a5["vocab_furigana-algo.json — generate_furigana_algo"]
       a6["keywords-algo.json — keywords_algo"]
     end
     subgraph MANUAL["Hand-written (authoritative overrides)"]
@@ -192,9 +182,10 @@ flowchart TB
     end
 ```
 
-At build time the final build prefers manual overrides over the `-algo` files. Each
-`*_algo.py` generator is pure — it never reads its manual counterpart, so the merge
-(and its collision/completeness checks) all live in `kanji_build_output_jsons.py`.
+At build time the final build prefers manual overrides over the algo layers.
+Each `*_algo.py` generator that writes a committed `-algo` file is pure — it never
+reads its manual counterpart, so the merge (and its collision/completeness checks)
+all live in `kanji_build_output_jsons.py`.
 
 ---
 
@@ -292,9 +283,9 @@ flowchart TD
     different-reading, non-proper-noun word]
     RP -- no --> EMIT
     ALT --> EMIT[emit 1-2 words]
-    EMIT --> W[(kanji_vocab-algo + vocab_reading-algo
-    — English glosses are no longer emitted here; the
-    final build resolves them straight from JMdict)]
+    EMIT --> W[(kanji_vocab-algo
+    — English glosses / furigana are no longer emitted here;
+    the final build resolves them on the fly)]
     EMIT --> STATS[report also prints Furigana Reading Stats
     same vs different reading for the selected pairs]
 ```
