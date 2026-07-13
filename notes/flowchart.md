@@ -36,7 +36,6 @@ flowchart TD
     input/all_kanjis.json)]
     B -.writes.-> b1[(overrides/japanese_study_words-algo.json)]
     C -.writes.-> c1[(overrides/kanji_vocab-algo.json
-    vocab_meaning-algo.json
     vocab_reading-algo.json)]
     D -.writes.-> d1[(overrides/vocab_furigana-algo.json)]
     E -.writes.-> e1[(overrides/keywords-algo.json
@@ -103,7 +102,6 @@ flowchart LR
     filt[("🟦 input/filtered_kanji.json")]
     jsw[("🟦 japanese_study_words-algo")]
     kv[("🟦 kanji_vocab-algo")]
-    vm[("🟦 vocab_meaning-algo")]
     vr[("🟦 vocab_reading-algo")]
     vf[("🟦 vocab_furigana-algo")]
     kwalgo[("🟦 keywords-algo")]
@@ -135,7 +133,7 @@ flowchart LR
     textbook --> S3
     jmdict --> S3
     furimap --> S3
-    S3 --> kv & vm & vr
+    S3 --> kv & vr
 
     filt --> S4
     kv --> S4
@@ -154,7 +152,6 @@ flowchart LR
     merged --> S6
     kv --> S6
     kvman --> S6
-    vm --> S6
     vr --> S6
     vf --> S6
     jsw --> S6
@@ -184,7 +181,6 @@ flowchart TB
     subgraph ALGO["Written by scripts (do NOT hand-edit)"]
       a1["japanese_study_words-algo.json — japanese_study_words_algo"]
       a2["kanji_vocab-algo.json — kanji_vocab_algo"]
-      a3["vocab_meaning-algo.json — kanji_vocab_algo"]
       a4["vocab_reading-algo.json — kanji_vocab_algo"]
       a5["vocab_furigana-algo.json — generate_furigana_algo"]
       a6["keywords-algo.json — keywords_algo"]
@@ -296,8 +292,9 @@ flowchart TD
     different-reading, non-proper-noun word]
     RP -- no --> EMIT
     ALT --> EMIT[emit 1-2 words]
-    EMIT --> W[(kanji_vocab-algo + vocab_meaning-algo
-    + vocab_reading-algo)]
+    EMIT --> W[(kanji_vocab-algo + vocab_reading-algo
+    — English glosses are no longer emitted here; the
+    final build resolves them straight from JMdict)]
     EMIT --> STATS[report also prints Furigana Reading Stats
     same vs different reading for the selected pairs]
 ```
@@ -315,16 +312,26 @@ study-word pins live in `overrides/resolver_hints.json`, not in code.
 
 ## 5. Word-meaning resolution
 
-A word's English meaning is resolved by one shared function,
-`sources.resolve_meaning(word, ...)`, called per word by the final build. The
-caller passes whichever source maps it has; the precedence is fixed in the function:
+Every English gloss comes from **one source: JMdict** (`input/scriptin-jmdict-eng.json`).
+`kanji_load.make_meaning_resolver` builds a `{form: gloss}` index once
+(`sources.build_jmdict_meaning_index`, the same appliesToKanji-aware gloss the
+sample-vocab algo uses) and returns a `resolve(word)` closure:
 
 ```mermaid
 flowchart LR
-    w[word] --> R[sources.resolve_meaning]
-    R --> o["common → custom → algo → jmdict_full"]
+    jm[("🟩 input/scriptin-jmdict-eng.json")] --> IDX[sources.build_jmdict_meaning_index
+    pass 1: common forms only — a common writing wins its own gloss
+    pass 2: fill the rest — so 万歳→banzai, not the rarer 万年 sense]
+    IDX --> R[resolve word]
+    ov[("🟩 overrides/vocab_meaning.json — manual hatch, empty")] --> R
+    R --> o["overrides → JMdict gloss → JMdict gloss of the
+    する/な-stripped stem (勃発する → 勃発)"]
     o --> m[meaning or None]
 ```
+
+Two passes because the index is keyed by surface writing, and a writing can be shared
+by several JMdict entries: pass 1 lets a form that is itself common claim its common
+gloss before any rarer homograph, regardless of file order.
 
 The final build is the single hard gate: `dump_all_vocab_meanings` RAISES if any
 shipped word resolves to no meaning (add it to `overrides/vocab_meaning.json`), and

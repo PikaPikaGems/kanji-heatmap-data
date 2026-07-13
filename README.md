@@ -79,7 +79,7 @@ missing_components.json
 phonetic_components.json
 scriptin-jmdict-eng.json # From: Jmdict Simplified
 vocab_furigana.json      # legacy, no longer read (furigana comes from jmdict-furigana-map)
-vocab_meaning.json
+vocab_meaning.json       # legacy, no longer read (meanings come from scriptin-jmdict-eng.json)
 ```
 
 Note: Some scripts rely folders or files such as  `./raw/kanji-textbook-words/*.json` (`kanji-text-book-words-min/`) and `./raw/kanji-words/v3/*.json` (`v3b/`) .
@@ -121,13 +121,6 @@ The following output files should be generated in the `output` directory:
 - kanji_representative_words.json
 - similar-kanjis.json
 - extra_kanji_keyword.json   # keywords for non-shipped kanji that appear inside sample/study words
-
-Additionally, the following files will be created by running the script above
-in the `input` directory. This will not be part of the release file.
-
-```
-jmdict-vocab-meaning.json
-```
 
 ### Inspect Data
 

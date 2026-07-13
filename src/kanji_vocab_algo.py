@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 Task: Better Sample Vocabulary
-Selects up to two sample words per kanji and writes overrides/kanji_vocab-algo.json,
-vocab_meaning-algo.json and vocab_reading-algo.json. (Furigana for the selected
-words is generated afterwards by src/generate_furigana_algo.py, which computes the
-shipped word set itself.)
+Selects up to two sample words per kanji and writes overrides/kanji_vocab-algo.json
+and vocab_reading-algo.json. (English glosses are no longer emitted here — the final
+build resolves every gloss straight from JMdict. Furigana for the selected words is
+generated afterwards by src/generate_furigana_algo.py, which computes the shipped
+word set itself.)
 
 Selection rules:
 - Word must be >= 2 characters (hiragana included)
@@ -89,8 +90,7 @@ Sources:
   input/scriptin-jmdict-eng.json           → JMdict                 (jmdict fallback)
   input/jmdict-furigana-map.json           → {word: {reading: segments}}  (readings)
 
-Outputs (overrides/): kanji_vocab-algo.json, vocab_meaning-algo.json,
-  vocab_reading-algo.json
+Outputs (overrides/): kanji_vocab-algo.json, vocab_reading-algo.json
 
 Run from the project root: python3 src/kanji_vocab_algo.py
 """
@@ -431,7 +431,7 @@ def load_textbook_candidates(kanji):
     return results
 
 
-def load_existing_candidates(kanji, existing_kanji_vocab, existing_meanings):
+def load_existing_candidates(kanji, existing_kanji_vocab, word_glosses):
     """Current production words for this kanji (input/kanji_vocab.json).
 
     Used as a last-resort source so a kanji isn't left word-less just because the
@@ -441,7 +441,7 @@ def load_existing_candidates(kanji, existing_kanji_vocab, existing_meanings):
     results = []
     for word in existing_kanji_vocab.get(kanji, []):
         if is_valid_candidate(word, kanji):
-            e = existing_meanings.get(word, '')
+            e = word_glosses.get(word, '')
             results.append((word, '', EXISTING_TAG, e))
     return results
 
@@ -523,13 +523,13 @@ def is_redundant_pair(w1, w2):
     return {c for c in w1 if is_kanji_char(c)} == {c for c in w2 if is_kanji_char(c)}
 
 
-def _gather_sorted_candidates(kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index):
+def _gather_sorted_candidates(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index):
     """All valid candidates for `kanji`, deduped per word (best score kept) and
     sorted best-first. Meaning/reading availability is not filtered here — missing
     either just costs score (see word_score); the final build is the hard gate."""
     freq = freq_index.get(kanji, [])
     textbook = load_textbook_candidates(kanji)
-    existing = load_existing_candidates(kanji, existing_kanji_vocab, existing_meanings)
+    existing = load_existing_candidates(kanji, existing_kanji_vocab, word_glosses)
     jmdict = jmdict_index.get(kanji, [])
 
     candidates = freq + textbook + existing + jmdict
@@ -620,14 +620,14 @@ def _log_diversity_replacement(kanji, first, first_reading, second, all_candidat
     replace_logs.append((kanji, first, first_reading, second, second_kr, best_passed, passed_kr))
 
 
-def select_vocab_for_kanji(kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index, furigana_map, replace_logs=None):
+def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index, furigana_map, replace_logs=None):
     """Return up to 2 best (word, reading, tag, meaning) tuples for this kanji.
 
     All valid candidates are considered; a missing meaning or reading only costs
     score (word_score), and the final build fails loudly if a shipped word has none.
     """
     all_candidates = _gather_sorted_candidates(
-        kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index
+        kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index
     )
     if not all_candidates:
         return []
@@ -677,16 +677,9 @@ def main():
         all_kanji = json.load(f)
     SHIPPED.update(all_kanji)  # enable the all-shipped sample-word preference
 
-    with open(resolve_path('input/vocab_meaning.json'), encoding='utf-8') as f:
-        existing_meanings = json.load(f)
-
     with open(resolve_path('input/kanji_vocab.json'), encoding='utf-8') as f:
         existing_kanji_vocab = json.load(f)
     existing_vocab_words = set(w for words in existing_kanji_vocab.values() for w in words)
-
-    # Loaded only for proper-noun gloss detection (PN_GLOSS_LOOKUP below). Meaning
-    # availability is no longer pre-filtered — the final build is the hard gate.
-    jmdict_cache = load_json('input/jmdict-vocab-meaning.json', {})
 
     # One JMdict load feeds both the resolver (phrase-fragment detection needs it
     # BEFORE any candidate indexing) and the fallback candidate index.
@@ -710,19 +703,16 @@ def main():
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
     jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(set(all_kanji), jmdict_data)
 
-    # Resolved glosses for proper-noun detection: JMdict's full gloss is the most
-    # revealing ("Shinano (former province ...)"), so it overlays the local caches.
-    # Non-string values (structured entries) are skipped.
-    for gloss_src in (existing_meanings, jmdict_cache, jmdict_word_meanings):
-        PN_GLOSS_LOOKUP.update(
-            (w, m) for w, m in gloss_src.items() if isinstance(m, str)
-        )
+    # Resolved glosses for proper-noun detection, straight from JMdict's full gloss
+    # ("Shinano (former province ...)" is what reveals the name-ness).
+    PN_GLOSS_LOOKUP.update(
+        (w, m) for w, m in jmdict_word_meanings.items() if isinstance(m, str)
+    )
 
     # Per-kanji furigana, used to give the second word a different reading.
     furigana_map = load_json('input/jmdict-furigana-map.json', {})
 
     kanji_vocab_result = {}
-    vocab_meaning_result = {}
     vocab_reading_result = {}
 
     selected_all = []  # (word, tag, kanji, reading) for stats
@@ -730,7 +720,7 @@ def main():
     replace_logs = []
 
     for kanji in all_kanji:
-        selected = select_vocab_for_kanji(kanji, existing_kanji_vocab, existing_meanings, freq_index, jmdict_index, furigana_map, replace_logs)
+        selected = select_vocab_for_kanji(kanji, existing_kanji_vocab, jmdict_word_meanings, freq_index, jmdict_index, furigana_map, replace_logs)
         if not selected:
             continue
 
@@ -740,10 +730,8 @@ def main():
             selected_all.append((w, t, kanji, r if r and r != '-' else ''))
             if r and r != '-':
                 vocab_reading_result[w] = r
-            if e and w not in existing_meanings:
-                vocab_meaning_result[w] = e
             if w not in word_gloss:
-                g = e or existing_meanings.get(w, '')
+                g = e or jmdict_word_meanings.get(w, '')
                 word_gloss[w] = g if isinstance(g, str) else str(g)
 
     _print_replace_logs(replace_logs)
@@ -753,7 +741,6 @@ def main():
         print(f"Written: {path} ({len(data)} entries)")
 
     write_and_report('overrides/kanji_vocab-algo.json', kanji_vocab_result)
-    write_and_report('overrides/vocab_meaning-algo.json', vocab_meaning_result)
     write_and_report('overrides/vocab_reading-algo.json', vocab_reading_result)
 
     print_report(
