@@ -725,7 +725,7 @@ def main():
     vocab_meaning_result = {}
     vocab_reading_result = {}
 
-    selected_all = []  # (word, tag, kanji) for stats
+    selected_all = []  # (word, tag, kanji, reading) for stats
     word_gloss = {}    # {word: gloss} for selected words, for the report only
     replace_logs = []
 
@@ -737,7 +737,7 @@ def main():
         kanji_vocab_result[kanji] = [w for w, r, t, e in selected]
 
         for w, r, t, e in selected:
-            selected_all.append((w, t, kanji))
+            selected_all.append((w, t, kanji, r if r and r != '-' else ''))
             if r and r != '-':
                 vocab_reading_result[w] = r
             if e and w not in existing_meanings:
@@ -756,21 +756,41 @@ def main():
     write_and_report('overrides/vocab_meaning-algo.json', vocab_meaning_result)
     write_and_report('overrides/vocab_reading-algo.json', vocab_reading_result)
 
-    print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words, word_gloss, furigana_map)
+    print_report(
+        selected_all, kanji_vocab_result, all_kanji, existing_vocab_words,
+        word_gloss, furigana_map,
+    )
 
 
-def _print_reading_diversity_stats(kanji_vocab_result, furigana_map):
+def _word_reading_from_map(word, furigana_map):
+    """Full-word reading from the JMdict furigana map, or None if absent."""
+    entry = furigana_map.get(word) or {}
+    return next(iter(entry), None)
+
+
+def _print_reading_diversity_stats(kanji_vocab_result, furigana_map, selected_all, word_gloss):
     """Same-vs-different reading breakdown for the selected pairs (mirrors the
-    build-time furigana_stats summary, using the JMdict furigana map directly)."""
+    build-time furigana_stats summary, using the JMdict furigana map directly).
+
+    Skipped kanji (< 2 words or a missing per-kanji furigana segment) are listed
+    with tier / word / reading / gloss so gaps are easy to inspect.
+    """
+    by_kanji = {}
+    for w, t, k, r in selected_all:
+        by_kanji.setdefault(k, []).append((w, t, r))
+
     same = rendaku_same = different = skipped = 0
+    skipped_rows = []  # (kanji, tag, word, candidate_reading)
     for kanji, words in kanji_vocab_result.items():
         if len(words) < 2:
             skipped += 1
+            skipped_rows.extend((kanji, t, w, r) for w, t, r in by_kanji.get(kanji, []))
             continue
         r1 = kanji_reading_in_word(kanji, words[0], '', furigana_map)
         r2 = kanji_reading_in_word(kanji, words[1], '', furigana_map)
         if r1 is None or r2 is None:
             skipped += 1
+            skipped_rows.extend((kanji, t, w, r) for w, t, r in by_kanji.get(kanji, []))
             continue
         if r1 == r2:
             same += 1
@@ -790,6 +810,11 @@ def _print_reading_diversity_stats(kanji_vocab_result, furigana_map):
     print(f"  Different reading:             {different:4d} ({different / total * 100:.1f}%)")
     if skipped:
         print(f"  Skipped (< 2 words or missing furigana): {skipped}")
+        for k, t, w, cand_r in skipped_rows:
+            reading = _word_reading_from_map(w, furigana_map) or cand_r or '?'
+            g = word_gloss.get(w, '')
+            gloss = f"  {g[:50]}" if g else ''
+            print(f"    {k} {_fmt_tag(t)} {w} ~ {reading}{gloss}")
 
 
 def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words, word_gloss, furigana_map):
@@ -797,7 +822,7 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
     single Copy-paste kanji strings section. Read-only over the selection results —
     it does not affect the written output files."""
     total = len(selected_all)
-    unique = len({w for w, _, _ in selected_all})
+    unique = len({w for w, *_ in selected_all})
     without_vocab = [k for k in all_kanji if k not in kanji_vocab_result]
     with_one  = sum(1 for v in kanji_vocab_result.values() if len(v) == 1)
     with_two  = sum(1 for v in kanji_vocab_result.values() if len(v) >= 2)
@@ -819,10 +844,10 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
 
     display_tag = _fmt_tag
 
-    tier_counts  = Counter(t for _, t, _ in selected_all)
-    length_counts = Counter(len(w) for w, _, _ in selected_all)
-    kanji_counts  = Counter(kanji_count(w) for w, _, _ in selected_all)
-    new_words = sum(1 for w, _, _ in selected_all if w not in existing_vocab_words)
+    tier_counts  = Counter(t for _, t, *_ in selected_all)
+    length_counts = Counter(len(w) for w, *_ in selected_all)
+    kanji_counts  = Counter(kanji_count(w) for w, *_ in selected_all)
+    new_words = sum(1 for w, *_ in selected_all if w not in existing_vocab_words)
 
     print(f"\n{'─'*40}")
     print(f"  Kanji processed:   {len(all_kanji)}")
@@ -832,7 +857,7 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
     print(f"  Total words:       {total}  (kanji→word assignments)")
     print(f"  Unique words:      {unique}  ({total - unique} shared across >1 kanji)")
 
-    _print_reading_diversity_stats(kanji_vocab_result, furigana_map)
+    _print_reading_diversity_stats(kanji_vocab_result, furigana_map, selected_all, word_gloss)
 
     print(f"\n  Source / tier breakdown")
     for tag, label in tier_labels.items():
@@ -865,7 +890,7 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
         jlpt = WORD_JLPT.get(word)
         return jlpt if jlpt is not None else textbook_pool(kanji).get(word)
 
-    jlpt_counts = Counter(jlpt_of(k, w) for w, _, k in selected_all)
+    jlpt_counts = Counter(jlpt_of(k, w) for w, _, k, *_ in selected_all)
     print(f"\n  JLPT level (freq-ranks jlpt_level, else the textbook's)")
     for level in (5, 4, 3, 2, 1):
         n = jlpt_counts.get(level, 0)
@@ -876,7 +901,7 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
     # Textbook overlap: 📖-tagged words came from the textbook pool alone; count
     # how many words tagged from another source ALSO sit in their kanji's pool.
     overlap_counts = Counter(
-        t for w, t, k in selected_all
+        t for w, t, k, *_ in selected_all
         if t != TEXTBOOK_TAG and w in textbook_pool(k)
     )
     n_overlap = sum(overlap_counts.values())
@@ -891,11 +916,11 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
     print(f"{'─'*40}")
 
     def sort_key(item):
-        w, t, _ = item
+        w, t, *_ = item
         return (TAG_PRIORITY.get(t, DEFAULT_TAG_PRIORITY), len(w), w)
 
     def kanji_str(items):
-        return ''.join(k for _, _, k in sorted(items, key=sort_key))
+        return ''.join(k for _, _, k, *_ in sorted(items, key=sort_key))
 
     def print_word_group(title, items):
         """Per-row detail with english gloss. Copy-paste kanji strings go in the
@@ -904,7 +929,7 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
             return
         items = sorted(items, key=sort_key)
         print(f"\n  {title} ({len(items)}):")
-        for w, t, k in items:
+        for w, t, k, *_ in items:
             g = word_gloss.get(w, '')
             gloss = f"  {g[:50]}" if g else ''
             print(f"    {k} {display_tag(t)} {w}{gloss}")
@@ -918,19 +943,19 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
             return
         items = sorted(items, key=sort_key)
         print(f"\n  Non-shipped-kanji words ({len(items)}):")
-        for w, t, k in items:
+        for w, t, k, *_ in items:
             unshipped = ''.join(c for c in w if is_kanji_char(c) and c not in SHIPPED)
             g = word_gloss.get(w, '')
             print(f"    {k} [{unshipped}] {display_tag(t)} {w}  {g[:50]}")
 
     one_word_kanji = {k for k, v in kanji_vocab_result.items() if len(v) == 1}
-    one_word_items = [(w, t, k) for w, t, k in selected_all if k in one_word_kanji]
-    advanced_items = [(w, t, k) for w, t, k in selected_all if t == '📚']
-    unranked_items = [(w, t, k) for w, t, k in selected_all if t == '🦉']
-    three_kanji_items = [(w, t, k) for w, t, k in selected_all if kanji_count(w) == 3]
-    four_plus_items = [(w, t, k) for w, t, k in selected_all if kanji_count(w) >= 4]
-    five_char_items = [(w, t, k) for w, t, k in selected_all if len(w) == 5]
-    nonshipped_items = [(w, t, k) for w, t, k in selected_all if has_nonshipped_kanji(w)]
+    one_word_items = [i for i in selected_all if i[2] in one_word_kanji]
+    advanced_items = [i for i in selected_all if i[1] == '📚']
+    unranked_items = [i for i in selected_all if i[1] == '🦉']
+    three_kanji_items = [i for i in selected_all if kanji_count(i[0]) == 3]
+    four_plus_items = [i for i in selected_all if kanji_count(i[0]) >= 4]
+    five_char_items = [i for i in selected_all if len(i[0]) == 5]
+    nonshipped_items = [i for i in selected_all if has_nonshipped_kanji(i[0])]
     four_kanji_items = [i for i in selected_all if kanji_count(i[0]) == 4]
     five_kanji_items = [i for i in selected_all if kanji_count(i[0]) == 5]
     niche_items = [i for i in selected_all if i[1] == '🌶️']
