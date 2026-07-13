@@ -793,11 +793,9 @@ def _print_reading_diversity_stats(kanji_vocab_result, furigana_map):
 
 
 def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words, word_gloss, furigana_map):
-    """Print selection statistics: tier/length/kanji-count/JLPT breakdowns, the
-    textbook overlap, and the 1-word / 📚 / 🦉 / 3+kanji / 5-char / non-shipped /
-    no-word word groups (big groups print compactly — count + kanji only). The
-    non-shipped group lists word + gloss (word_gloss). Read-only over the selection
-    results — it does not affect the written output files."""
+    """Print selection statistics, then detailed word groups (with gloss), then a
+    single Copy-paste kanji strings section. Read-only over the selection results —
+    it does not affect the written output files."""
     total = len(selected_all)
     unique = len({w for w, _, _ in selected_all})
     without_vocab = [k for k in all_kanji if k not in kanji_vocab_result]
@@ -896,22 +894,20 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
         w, t, _ = item
         return (TAG_PRIORITY.get(t, DEFAULT_TAG_PRIORITY), len(w), w)
 
+    def kanji_str(items):
+        return ''.join(k for _, _, k in sorted(items, key=sort_key))
+
     def print_word_group(title, items):
+        """Per-row detail with english gloss. Copy-paste kanji strings go in the
+        bottom section so all inspectable sequences sit together."""
         if not items:
             return
         items = sorted(items, key=sort_key)
         print(f"\n  {title} ({len(items)}):")
         for w, t, k in items:
-            print(f"    {k} {display_tag(t)} {w}")
-        print(f"  {''.join(k for _, _, k in items)}")
-
-    def print_word_group_compact(title, items):
-        # Count + the affected kanji only — no per-word rows (the big groups
-        # like 📚 and 3+ kanji would otherwise flood the log).
-        if not items:
-            return
-        items = sorted(items, key=sort_key)
-        print(f"\n  {title} ({len(items)}): {''.join(k for _, _, k in items)}")
+            g = word_gloss.get(w, '')
+            gloss = f"  {g[:50]}" if g else ''
+            print(f"    {k} {display_tag(t)} {w}{gloss}")
 
     def print_nonshipped_group(items):
         # Picks whose word drags in a kanji we don't ship: target kanji, the
@@ -926,34 +922,52 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
             unshipped = ''.join(c for c in w if is_kanji_char(c) and c not in SHIPPED)
             g = word_gloss.get(w, '')
             print(f"    {k} [{unshipped}] {display_tag(t)} {w}  {g[:50]}")
-        print(f"  {''.join(k for _, _, k in items)}")
 
     one_word_kanji = {k for k, v in kanji_vocab_result.items() if len(v) == 1}
-    print_word_group("With 1 word",  [(w, t, k) for w, t, k in selected_all if k in one_word_kanji])
-    print_word_group_compact("📚  ADVANCED words", [(w, t, k) for w, t, k in selected_all if t == '📚'])
-    print_word_group("🦉  UNRANKED words", [(w, t, k) for w, t, k in selected_all if t == '🦉'])
-    print_word_group_compact("3+ kanji words", [(w, t, k) for w, t, k in selected_all if kanji_count(w) >= 3])
-    print_word_group("5-char words", [(w, t, k) for w, t, k in selected_all if len(w) == 5])
-    print_nonshipped_group([(w, t, k) for w, t, k in selected_all if has_nonshipped_kanji(w)])
+    one_word_items = [(w, t, k) for w, t, k in selected_all if k in one_word_kanji]
+    advanced_items = [(w, t, k) for w, t, k in selected_all if t == '📚']
+    unranked_items = [(w, t, k) for w, t, k in selected_all if t == '🦉']
+    three_kanji_items = [(w, t, k) for w, t, k in selected_all if kanji_count(w) == 3)
+    four_plus_items = [(w, t, k) for w, t, k in selected_all if kanji_count(w) >= 4]
+    five_char_items = [(w, t, k) for w, t, k in selected_all if len(w) == 5]
+    nonshipped_items = [(w, t, k) for w, t, k in selected_all if has_nonshipped_kanji(w)]
+    four_kanji_items = [i for i in selected_all if kanji_count(i[0]) == 4]
+    five_kanji_items = [i for i in selected_all if kanji_count(i[0]) == 5]
+    niche_items = [i for i in selected_all if i[1] == '🌶️']
+    existing_items = [i for i in selected_all if i[1] == EXISTING_TAG]
+    jmdict_items = [i for i in selected_all if i[1] == JMDICT_TAG]
 
-    if without_vocab:
-        print(f"\n  With 0 words ({len(without_vocab)}):")
-        print(f"  {''.join(sorted(without_vocab))}")
+    # Detailed word lists (with gloss) — no trailing kanji strings here.
+    print_word_group("With 1 word", one_word_items)
+    print_word_group("🦉  UNRANKED words", unranked_items)
+    print_word_group("4+ kanji words", four_plus_items)
+    print_word_group("5-char words", five_char_items)
+    print_nonshipped_group(nonshipped_items)
 
-    # Copy-paste kanji strings: one long line per group worth inspecting by hand
-    # (multi-kanji words + the rare/fallback tiers). Kanji are the assignment
-    # targets, ordered by sort_key so the string matches the groups printed above.
-    def kanji_str(items):
-        return ''.join(k for _, _, k in sorted(items, key=sort_key))
-    copy_groups = [
-        ("4-kanji words", [i for i in selected_all if kanji_count(i[0]) == 4]),
-        ("5-kanji words", [i for i in selected_all if kanji_count(i[0]) == 5]),
-        ("🌶️  NICHE",      [i for i in selected_all if i[1] == '🌶️']),
-        ("📋  existing",    [i for i in selected_all if i[1] == EXISTING_TAG]),
-        ("📕  jmdict",      [i for i in selected_all if i[1] == JMDICT_TAG]),
-    ]
+    # All copy-pasteable kanji sequences in one place (assignment targets, ordered
+    # by sort_key so the string matches the detailed groups above when present).
     print(f"\n  Copy-paste kanji strings")
+    copy_groups = [
+        ("With 1 word", one_word_items),
+        ("With 0 words", None),  # handled specially below
+        ("📚  ADVANCED", advanced_items),
+        ("🦉  UNRANKED", unranked_items),
+        ("3-kanji words", three_kanji_items),
+        ("4-kanji words", four_kanji_items),
+        ("5-kanji words", five_kanji_items),
+        ("5-char words", five_char_items),
+        ("Non-shipped-kanji", nonshipped_items),
+        ("🌶️  NICHE", niche_items),
+        ("📋  existing", existing_items),
+        ("📕  jmdict", jmdict_items),
+    ]
     for title, items in copy_groups:
+        if title == "With 0 words":
+            if without_vocab:
+                print(f"    {title} ({len(without_vocab)}): {''.join(sorted(without_vocab))}")
+            continue
+        if not items:
+            continue
         print(f"    {title} ({len(items)}): {kanji_str(items)}")
 
 
