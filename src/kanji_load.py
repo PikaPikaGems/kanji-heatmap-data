@@ -257,9 +257,40 @@ def dump_to_extended_kanji_info(data):
 
 
 def dump_kanji_representative_words():
-    algo = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_ALGO_PATH)
-    manual = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_PATH)
-    merged = {**algo, **manual}
+    """Merge the algorithmic study words with the manual {kanji: word} overrides,
+    the manual pins winning — the study-word analog of the kanji_vocab / keywords
+    merges, kept out of the algo builder so overrides/japanese_study_words-algo.json
+    stays pure algorithm.
+
+    Sources:
+      overrides/japanese_study_words-algo.json → {kanji: [word, reading, meaning, tag]}
+          the algo output (already includes replaceKanjiStudyWords picks)
+      overrides/japanese_study_words.json      → {kanji: word}  manual pins (win)
+
+    Reading/meaning for each manual pin are derived with the SAME resolver the algo
+    uses (build_representative_study_word_algo.resolve_manual_pin_entries), so the
+    override file stays a plain {kanji: word} map. Throws on duplicate words so a
+    human can inspect and fix the collision rather than shipping a silent clash.
+
+    In the OUTPUT only, the ✏️ manual-override tag is replaced with the word's real
+    frequency badge (frequency_tag) — the -algo file and the algo's logs keep ✏️ so
+    which picks were manual stays visible there.
+    """
+    # Lazy import: the resolver it constructs loads JMdict, so only pay for it here.
+    import build_representative_study_word_algo as study_words
+
+    merged = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_ALGO_PATH)
+    pins = utils.get_data_from_file(IN_JAPANESE_STUDY_WORDS_PATH)  # {kanji: word}
+
+    # Derive full entries for pins targeting a shipped kanji (a key in the algo
+    # output); pins for unshipped kanji are ignored, matching the algo's own skip.
+    pin_words = {k: v.strip() for k, v in pins.items() if k in merged}
+    merged.update(study_words.resolve_manual_pin_entries(pin_words))
+
+    # Show a real frequency badge instead of ✏️ in the shipped output (logs keep ✏️).
+    for kanji, entry in merged.items():
+        if entry is not None and entry[3] == study_words.OVERRIDE_TAG:
+            entry[3] = study_words.frequency_tag(kanji, entry[0])
 
     word_to_kanjis = {}
     for kanji, entry in merged.items():
@@ -269,7 +300,10 @@ def dump_kanji_representative_words():
     duplicates = {w: ks for w, ks in word_to_kanjis.items() if len(ks) > 1}
     if duplicates:
         raise ValueError(
-            f"Duplicate representative words found — each word must map to exactly one kanji: {duplicates}"
+            "Duplicate representative study words after merging manual pins "
+            "(overrides/japanese_study_words.json) onto the algorithmic output "
+            "(overrides/japanese_study_words-algo.json) — each word must map to "
+            f"exactly one kanji: {duplicates}"
         )
 
     utils.dump_json(OUT_KANJI_REPRESENTATIVE_WORDS_PATH, merged)
