@@ -1,34 +1,32 @@
 #!/usr/bin/env python3
 """
 Builds output/similar-kanjis.json: for each shipped kanji, the most similar
-shipped kanji, ordered most-similar first (max 10 each).
+shipped kanji, ordered most-similar first (at most 10 each; lists may be shorter).
 
 Two data sources, covering two disjoint groups of shipped kanji:
 
-  1. The 1945 jouyou kanji (raw/similarity/*.csv, from Lars Yencken's kanji-
-     confusion dataset) already have two independent, precomputed top-10
-     neighbor lists:
-       - stroke-edit-distance  (shape / stroke-count similarity)
-       - Yeh & Li radical overlap  (shared-component similarity)
-     These measure different kinds of confusability: on average only ~2 of a
-     kanji's top-10 stroke-distance neighbors also show up in its top-10
-     radical neighbors. Checked against raw/similarity/flashcards.csv (284
-     human-curated confusable pairs), stroke-distance alone catches ~51% of
-     the known pairs, radical alone ~35%, the two merged ~54-58% -- so both
-     are used. They're combined by reciprocal rank fusion (RRF) rather than
-     by raw score: the two files' scores aren't on a comparable scale
-     (stroke-distance runs much higher throughout), so sorting by raw score
-     just lets stroke-distance crowd out radical matches. RRF compares RANK
-     within each source instead, which tested best-or-tied against the
-     flashcards ground truth at every cutoff tried.
+  1. ~2134 shipped kanji covered by raw/similarity/dkanjistat.json (Kanjistat
+     hierarchical optimal-transport distance over KanjiVG structure; see
+     Schuhmacher 2023 / kanjidist-visualiser). Lower distance = more similar.
+     Neighbors are kept only when distance <= MAX_DIST and the stroke-count
+     gap is <= MAX_STROKE_DELTA, then sorted closest-first and capped at
+     MAX_TOTAL. Lists are not padded -- many pivots end up with fewer than 10.
 
-  2. The remaining ~480 shipped kanji (jinmeiyo / rarer kanji outside jouyou)
-     have no Yencken data at all. For these, raw/structure-info/kanjidict.txt
-     gives a simple fallback: kanji sharing the exact same phonetic component
-     when the kanji has one recorded (a tight, high-quality signal -- e.g.
-     阪 -> 板,飯,坂,反,販,版), else other SHIPPED kanji sharing the same radical
-     + IDS structural shape (⿰/⿱/⿳/...), ordered by closest stroke count since
-     that tier has no similarity score to rank by.
+     This replaced the earlier Yencken jouyou CSV merge (stroke-edit-distance
+     + Yeh & Li radical overlap via RRF). That merge missed lookalikes that
+     fell outside each source's asymmetric top-10 (e.g. 投 missed 役; 寺 saw
+     侍 but not 待/特/持/時) and let Yeh radical overlap invent absurd pairs
+     for simple kanji (三→霊/震/塗/零, 二→雷). Against flashcards.csv the
+     dkanjistat gates land within a few points of the old RRF recall while
+     fixing those quality failures. The Yencken CSVs remain under
+     raw/similarity/ for reference.
+
+  2. The remaining ~292 shipped kanji absent from dkanjistat fall back to
+     raw/structure-info/kanjidict.txt: kanji sharing the exact same phonetic
+     component when the kanji has one recorded (a tight, high-quality signal
+     -- e.g. 阪 -> 板,飯,坂,反,販,版), else other SHIPPED kanji sharing the
+     same radical + IDS structural shape (⿰/⿱/⿳/...), ordered by closest
+     stroke count since that tier has no similarity score to rank by.
 
      The phonetic tier is the one case where a non-shipped kanji can appear in
      the output (e.g. 佑 -> 祐, 伽 -> 珈/迦/駕): an exact shared phonetic
@@ -41,9 +39,6 @@ Two data sources, covering two disjoint groups of shipped kanji:
      than genuine lookalikes (checked: e.g. 伊 would pick up 什/仂/仆/仇... --
      same radical, not real lookalikes).
 
-MIN_SCORE (per-source floor before merging) and MAX_TOTAL (hard cap) mirror
-the old (deleted) component-cosine algorithm's cutoffs, for continuity.
-
 Run from the project root: python3 src/build_similar_kanji.py
 """
 
@@ -53,60 +48,38 @@ from collections import defaultdict
 import sources
 
 SIMILARITY_DIR = "raw/similarity"
-STROKE_EDIT_DISTANCE_PATH = f"{SIMILARITY_DIR}/jyouyou__strokeEditDistance.csv"
-YEH_LI_RADICAL_PATH = f"{SIMILARITY_DIR}/jyouyou__yehAndLiRadical.csv"
+DKANJISTAT_PATH = f"{SIMILARITY_DIR}/dkanjistat.json"
 KANJIDICT_PATH = "raw/structure-info/kanjidict.txt"
 FILTERED_KANJI_PATH = "input/filtered_kanji.json"
 OUT_PATH = "output/similar-kanjis.json"
 
-MIN_SCORE = 0.35  # per-source floor before merging; strips near-zero padding neighbors
-MAX_TOTAL = 10  # hard cap on the final list -- matches each source file's own top-10 ceiling
-RRF_K = 5  # reciprocal-rank-fusion constant; result is insensitive to this (tested 1, 5, 60)
+MAX_DIST = 0.15  # dkanjistat distance ceiling; lists are not padded below this
+MAX_STROKE_DELTA = 4  # reject neighbors whose stroke counts differ by more than this
+MAX_TOTAL = 10  # hard cap -- many pivots have fewer survivors after the gates
 
 
-def parse_similarity_csv(path):
-    """kanji -> [(neighbor, score), ...] from a raw/similarity/*.csv file.
+def dkanjistat_neighbors(pivots, nearest, kanjidict, filtered):
+    """Rank shipped neighbors from dkanjistat by ascending distance.
 
-    Each line is "pivot neighbor1 score1 neighbor2 score2 ...". Re-sorted by
-    score descending defensively, though the source files already ship sorted.
-    """
-    neighbors = {}
-    with open(sources.resolve_path(path), encoding="utf-8") as f:
-        for line in f:
-            fields = line.split()
-            if not fields:
-                continue
-            pivot, rest = fields[0], fields[1:]
-            pairs = [(rest[i], float(rest[i + 1])) for i in range(0, len(rest) - 1, 2)]
-            pairs.sort(key=lambda pair: -pair[1])
-            neighbors[pivot] = pairs
-    return neighbors
-
-
-def rank_fusion_merge(pivots, sed_neighbors, yeh_neighbors, filtered):
-    """Merge stroke-distance and radical neighbor lists via reciprocal rank fusion.
-
-    Each source is floored independently first (a candidate must score >=
-    MIN_SCORE in that source, and be a shipped kanji, to be considered at
-    all). Every surviving candidate then earns 1/(RRF_K + rank + 1) from each
-    list it appears in (rank is 0-based within that source's own floored,
-    re-sorted list) -- comparing rank rather than raw score means neither
-    source can dominate just because its numbers happen to run higher.
-    Summed scores are sorted descending and capped at MAX_TOTAL.
+    A neighbor must be shipped, within MAX_DIST, and within MAX_STROKE_DELTA
+    stroke counts of the pivot. Stroke counts come from kanjidict.txt; if
+    either side is missing a stroke count the stroke gate is skipped for that
+    pair (distance still applies).
     """
     result = {}
     for pivot in pivots:
-        sed_list = [n for n, s in sed_neighbors.get(pivot, []) if s >= MIN_SCORE and n in filtered]
-        yeh_list = [n for n, s in yeh_neighbors.get(pivot, []) if s >= MIN_SCORE and n in filtered]
-
-        fused = defaultdict(float)
-        for rank, kanji in enumerate(sed_list):
-            fused[kanji] += 1 / (RRF_K + rank + 1)
-        for rank, kanji in enumerate(yeh_list):
-            fused[kanji] += 1 / (RRF_K + rank + 1)
-
-        ordered = sorted(fused.items(), key=lambda kv: (-kv[1], kv[0]))
-        result[pivot] = [kanji for kanji, _ in ordered[:MAX_TOTAL]]
+        strokes_pivot = kanjidict[pivot][3] if pivot in kanjidict else None
+        candidates = []
+        for neighbor, dist in nearest.get(pivot, {}).items():
+            if neighbor not in filtered or neighbor == pivot or dist > MAX_DIST:
+                continue
+            if strokes_pivot is not None and neighbor in kanjidict:
+                strokes_nbr = kanjidict[neighbor][3]
+                if abs(strokes_nbr - strokes_pivot) > MAX_STROKE_DELTA:
+                    continue
+            candidates.append((neighbor, dist))
+        candidates.sort(key=lambda pair: (pair[1], pair[0]))
+        result[pivot] = [kanji for kanji, _ in candidates[:MAX_TOTAL]]
     return result
 
 
@@ -138,7 +111,7 @@ def parse_kanjidict(path):
 
 
 def kanjidict_fallback(target_kanjis, kanjidict, filtered):
-    """Similarity fallback for shipped kanji with no Yencken data (non-jouyou).
+    """Similarity fallback for shipped kanji absent from dkanjistat.
 
     Tier 1: kanji anywhere in kanjidict.txt (shipped or not) sharing the exact
     phonetic component -- tight and high-quality enough that an unshipped
@@ -186,16 +159,16 @@ def main():
     filtered = set(sources.load_json(FILTERED_KANJI_PATH))
     print(f"Loaded {len(filtered)} shipped kanji")
 
-    sed = parse_similarity_csv(STROKE_EDIT_DISTANCE_PATH)
-    yeh = parse_similarity_csv(YEH_LI_RADICAL_PATH)
-    jouyou_pivots = set(sed) & filtered
-    print(f"{len(jouyou_pivots)} kanji have Yencken similarity data (stroke-distance + radical)")
-
-    similar = rank_fusion_merge(jouyou_pivots, sed, yeh, filtered)
-
-    gap = sorted(filtered - jouyou_pivots)
-    print(f"{len(gap)} kanji fall back to the kanjidict.txt radical/phonetic heuristic")
+    nearest = sources.load_json(DKANJISTAT_PATH)["nearest"]
     kanjidict = parse_kanjidict(KANJIDICT_PATH)
+
+    dkanji_pivots = sorted(k for k in filtered if k in nearest)
+    print(f"{len(dkanji_pivots)} kanji have dkanjistat neighbors")
+
+    similar = dkanjistat_neighbors(dkanji_pivots, nearest, kanjidict, filtered)
+
+    gap = sorted(filtered - set(nearest))
+    print(f"{len(gap)} kanji fall back to the kanjidict.txt radical/phonetic heuristic")
     similar.update(kanjidict_fallback(gap, kanjidict, filtered))
 
     similar = {kanji: similar.get(kanji, []) for kanji in sorted(filtered)}
@@ -214,7 +187,7 @@ def main():
     print(f"  Mean:        {sum(counts) / len(counts):.1f}")
     print(f"  Max:         {max(counts)}")
 
-    examples = ["時", "阪", "誰", "頃", "岡", "一"]
+    examples = ["投", "寺", "三", "二", "訳", "時", "阪", "誰", "頃", "岡", "一"]
     print("\nExamples:")
     for kanji in examples:
         if kanji in similar:
