@@ -213,34 +213,54 @@ def jmdict_entry_gloss(entry, word=None, definition_count=3):
 
 
 # ---------------------------------------------------------------------------
-# Word-meaning resolution (single source of truth for source precedence)
+# Word-meaning source: JMdict (input/scriptin-jmdict-eng.json), single source
 # ---------------------------------------------------------------------------
 #
-# The final build needs "the English meaning of a word" (to emit it). Rather than
-# hard-code a source ordering at the call site, resolve_meaning() fixes the
-# precedence in ONE place; the caller passes whichever source maps it has loaded
-# (absent ones are skipped). Precedence, most authoritative first:
-#
-#   common   jmdict common-form meanings (input/jmdict-vocab-meaning.json)
-#   custom   hand-curated input/vocab_meaning.json + overrides/vocab_meaning.json
-#   algo     overrides/vocab_meaning-algo.json (sample-vocab algorithm output)
-#   jmdict_full  any JMdict form (broader than `common`) — gap-filler
+# The final build needs "the English meaning of a word" (to emit it). Every gloss
+# comes from JMdict — the same appliesToKanji-aware gloss the sample-vocab algorithm
+# builds (jmdict_entry_gloss). build_jmdict_meaning_index turns the loaded JMdict
+# into the two maps the resolver needs; the only override layer above it is the
+# (now empty, kept for future) overrides/vocab_meaning.json manual hatch.
 
 
-def resolve_meaning(
-    word,
-    *,
-    common=None,
-    custom=None,
-    algo=None,
-    jmdict_full=None,
-):
-    """First available meaning for `word` across the given source maps, in the fixed
-    precedence above. Each argument is a {word: meaning} dict or None. Returns None
-    when no source has a (non-empty) meaning."""
-    for src in (common, custom, algo, jmdict_full):
-        if src:
-            meaning = src.get(word)
-            if meaning:
-                return meaning
-    return None
+def build_jmdict_meaning_index(jmdict, definition_count=3):
+    """From loaded JMdict (`jmdict` = input/scriptin-jmdict-eng.json), build:
+
+      gloss     {form: english gloss}  — every kanji/kana surface form, appliesToKanji
+                aware (the sample-vocab algorithm's jmdict_entry_gloss). A form that is
+                itself flagged common is glossed first, so a writing shared with a rarer
+                homograph (お店, 万歳, 中身) gets the common sense, not the obscure one.
+                Note this must key on the *form's* own common flag, not the entry's: 万歳
+                is a rare alt-writing of the common 万年 ("ten thousand years") entry, so
+                an entry-level check would wrongly stamp that gloss onto 万歳.
+      is_common {form: bool}           — whether that form is flagged common by JMdict.
+
+    Returns (gloss, is_common).
+    """
+    gloss = {}
+    is_common = {}
+
+    def consume(entry, *, common_forms_only):
+        has_gloss = jmdict_entry_gloss(entry) is not None
+        for form in entry.get("kanji", []) + entry.get("kana", []):
+            t = form.get("text", "")
+            if not t:
+                continue
+            common = bool(form.get("common"))
+            if common:
+                is_common[t] = True
+            elif t not in is_common:
+                is_common[t] = False
+            if common_forms_only and not common:
+                continue
+            if has_gloss and t not in gloss:
+                m = jmdict_entry_gloss(entry, t, definition_count)
+                if m:
+                    gloss[t] = m
+
+    words = jmdict.get("words", [])
+    for entry in words:  # pass 1: common forms only, earliest common entry wins
+        consume(entry, common_forms_only=True)
+    for entry in words:  # pass 2: everything else fills the gaps
+        consume(entry, common_forms_only=False)
+    return gloss, is_common

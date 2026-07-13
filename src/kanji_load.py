@@ -9,7 +9,6 @@ from typing import Any
 IN_MERGED_KANJI_PATH = os.path.join(const.dir_in, "merged_kanji.json")
 IN_FILTERED_KANJI_PATH = os.path.join(const.dir_in, "filtered_kanji.json")
 IN_KANJI_VOCAB_PATH = os.path.join(const.dir_in, "kanji_vocab.json")
-IN_VOCAB_MEANING_PATH = os.path.join(const.dir_in, "vocab_meaning.json")
 IN_MISSING_COMPONENTS_PATH = os.path.join(const.dir_in, "missing_components.json")
 IN_PHONETIC_COMPONENTS_PATH = os.path.join(const.dir_in, "phonetic_components.json")
 IN_CUM_USE_PATH = os.path.join(const.dir_in, "cum_use.json")
@@ -17,7 +16,6 @@ IN_CUM_USE_PATH = os.path.join(const.dir_in, "cum_use.json")
 IN_ALL_VOCAB_MEANING_JM_DICT_PATH = os.path.join(
     const.dir_in, "scriptin-jmdict-eng.json"
 )
-MID_ALL_VOCAB_MEANING_PATH = os.path.join(const.dir_in, "jmdict-vocab-meaning.json")
 
 IN_JITEN_FREQ_PATH = os.path.join(const.dir_raw, "JITEN_FREQUENCY.csv")
 IN_JPDB_FREQ_PATH = os.path.join(const.dir_raw, "JPDB_FREQUENCY_2026-02-09.csv")
@@ -41,7 +39,6 @@ IN_VOCAB_FURIGANA_ALGO_PATH = os.path.join(const.dir_overrides, "vocab_furigana-
 IN_VOCAB_MEANING_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "vocab_meaning.json"
 )
-IN_VOCAB_MEANING_ALGO_PATH = os.path.join(const.dir_overrides, "vocab_meaning-algo.json")
 IN_JAPANESE_STUDY_WORDS_ALGO_PATH = os.path.join(
     const.dir_overrides, "japanese_study_words-algo.json"
 )
@@ -64,56 +61,6 @@ OUT_KANJI_REPRESENTATIVE_WORDS_PATH = os.path.join(
 OUT_EXTRA_KANJI_KEYWORD_PATH = os.path.join(
     const.dir_out, const.outfile_extra_kanji_keyword
 )
-
-
-# *********************************
-# { word: meaning }
-# *********************************
-def representative_word(item, common_only=True):
-    """The representative writing for a JMdict entry: the first all-Japanese kanji
-    form (restricted to common forms when common_only), else the first kanji form.
-    Returns None when the entry has no qualifying kanji form."""
-    kanji_forms = item.get("kanji", [])
-    if common_only:
-        kanji_forms = [k for k in kanji_forms if k.get("common", False)]
-    if not kanji_forms:
-        return None
-    return next(
-        (k["text"] for k in kanji_forms if japanese.is_all_japanese(k["text"])),
-        kanji_forms[0]["text"],
-    )
-
-
-def build_vocab_meaning_map(items, common_only=True, definition_count=3):
-    result = {}
-    for item in items["words"]:
-        word = representative_word(item, common_only)
-        if word is None:
-            continue
-        definition = sources.jmdict_word_definition(item, word, definition_count)
-        if definition:
-            result[word] = definition
-    return result
-
-
-def create_or_retrieve_vocab_meaning_map(
-    refresh=False, common_only=True, definition_count=3
-):
-
-    meanings = None
-
-    if not refresh:
-        try:
-            meanings = utils.get_data_from_file(MID_ALL_VOCAB_MEANING_PATH)
-            return meanings
-        except (OSError, ValueError):  # missing file or malformed JSON
-            print(f"Failed read file {MID_ALL_VOCAB_MEANING_PATH}.")
-            print(f"Will rebuild dictionary instead...")
-
-    items = utils.get_data_from_file(IN_ALL_VOCAB_MEANING_JM_DICT_PATH)
-    meanings = build_vocab_meaning_map(items, common_only, definition_count)
-    utils.dump_json(MID_ALL_VOCAB_MEANING_PATH, meanings)
-    return meanings
 
 
 # *********************************
@@ -327,6 +274,23 @@ def dump_kanji_representative_words():
             "(or add a reading to overrides/vocab_furigana.json). " + "  ".join(parts)
         )
 
+    # How rich the shipped study words are. Reading/meaning formats come from
+    # jmdict_resolver: a ・-joined reading means two readings were kept; a "[1]…[2]…"
+    # meaning means those two readings have distinct senses; a " · " means one reading
+    # with two senses. (Sample vocab never use these formats — their gloss is a flat
+    # JMdict list.)
+    shipped = [e for e in merged.values() if e is not None]
+    kanji_two_readings = "".join(k for k, e in merged.items() if e is not None and "・" in e[1])
+    kanji_block_defs = "".join(k for k, e in merged.items() if e is not None and "[2]" in e[2])
+    dot_senses = sum(1 for e in shipped if " · " in e[2])
+    print(f"Study words ({len(shipped)}):")
+    print(f"  two readings (・, e.g. なか・ちゅう):        {len(kanji_two_readings)}")
+    print(f"  two reading-aligned defs ([1]…[2]…):        {len(kanji_block_defs)}")
+    print(f"  one reading, two senses ( · ):              {dot_senses}")
+    # Concatenated kanji for easy copy-paste (e.g. to spot-check or bulk-edit).
+    print(f"  kanji with two readings:\n    {kanji_two_readings}")
+    print(f"  kanji with two reading-aligned defs ([1]…[2]…):\n    {kanji_block_defs}")
+
     utils.dump_json(OUT_KANJI_REPRESENTATIVE_WORDS_PATH, merged)
 
 
@@ -377,58 +341,81 @@ def dump_all_vocab_furigana(all_words):
     utils.dump_json(OUT_VOCAB_FURIGANA_PATH, vocab_furigana)
 
 
-def dump_all_vocab_meanings(all_words):
-    vocab_meanings = {}
-    meaning_source_common = create_or_retrieve_vocab_meaning_map(
-        refresh=True, common_only=True, definition_count=3
-    )
-    meaning_source_custom: dict[str, str] = utils.get_data_from_file(
-        IN_VOCAB_MEANING_PATH
-    )
-    meaning_source_overrides: dict[str, str] = utils.get_data_from_file(
-        IN_VOCAB_MEANING_OVERRIDES_PATH
-    )
-    meaning_source_algo: dict[str, str] = utils.get_data_from_file(
-        IN_VOCAB_MEANING_ALGO_PATH
-    )
-    meaning_source_custom.update(meaning_source_overrides)
+# Suffix-stripping fallback: a handle like 勃発する / 厳粛な is not a JMdict headword,
+# but its stem (勃発 / 厳粛) is — so a word JMdict can't gloss directly resolves to the
+# stem's gloss. Longest suffixes first so 慄然として strips として before と.
+MEANING_STRIP_SUFFIXES = ("として", "する", "な", "と", "だ", "に")
 
-    # Build word → kanji reverse map for diagnostics
+
+def make_meaning_resolver(*, definition_count=3):
+    """Return a `resolve(word) -> meaning` closure over the single JMdict source.
+
+    Every gloss comes from JMdict (input/scriptin-jmdict-eng.json), built the same
+    way the sample-vocab algorithm builds glosses. Resolution order:
+        overrides/vocab_meaning.json  (manual hatch, empty for now)
+        → JMdict gloss for the exact word
+        → JMdict gloss for the word's stem after stripping a する/な/… suffix
+    The returned function carries the JMdict common flags as `.is_common` for the
+    coverage breakdown in dump_all_vocab_meanings.
+    """
+    overrides: dict[str, str] = utils.get_data_from_file(IN_VOCAB_MEANING_OVERRIDES_PATH)
+    jmdict = utils.get_data_from_file(IN_ALL_VOCAB_MEANING_JM_DICT_PATH)
+    gloss, is_common = sources.build_jmdict_meaning_index(jmdict, definition_count)
+
+    def resolve(word):
+        meaning = overrides.get(word) or gloss.get(word)
+        if meaning:
+            return meaning
+        for suffix in sorted(MEANING_STRIP_SUFFIXES, key=len, reverse=True):
+            if word.endswith(suffix) and gloss.get(word[: -len(suffix)]):
+                return gloss[word[: -len(suffix)]]
+        return None
+
+    resolve.is_common = is_common
+    return resolve
+
+
+def _print_common_breakdown(label, words, is_common):
+    """One line: how many of `words` JMdict flags as common vs uncommon/full-only."""
+    total = len(words)
+    common = sum(1 for w in words if is_common.get(w))
+    if not total:
+        return
+    print(
+        f"  {label} ({total}): "
+        f"{common} JMdict-common ({common / total:.0%}), "
+        f"{total - common} uncommon/full-only ({(total - common) / total:.0%})"
+    )
+
+
+def _word_to_kanji_map():
+    """{word: [kanji, ...]} — which kanji each sample word belongs to. Built only to
+    make the no-meaning failure below point at the kanji whose sample list to fix."""
     word_to_kanji: dict[str, list[str]] = {}
     for src_path in (IN_KANJI_VOCAB_PATH, IN_VOCAB_ALGO_OVERRIDES_PATH, IN_VOCAB_OVERRIDES_PATH):
         for kanji, words in utils.get_data_from_file(src_path).items():
             for w in words:
                 word_to_kanji.setdefault(w, []).append(kanji)
+    return word_to_kanji
 
-    count_common_source_only = 0
-    count_custom_source_only = 0
+
+def dump_all_vocab_meanings(all_words):
+    vocab_meanings = {}
+    get_meaning = make_meaning_resolver(definition_count=3)
+
     not_found: list[str] = []
     for word in all_words:
-        meaning1 = meaning_source_common.get(word, None)
-        meaning2 = meaning_source_custom.get(word, None)
-
-        if meaning1 and not meaning2:
-            count_common_source_only += 1
-
-        if meaning2 and not meaning1:
-            count_custom_source_only += 1
-
-        meaning = sources.resolve_meaning(
-            word,
-            common=meaning_source_common,
-            custom=meaning_source_custom,
-            algo=meaning_source_algo,
-        )
+        meaning = get_meaning(word)
         if not meaning:
             not_found.append(word)
         else:
             vocab_meanings[word] = meaning
 
-    # Every shipped sample word must resolve to a meaning. The selection algorithm
-    # no longer pre-filters candidates by meaning-availability, so this is the single
-    # hard gate: a word with no meaning anywhere is a data gap to fix (add it to
-    # overrides/vocab_meaning.json), not something to ship as word==meaning.
+    # Every shipped sample word must resolve to a meaning. JMdict covers essentially
+    # everything; a word with no gloss (even after suffix-stripping) is a data gap to
+    # fix — pin it in overrides/vocab_meaning.json — not something to ship blank.
     if not_found:
+        word_to_kanji = _word_to_kanji_map()
         detail = "\n".join(f"    {word_to_kanji.get(w, [])}: {w}" for w in not_found)
         kanjis = "".join("".join(word_to_kanji.get(w, [])) for w in not_found)
         raise Exception(
@@ -436,6 +423,12 @@ def dump_all_vocab_meanings(all_words):
             f"overrides/vocab_meaning.json (kanji: {kanjis}):\n{detail}"
         )
 
-    print("in common meaning source only:", count_common_source_only)
-    print("in custom meaning source only:", count_custom_source_only)
+    # JMdict-common vs uncommon breakdown for the two shipped word sets.
+    study_words = [
+        e[0] for e in utils.get_data_from_file(OUT_KANJI_REPRESENTATIVE_WORDS_PATH).values()
+        if e is not None
+    ]
+    print("JMdict-common coverage:")
+    _print_common_breakdown("sample vocab", all_words, get_meaning.is_common)
+    _print_common_breakdown("study words", study_words, get_meaning.is_common)
     utils.dump_json(OUT_VOCAB_MEANING_PATH, vocab_meanings)
