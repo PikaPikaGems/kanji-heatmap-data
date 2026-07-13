@@ -29,16 +29,17 @@ Hand-curated picks live in overrides/kanji_vocab.json and win at BUILD time
 (build_helpers.get_words), not here. The primary pool is the freq-ranks corpus
 dataset (raw/freq-ranks/*.tsv, indexed once so a word counts for EVERY kanji it
 contains, not just the one it starts with), whose tier column maps onto the
-emoji bands below. The two fallbacks only fill a slot when no
-freq-ranks/textbook candidate exists and never displace a primary word:
+emoji bands below. Fallbacks (existing / JMdict) are hard-gated: they may fill
+the FIRST slot only when no freq-ranks/textbook candidate exists, and they
+never fill the second slot (ship one word rather than pad with obscure junk):
    0. freq-ranks tier BASIC 🌱   (most frequent band; beats ☘️ even with more kanji)
    1. freq-ranks tier COMMON ☘️
    2. freq-ranks tier FLUENT 🌷
    3. textbook words             raw/kanji-textbook-words-min/
    4. freq-ranks tier ADVANCED 📚 (or unknown)
    5. freq-ranks NICHE 🌶️ / UNRANKED 🦉
-   6. current production words   input/kanji_vocab.json           (fallback)
-   7. full JMdict                input/scriptin-jmdict-eng.json   (fallback)
+   6. current production words   input/kanji_vocab.json           (1st-slot fallback only)
+   7. full JMdict                input/scriptin-jmdict-eng.json   (1st-slot fallback only)
 
 Deduplication: if a word appears in both freq-ranks and textbook, keep whichever
 gives the better (lower) score — so a textbook word isn't unfairly penalised just
@@ -136,14 +137,14 @@ TAG_PRIORITY = {
     '📚': 4,
     '🦉': 5,
     '🌶️': 5,
-    EXISTING_TAG: 6,  # current production words (input/kanji_vocab.json): last-resort fallback
-    JMDICT_TAG: 7,    # full JMdict: last-resort for rare kanji with no other valid word
+    EXISTING_TAG: 6,  # current production words: 1st-slot fallback only
+    JMDICT_TAG: 7,    # full JMdict: 1st-slot fallback only
 }
 DEFAULT_TAG_PRIORITY = 4  # unknown tags treated like 📚
 
-# Tiers <= this are "primary" (freq-ranks + textbook). The fallback tiers above (existing,
-# jmdict) only fill a slot when no primary candidate is available — they never
-# displace a primary word for diversity.
+# Tiers <= this are "primary" (freq-ranks + textbook, incl. NICHE/UNRANKED).
+# Fallbacks (existing / jmdict) may fill the FIRST slot only when no primary
+# candidate exists, and never fill the second slot.
 PRIMARY_TIER_MAX = 5
 
 # Reading-diversity for the second word is only pursued when that word is itself
@@ -567,17 +568,21 @@ def _make_second_score(kanji, first, first_reading, furigana_map):
     return second_score
 
 
+def _is_primary_tag(tag):
+    return TAG_PRIORITY.get(tag, DEFAULT_TAG_PRIORITY) <= PRIMARY_TIER_MAX
+
+
 def _pick_second_word(kanji, first, first_reading, all_candidates, furigana_map, second_score):
-    """Pick the second word, preferring a primary (freq-ranks/textbook) candidate,
-    then breaking up a redundant pair (入る/入れる) by reaching down to textbook/📚."""
-    # Prefer a primary (freq-ranks/textbook) second word; only fall back to existing/jmdict
-    # when no primary candidate remains, so rare words never displace good ones.
+    """Pick a primary second word, or None if none remain.
+
+    Existing/JMdict never fill the second slot. For redundant pairs (入る/入れる),
+    reach down to textbook/📚 for a different-reading primary rather than ship the pair.
+    """
     remaining = all_candidates[1:]
-    primary_remaining = [
-        e for e in remaining
-        if TAG_PRIORITY.get(e[2], DEFAULT_TAG_PRIORITY) <= PRIMARY_TIER_MAX
-    ]
-    second = min(primary_remaining or remaining, key=second_score)
+    primary_remaining = [e for e in remaining if _is_primary_tag(e[2])]
+    if not primary_remaining:
+        return None
+    second = min(primary_remaining, key=second_score)
 
     # Last resort for redundant pairs (入る/入れる, 答える/答え): if the second word
     # merely repeats the first and no high-frequency word offered a different reading,
@@ -603,7 +608,7 @@ def _pick_second_word(kanji, first, first_reading, all_candidates, furigana_map,
 def _log_diversity_replacement(kanji, first, first_reading, second, all_candidates, furigana_map, second_score, replace_logs):
     """Record when a lower-tier word beat a 🌱/☘️ word for reading diversity, so the
     report can show each pick's per-kanji reading (八十→はち vs 八つ当たり→や)."""
-    if replace_logs is None:
+    if replace_logs is None or second is None:
         return
     top_freq_band = TAG_PRIORITY['☘️']  # 🌱/☘️ are the two most-frequent tiers
     if TAG_PRIORITY.get(second[2], DEFAULT_TAG_PRIORITY) <= top_freq_band:
@@ -623,8 +628,8 @@ def _log_diversity_replacement(kanji, first, first_reading, second, all_candidat
 def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index, furigana_map, replace_logs=None):
     """Return up to 2 best (word, reading, tag, meaning) tuples for this kanji.
 
-    All valid candidates are considered; a missing meaning or reading only costs
-    score (word_score), and the final build fails loudly if a shipped word has none.
+    First slot prefers any primary (freq-ranks/textbook) candidate; existing/JMdict
+    only win when the primary pool is empty, and never fill the second slot.
     """
     all_candidates = _gather_sorted_candidates(
         kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index
@@ -632,15 +637,24 @@ def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index
     if not all_candidates:
         return []
 
-    first = all_candidates[0]
-    if len(all_candidates) == 1:
+    primary = [e for e in all_candidates if _is_primary_tag(e[2])]
+    if not primary:
+        # True last resort: one fallback word, no obscure second pad.
+        return [all_candidates[0]]
+
+    first = primary[0]
+    # Second slot is primary-only (existing/JMdict never pad).
+    primary_pool = [first] + [e for e in primary if e[0] != first[0]]
+    if len(primary_pool) == 1:
         return [first]
 
     first_reading = kanji_reading_in_word(kanji, first[0], first[1], furigana_map)
     second_score = _make_second_score(kanji, first, first_reading, furigana_map)
-    second = _pick_second_word(kanji, first, first_reading, all_candidates, furigana_map, second_score)
+    second = _pick_second_word(kanji, first, first_reading, primary_pool, furigana_map, second_score)
+    if second is None:
+        return [first]
     _log_diversity_replacement(
-        kanji, first, first_reading, second, all_candidates, furigana_map, second_score, replace_logs
+        kanji, first, first_reading, second, primary_pool, furigana_map, second_score, replace_logs
     )
     return [first, second]
 
