@@ -20,6 +20,7 @@ IN_ALL_VOCAB_MEANING_JM_DICT_PATH = os.path.join(
 IN_JITEN_FREQ_PATH = os.path.join(const.dir_raw, "JITEN_FREQUENCY.csv")
 IN_JPDB_FREQ_PATH = os.path.join(const.dir_raw, "JPDB_FREQUENCY_2026-02-09.csv")
 IN_KKLC_ORDER_PATH = os.path.join(const.dir_raw, "KKLC-ORDER.txt")
+IN_ORDER_PATH = os.path.join(const.dir_raw, "order.csv")
 
 IN_KANJI_TO_REMOVE_OVERRIDES_PATH = os.path.join(
     const.dir_overrides, "kanji_to_remove.json"
@@ -141,6 +142,17 @@ def load_kklc_order():
             parts = line.strip().split()
             if len(parts) >= 4 and parts[0] == "Page":
                 result[parts[3]] = int(parts[2])
+    return result
+
+
+def load_order():
+    result = {}
+    with open(IN_ORDER_PATH, encoding="utf-8") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if len(row) < 2:
+                continue
+            result[row[1]] = int(row[0])
     return result
 
 
