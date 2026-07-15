@@ -76,6 +76,7 @@ def main():
     jiten_frequency = kanji_load.load_jiten_frequency()
     jpdb_frequency = kanji_load.load_jpdb_frequency()
     kklc_order = kanji_load.load_kklc_order()
+    order = kanji_load.load_order()
 
     for kanji in kanji_data.keys():
 
@@ -104,6 +105,7 @@ def main():
             kanji_extract.get_semantic_phonetic(kanji_info) or [],
             kanji_words,
             kanji_extract.get_kklc_index(kanji_info, kklc_order, NO_NUM_DATA),
+            kanji_extract.get_order_index(kanji_info, order, NO_NUM_DATA),
         ]
 
     # ***********************
