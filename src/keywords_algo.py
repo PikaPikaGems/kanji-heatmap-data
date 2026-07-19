@@ -13,8 +13,11 @@ For each kanji we prefer the simplest meaningful available keyword:
   - the base keyword derived directly from input/merged_kanji.json
 
 A greedy uniqueness pass (sorted by fewest candidates first) ensures no two kanji
-share the same keyword in the algo output. Manual overrides (keywords.json) are
-reserved up-front so they don't create conflicts after being applied on top.
+share the same keyword in the algo output. This generator is PURE — it does not read
+overrides/keywords.json at all (matching japanese_study_words_algo / kanji_vocab_algo):
+the build (kanji_load.load_keywords_override) merges the manual keywords over this algo
+layer, and assert_unique_keywords is the hard gate if a manual keyword happens to
+collide with an algo pick for a different kanji (fix by pinning that kanji too).
 
 The "base keyword" is computed from input/merged_kanji.json with the SAME logic the
 final build uses (kanji_extract.get_keyword, no overrides), rather than read back
@@ -41,9 +44,6 @@ def task1_better_kanji_keywords():
     with open(resolve_path("raw/kanji-keywords-w.json"), encoding="utf-8") as f:
         keywords_w = json.load(f)
 
-    with open(resolve_path('overrides/keywords.json'), encoding='utf-8') as f:
-        manual_overrides = json.load(f)  # {kanji: "keyword"} — highest priority
-
     # Canonical kanji set + raw kanji data (no build artifact dependency).
     all_kanji = load_json('input/filtered_kanji.json', [])
     merged = load_json('input/merged_kanji.json', {})
@@ -51,12 +51,6 @@ def task1_better_kanji_keywords():
     # base_keyword(kanji, merged) is the keyword the build derives from raw data with
     # no overrides applied — the non-circular replacement for kanji_main[kanji][0].
     base_keywords = {k: (base_keyword(k, merged) or '') for k in all_kanji}
-
-    # Reserve keywords claimed by manual overrides so we don't assign them to other kanji
-    # (after manual overrides are applied on top, those kanji will use the manual value,
-    # but other kanji must not end up sharing that keyword)
-    reserved_by_manual = set(v.lower().strip() for v in manual_overrides.values()
-    if is_valid_keyword(v.lower().strip()))
 
     # Build candidate list per kanji in priority order (j → k → w → rest by length),
     # then fall back to the base keyword.
@@ -73,53 +67,43 @@ def task1_better_kanji_keywords():
     # a many-option kanji never steals the sole keyword of a one-option kanji.
     sorted_kanji = sorted(all_kanji, key=lambda k: len(candidate_map[k]))
 
-    used_keywords = set(reserved_by_manual)  # pre-block manual-override keywords
+    used_keywords = set()
     result = {}
 
     inspect_json = {}
 
-    def update_inspect_json(kanji, previous, current, candidates, is_manual):
-        info = "✍️" if is_manual else ""
+    def update_inspect_json(kanji, previous, current, candidates):
         count = len(candidates)
         if previous == current:
             return
 
         if len(candidates) <= 1:
-            inspect_json[kanji] = f"{info} {current} ← {previous}"
+            inspect_json[kanji] = f"{current} ← {previous}"
             return
 
         joined = ",".join(candidates)
 
-        inspect_json[kanji] = f"{count}{info}: {current} ← {previous} ← {joined}"
+        inspect_json[kanji] = f"{count}: {current} ← {previous} ← {joined}"
 
     for kanji in sorted_kanji:
         previous = base_keywords[kanji]
         candidates = candidate_map[kanji]
 
-        # If this kanji has a manual override, skip assigning it here — the manual
-        # override will take precedence in the build pipeline regardless.
-        if kanji in manual_overrides.keys():
-            candidate = manual_overrides[kanji]
-            update_inspect_json(kanji, previous, candidate, candidates, True)
-            result[kanji] = candidate
-            continue
-
         for candidate in candidates:
             if candidate not in used_keywords:
                 used_keywords.add(candidate)
                 result[kanji] = candidate
-                update_inspect_json(kanji, previous, candidate, candidates, False)
+                update_inspect_json(kanji, previous, candidate, candidates)
                 break
 
     # Restore original kanji order for readability
     ordered_result = {k: result[k] for k in all_kanji if k in result}
 
     # Stats
-    unassigned = [k for k in all_kanji if k not in result and k not in manual_overrides]
+    unassigned = [k for k in all_kanji if k not in result]
     changed = [k for k in ordered_result if base_keywords[k] != ordered_result[k]]
     ordered_changed = {k: result[k] for k in changed}
     print(f"Total kanji:                  {len(all_kanji)}")
-    print(f"Covered by manual overrides:  {len(manual_overrides)}")
     print(f"Assigned by algo:             {len(ordered_result)}")
     print(f"Keywords updated vs current:  {len(changed)}")
     print(f"Unassigned (no candidate):    {len(unassigned)}")
@@ -135,9 +119,10 @@ def task1_better_kanji_keywords():
     # Check keyword VALUES for uniqueness (not keys — the dict is keyed by kanji, so
     # its key count is trivially len(all_kanji)). Unassigned kanji fall back to the
     # kanji itself, which is unique, so a collision here means two kanji were assigned
-    # the same keyword. The build's assert_unique_keywords is the hard gate; this is
-    # an early heads-up.
-    ordered_all = {k: result.get(k, manual_overrides.get(k, k)) for k in all_kanji}
+    # the same keyword. NOTE: this only sees the algo layer — a manual keyword in
+    # overrides/keywords.json that collides with an algo pick surfaces at build time
+    # (assert_unique_keywords), not here. The build is the hard gate.
+    ordered_all = {k: result.get(k, k) for k in all_kanji}
     keyword_values = list(ordered_all.values())
     print("Unique keywords vs kanji:", len(set(keyword_values)), "of", len(all_kanji))
     duplicates = [kw for kw, n in Counter(keyword_values).items() if n > 1]
