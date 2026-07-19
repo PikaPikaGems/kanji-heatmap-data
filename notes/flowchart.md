@@ -9,12 +9,12 @@ Legend:
 - 🟧 final shipped artifact (`output/`)
 - ⬜ script
 
-`input/` is mostly externally maintained and git-ignored. The one exception is
-`build_filtered_kanji_json.py`, the first pipeline step, which WRITES
-`input/filtered_kanji.json` and `input/all_kanjis.json` there (the canonical
-"which kanji ship" list every later step reads); everything else in `input/` is
-read-only third-party data. (Nothing in this repo reads `all_kanjis.json` — it is
-emitted for downstream/frontend consumers.)
+`input/` is externally maintained and git-ignored; the build only reads from it.
+Script-written pipeline artifacts go in the separate git-ignored `intermediate/`
+directory instead: `build_filtered_kanji_json.py` (the first pipeline step) writes
+`intermediate/filtered_kanji.json` (the canonical "which kanji ship" list every
+later step reads) and `intermediate/all_kanjis.json` there. (Nothing in this repo
+reads `all_kanjis.json` — it is emitted for downstream/frontend consumers.)
 
 Each committed `*_algo.py` generator is named after the `-algo.json` file it writes
 (`kanji_vocab_algo.py` → `kanji_vocab-algo.json`). `japanese_study_words_algo.py`
@@ -45,8 +45,8 @@ flowchart TD
     F --> G[kanji_build_output_jsons.py]
     G --> H[kanji_inspect.py — stats only]
 
-    A -.writes.-> a1[(input/filtered_kanji.json
-    input/all_kanjis.json)]
+    A -.writes.-> a1[(intermediate/filtered_kanji.json
+    intermediate/all_kanjis.json)]
     B -.writes.-> b1[(overrides/japanese_study_words-algo.json)]
     C -.writes.-> c1[(overrides/kanji_vocab-algo.json)]
     E -.writes.-> e1[(overrides/keywords-algo.json
@@ -58,7 +58,7 @@ flowchart TD
     kanji_representative_words.json)]
 ```
 
-After G, `generate.sh` copies `input/filtered_kanji.json` to
+After G, `generate.sh` copies `intermediate/filtered_kanji.json` to
 `output/filtered_kanji.json` (a shipped release file — see `constants.output_files`);
 it is not written by any script.
 
@@ -114,9 +114,9 @@ flowchart LR
     SK[keywords_algo]
     S6[kanji_build_output_jsons]
 
-    %% intermediate files — script-written: input/filtered_kanji.json and the
+    %% intermediate files — script-written: intermediate/filtered_kanji.json and the
     %% committed -algo.json overrides. Furigana/meanings are generated inside S6.
-    filt[("🟦 input/filtered_kanji.json")]
+    filt[("🟦 intermediate/filtered_kanji.json")]
     jsw[("🟦 japanese_study_words-algo")]
     kv[("🟦 kanji_vocab-algo")]
     kwalgo[("🟦 keywords-algo")]

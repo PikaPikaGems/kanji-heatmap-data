@@ -82,7 +82,7 @@ gloss patterns ("(city", "surname", " era (", …) and katakana readings on all-
 words (北京 → ペキン).
 
 Sources:
-  input/filtered_kanji.json                → [kanji]  (the kanji set to process)
+  intermediate/filtered_kanji.json                → [kanji]  (the kanji set to process)
   raw/freq-ranks/*.tsv                     → corpus frequency rows (word, gloss,
                                              tier, other_forms with kana spelling)
   raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning, jlpt, tags]}}
@@ -220,7 +220,7 @@ def has_particle_before_kana(word):
     return False
 
 
-# Kanji we ship (input/filtered_kanji.json); populated in main(). Sample words
+# Kanji we ship (intermediate/filtered_kanji.json); populated in main(). Sample words
 # whose every kanji ships are preferred, so a kanji's example doesn't drag in an
 # unshipped partner (玉 → 玉葱[葱 unshipped]) when an all-shipped option exists.
 SHIPPED = set()
@@ -634,11 +634,11 @@ def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index
 
 
 def main():
-    # input/filtered_kanji.json is the canonical kanji set (merged_kanji minus
+    # intermediate/filtered_kanji.json is the canonical kanji set (merged_kanji minus
     # kanji_to_remove), produced by src/build_filtered_kanji_json.py. Reading it
     # here (instead of output/kanji_main.json) removes the dependency on a prior
     # build and keeps this script's kanji set identical to the other algo scripts'.
-    with open(resolve_path('input/filtered_kanji.json'), encoding='utf-8') as f:
+    with open(resolve_path('intermediate/filtered_kanji.json'), encoding='utf-8') as f:
         all_kanji = json.load(f)
     SHIPPED.update(all_kanji)  # enable the all-shipped sample-word preference
 

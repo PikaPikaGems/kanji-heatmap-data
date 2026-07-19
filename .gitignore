@@ -1,4 +1,6 @@
 /input/*
+/intermediate/*
+!/intermediate/.keep
 /raw/kanji-words/*
 /raw/kanji-textbook-words/*
 /raw/kanji-textbook-words-min/*

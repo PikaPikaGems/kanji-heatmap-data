@@ -63,7 +63,7 @@ GOLDEN_MEANINGS = {
 
 # resolve_fallback cases: rare writings resolve() rejects on purpose.
 # word → (kwargs, expected reading or None, expected meaning or None).
-# `shipped` is filled in main() from input/filtered_kanji.json.
+# `shipped` is filled in main() from intermediate/filtered_kanji.json.
 GOLDEN_FALLBACK = {
     # usually-kana, no common kanji sibling → resolves with the ⚠️ marker
     "諄い": ({}, "くどい",
@@ -116,7 +116,7 @@ def main():
         if got != expected:
             failures.append(f"meaning {word}: expected {expected!r}, got {got!r}")
 
-    shipped = set(load_json("input/filtered_kanji.json", []))
+    shipped = set(load_json("intermediate/filtered_kanji.json", []))
     for word, (kwargs, expected_reading, expected_meaning) in GOLDEN_FALLBACK.items():
         if kwargs.get("shipped"):
             kwargs = dict(kwargs, shipped=shipped)

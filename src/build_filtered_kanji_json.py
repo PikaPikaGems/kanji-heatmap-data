@@ -2,11 +2,13 @@
 """
 Builds the canonical kanji lists every other script keys off of.
 
-Reads input/merged_kanji.json and writes two ordered lists of kanji characters:
+Reads input/merged_kanji.json and writes two ordered lists of kanji characters
+into the git-ignored intermediate/ directory (script-written pipeline artifacts,
+kept out of input/ so input/ stays purely read-only third-party data):
 
-  input/all_kanjis.json       every kanji in merged_kanji.json (~2400),
+  intermediate/all_kanjis.json       every kanji in merged_kanji.json (~2400),
                               INCLUDING those marked for removal; merged order.
-  input/filtered_kanji.json   all_kanjis minus overrides/kanji_to_remove.json,
+  intermediate/filtered_kanji.json   all_kanjis minus overrides/kanji_to_remove.json,
                               ordered by frequency (Google → JPDB → Netflix) —
                               the single source of truth for "which kanji ship"
                               AND the order downstream scripts iterate. Because
@@ -20,12 +22,10 @@ re-implemented in three places, and one of them keyed off output/kanji_main.json
 no downstream script depends on a prior build to know the kanji set.
 
 This must run first in the pipeline (see generate.sh): build-representative,
-algorithmic-kanji-vocab, and the final build all read input/filtered_kanji.json.
+algorithmic-kanji-vocab, and the final build all read intermediate/filtered_kanji.json.
 
 Run from the project root: python3 src/build_filtered_kanji_json.py
 """
-
-import os
 
 import utils
 import kanji_load
@@ -37,7 +37,7 @@ JPDB_SENTINEL = 50_000
 
 def write_json(rel_path, data):
     utils.dump_json(rel_path, data, indent=2)
-    print(f"Written: input/{os.path.basename(rel_path)} ({len(data)} kanji)")
+    print(f"Written: {rel_path} ({len(data)} kanji)")
 
 
 def _google_rank(info):
@@ -95,8 +95,8 @@ def main():
     filtered = [k for k in all_kanjis if k not in to_remove]
     filtered = order_by_frequency(filtered, merged, all_kanjis)
 
-    write_json("input/all_kanjis.json", all_kanjis)
-    write_json("input/filtered_kanji.json", filtered)
+    write_json("intermediate/all_kanjis.json", all_kanjis)
+    write_json("intermediate/filtered_kanji.json", filtered)
 
     removed = len(all_kanjis) - len(filtered)
     print(f"Removed {removed} kanji ({len(to_remove)} in kanji_to_remove.json).")

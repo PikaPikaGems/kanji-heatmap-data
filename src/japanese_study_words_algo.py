@@ -73,7 +73,7 @@ Reading + meaning (resolved AFTER word selection, via jmdict_resolver):
   the output before writing — the kanji ships no study word rather than a non-word.
 
 Sources:
-  input/filtered_kanji.json              → [kanji]  (the kanji set to process)
+  intermediate/filtered_kanji.json              → [kanji]  (the kanji set to process)
   raw/freq-ranks/[kanji].tsv             → tab-separated corpus frequency rows
   raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning, jlpt, tags]}}
   input/scriptin-jmdict-eng.json         → JMdict JSON (words[].kanji/kana/sense)
@@ -153,7 +153,7 @@ COL_JLPT = "jlpt_level"
 JLPT_UNTAGGED_RANK = 5
 
 
-# Kanji we ship (input/filtered_kanji.json); populated in main(). Used to prefer
+# Kanji we ship (intermediate/filtered_kanji.json); populated in main(). Used to prefer
 # study words whose every kanji ships, so a word doesn't drag in an unshipped
 # partner (e.g. 麻 → 麻痺[痺 unshipped]) when an all-shipped option exists.
 SHIPPED = set()
@@ -373,9 +373,9 @@ def select_word_for_kanji(kanji, used_words, resolver):
 # ---------------------------------------------------------------------------
 
 def load_kanji_list():
-    # input/filtered_kanji.json is the canonical kanji set (merged_kanji minus
+    # intermediate/filtered_kanji.json is the canonical kanji set (merged_kanji minus
     # kanji_to_remove), produced by src/build_filtered_kanji_json.py.
-    return load_json("input/filtered_kanji.json", [])
+    return load_json("intermediate/filtered_kanji.json", [])
 
 
 def load_manual_replace_words():

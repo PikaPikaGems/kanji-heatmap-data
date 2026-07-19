@@ -17,6 +17,10 @@ kanji_extended_words_index = 9
 
 dir_raw = "raw"
 dir_in = "input"
+# Script-written pipeline intermediates (git-ignored). build_filtered_kanji_json.py
+# writes filtered_kanji.json / all_kanjis.json here; downstream steps read them.
+# Kept out of input/ so input/ stays purely read-only third-party data.
+dir_intermediate = "intermediate"
 dir_out = "output"
 dir_releases = "releases"
 dir_overrides = "overrides"

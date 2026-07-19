@@ -7,7 +7,7 @@ import constants as const
 from typing import Any
 
 IN_MERGED_KANJI_PATH = os.path.join(const.dir_in, "merged_kanji.json")
-IN_FILTERED_KANJI_PATH = os.path.join(const.dir_in, "filtered_kanji.json")
+IN_FILTERED_KANJI_PATH = os.path.join(const.dir_intermediate, "filtered_kanji.json")
 IN_KANJI_VOCAB_PATH = os.path.join(const.dir_in, "kanji_vocab.json")
 IN_MISSING_COMPONENTS_PATH = os.path.join(const.dir_in, "missing_components.json")
 IN_PHONETIC_COMPONENTS_PATH = os.path.join(const.dir_in, "phonetic_components.json")
@@ -93,7 +93,7 @@ def load_aggregated_kanji_data():
 
 
 def load_filtered_kanji_data():
-    # input/filtered_kanji.json (built by src/build_filtered_kanji_json.py) is the
+    # intermediate/filtered_kanji.json (built by src/build_filtered_kanji_json.py) is the
     # canonical kanji set. We pull full kanji data from merged_kanji.json but keep
     # only the kanji it lists — so "which kanji ship" lives in exactly one place.
     kanji_data = load_aggregated_kanji_data()

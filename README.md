@@ -98,7 +98,7 @@ These files come from the repos which may or may not be public as of writing:
 Or just the final build step:
 
 ```bash
-python3 src/build_filtered_kanji_json.py   # if input/filtered_kanji.json is missing
+python3 src/build_filtered_kanji_json.py   # if intermediate/filtered_kanji.json is missing
 python3 src/kanji_build_output_jsons.py
 ```
 

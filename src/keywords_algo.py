@@ -45,7 +45,7 @@ def task1_better_kanji_keywords():
         keywords_w = json.load(f)
 
     # Canonical kanji set + raw kanji data (no build artifact dependency).
-    all_kanji = load_json('input/filtered_kanji.json', [])
+    all_kanji = load_json('intermediate/filtered_kanji.json', [])
     merged = load_json('input/merged_kanji.json', {})
 
     # base_keyword(kanji, merged) is the keyword the build derives from raw data with
