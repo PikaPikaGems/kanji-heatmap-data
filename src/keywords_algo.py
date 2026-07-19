@@ -25,6 +25,7 @@ Run from the project root: python3 src/keywords_algo.py
 """
 
 import json
+from collections import Counter
 
 from sources import resolve_path, load_json
 from keyword_sources import is_valid_keyword, base_keyword, raw_candidates
@@ -94,7 +95,6 @@ def task1_better_kanji_keywords():
     for kanji in sorted_kanji:
         previous = base_keywords[kanji]
         candidates = candidate_map[kanji]
-        # candidates = sorted(candidate_map[kanji], key=lambda word: len(word))
 
         # If this kanji has a manual override, skip assigning it here — the manual
         # override will take precedence in the build pipeline regardless.
@@ -132,9 +132,17 @@ def task1_better_kanji_keywords():
 
     print("\n\nSanity Check")
 
+    # Check keyword VALUES for uniqueness (not keys — the dict is keyed by kanji, so
+    # its key count is trivially len(all_kanji)). Unassigned kanji fall back to the
+    # kanji itself, which is unique, so a collision here means two kanji were assigned
+    # the same keyword. The build's assert_unique_keywords is the hard gate; this is
+    # an early heads-up.
     ordered_all = {k: result.get(k, manual_overrides.get(k, k)) for k in all_kanji}
-    all_keywords = set(ordered_all)
-    print("keywords + kanji without keywords:", len(all_keywords), "===", len(all_kanji))
+    keyword_values = list(ordered_all.values())
+    print("Unique keywords vs kanji:", len(set(keyword_values)), "of", len(all_kanji))
+    duplicates = [kw for kw, n in Counter(keyword_values).items() if n > 1]
+    if duplicates:
+        print("DUPLICATE keywords (each must map to exactly one kanji):", "".join(duplicates))
 
     if unassigned:
         print("\n\nUnassigned kanji (no valid candidate found — need manual review):")

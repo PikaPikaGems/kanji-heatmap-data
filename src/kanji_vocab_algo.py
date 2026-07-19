@@ -103,6 +103,7 @@ import unicodedata
 from sources import (
     resolve_path,
     load_json,
+    load_jmdict,
     write_json,
     jmdict_entry_gloss,
     load_textbook_entries,
@@ -696,7 +697,7 @@ def main():
 
     # One JMdict load feeds both the resolver (phrase-fragment detection needs it
     # BEFORE any candidate indexing) and the fallback candidate index.
-    jmdict_data = load_json('input/scriptin-jmdict-eng.json', {})
+    jmdict_data = load_jmdict()
     global RESOLVER
     RESOLVER = JmdictResolver(jmdict_data)
 

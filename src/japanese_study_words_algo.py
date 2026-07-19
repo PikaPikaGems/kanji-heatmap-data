@@ -122,13 +122,6 @@ from jmdict_resolver import JmdictResolver, CLASS_OTHER, classify_pos
 # requires the word to START with the kanji and scores by word-shape, while the
 # sample-vocab algorithm only requires the kanji to appear anywhere.
 
-# Strip a trailing する or な from 2-kanji textbook headwords so the bare noun is
-# the representative word (解剖する → 解剖, 真摯な → 真摯) — the inflected forms
-# aren't JMdict headwords. Only fires for 2-kanji stems — single-kanji する verbs
-# (関する → 関, 察する → 察) are left alone, since the bare kanji is a poor
-# standalone word. Reading and meaning re-resolve to the noun afterwards.
-STRIP_JUNK_SUFFIXES = True
-
 # Frequency tier band from the freq-ranks `tier` column (lower = more frequent).
 # Textbook words slot in at ADVANCED level: real corpus evidence of the first
 # three tiers should beat a textbook appearance, but a curated textbook word
@@ -487,7 +480,8 @@ def main():
     for kanji in all_kanji:
         entry = select_word_for_kanji(kanji, used_words, resolver)
 
-        if STRIP_JUNK_SUFFIXES and entry:
+        # Reduce a 2-kanji 〜する/〜な headword to its bare noun (解剖する → 解剖).
+        if entry:
             entry = strip_junk_suffix(entry, used_words, resolver)
 
         if entry:

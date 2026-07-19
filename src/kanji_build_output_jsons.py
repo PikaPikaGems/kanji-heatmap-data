@@ -2,9 +2,6 @@
 
 import kanji_extract
 import kanji_load
-import os
-import constants as const
-import utils
 import japanese
 from build_helpers import get_words, furigana_stats
 from keyword_sources import load_raw_keyword_sources, raw_keyword, base_keyword
@@ -116,17 +113,18 @@ def main():
     assert_unique_keywords(kanji_main_reformatted)
     kanji_load.dump_to_main_kanji_info(kanji_main_reformatted)
     kanji_load.dump_to_extended_kanji_info(kanji_extended_reformatted)
-    kanji_load.dump_kanji_representative_words()
+    # These dumps also return what they wrote, so downstream steps reuse the data
+    # in-memory instead of re-reading the files this build just produced.
+    representative_words = kanji_load.dump_kanji_representative_words()
 
     # Sort for a deterministic, stable key order in the output JSONs (all_words is a
     # set, whose per-run iteration order would otherwise reshuffle the file each build).
     all_words = sorted(all_words)
     print("All sample words count:", len(all_words))
 
-    kanji_load.dump_all_vocab_furigana(all_words)
-    kanji_load.dump_all_vocab_meanings(all_words)
+    vocab_furigana = kanji_load.dump_all_vocab_furigana(all_words)
+    kanji_load.dump_all_vocab_meanings(all_words, representative_words)
 
-    vocab_furigana = utils.get_data_from_file(os.path.join(const.dir_out, const.outfile_vocab_furigana))
     furigana_stats(kanji_extended_reformatted, kanji_data, vocab_furigana)
 
     # ***********************
@@ -137,9 +135,6 @@ def main():
 
     kanji_load.dump_part_keyword_with_overrides(kanji_data)
 
-    representative_words = utils.get_data_from_file(
-        os.path.join(const.dir_out, const.outfile_kanji_representative_words)
-    )
     extra_keywords = word_kanji_keywords(
         kanji_extended_reformatted, representative_words, set(kanji_data)
     )

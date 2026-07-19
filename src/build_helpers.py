@@ -1,9 +1,9 @@
 """Importable, side-effect-free helpers for the output build.
 
-kanji_build_output_jsons.py runs the whole build at import time, so its logic
-couldn't be reused or unit-tested in isolation. These two functions live here
-instead — pure(ish) and parameterised, so they can be imported and tested
-without triggering a full build.
+These functions (sample-word selection by source priority, and the furigana
+reading-diversity stats) are pure(ish) and parameterised, kept out of
+kanji_build_output_jsons.py so they can be imported and reused without running a
+full build.
 """
 
 import kanji_extract

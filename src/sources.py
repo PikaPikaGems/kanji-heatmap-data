@@ -7,6 +7,7 @@ own validity rules, which differ between the sample-vocab and
 representative-word selection algorithms.
 """
 
+import functools
 import json
 import os
 
@@ -45,6 +46,19 @@ def write_json(rel_path, data, *, indent=None, separators=None, ensure_ascii=Fal
             data, f, indent=indent, separators=separators, ensure_ascii=ensure_ascii
         )
     return full
+
+
+# The full JMdict dump (input/scriptin-jmdict-eng.json, ~100MB parsed). Several
+# build steps need it in one process (the resolver, the furigana readings lookup,
+# and the meaning index all run inside the final build), so parse it once and
+# memoize. Callers must treat the result as READ-ONLY — it is a shared object.
+JMDICT_PATH = "input/scriptin-jmdict-eng.json"
+
+
+@functools.lru_cache(maxsize=1)
+def load_jmdict():
+    """Load and memoize the full JMdict (input/scriptin-jmdict-eng.json)."""
+    return load_json(JMDICT_PATH, {})
 
 
 # Internal tag marking a candidate as coming from the textbook word source rather
@@ -129,22 +143,6 @@ def corpus_coverage(row):
         1 for col, weight in CORPUS_WEIGHTS.items()
         if weight > 0 and parse_rank(row.get(col)) is not None
     )
-
-
-def textbook_candidates(kanji, keep, subdir=TEXTBOOK_SUBDIR):
-    """Textbook (word, reading, TEXTBOOK_TAG, meaning) tuples passing keep().
-
-    The caller supplies a `keep(word, reading)` validity predicate. The entries'
-    JLPT level is dropped here — callers that need it (the representative-word
-    algorithm's scoring) read load_textbook_entries directly.
-
-    subdir selects which textbook folder under raw/ to read (see load_textbook_entries).
-    """
-    return [
-        (w, r, TEXTBOOK_TAG, e)
-        for w, r, e, _jlpt in load_textbook_entries(kanji, subdir)
-        if keep(w, r)
-    ]
 
 
 def load_textbook_entries(kanji, subdir=TEXTBOOK_SUBDIR):

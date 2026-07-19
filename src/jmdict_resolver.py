@@ -45,7 +45,7 @@ from japanese import (
     FRAGMENT_PREFIXES,
     particle_attached_stem,
 )
-from sources import load_json
+from sources import load_jmdict, load_json
 
 # Readings per word: 2 keeps the display tight; JMdict rarely has a third
 # reading worth teaching.
@@ -113,7 +113,7 @@ class JmdictResolver:
 
     def __init__(self, data=None):
         if data is None:
-            data = load_json("input/scriptin-jmdict-eng.json", {})
+            data = load_jmdict()
         hints = load_json(HINTS_PATH, {})
         self._preferred_first_kana = hints.get("readingOrder", {})
         self._meaning_overrides = hints.get("meanings", {})

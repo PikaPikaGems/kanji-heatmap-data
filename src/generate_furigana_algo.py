@@ -34,10 +34,11 @@ Optional CLI (diagnostics only — does not write a cache):
 """
 
 import csv
+import functools
 import glob
 import re
 
-from sources import resolve_path, load_json
+from sources import resolve_path, load_json, load_jmdict
 from japanese import is_kanji_char, is_all_japanese, kanji_count, kata_to_hira, segment_word
 
 # NOTE: the full JMdict dump (108MB) is only needed for the words NOT covered by
@@ -84,14 +85,17 @@ def align_reading(word, reading):
     return result
 
 
+@functools.lru_cache(maxsize=1)
 def load_scriptin_readings():
     """Build a kanji-form → hiragana reading lookup from input/scriptin-jmdict-eng.json.
 
     For each JMdict entry, each kanji form is mapped to the first kana form that
     applies to it (appliesToKanji). First entry wins for words listed in several
-    entries, matching JMdict's ordering (most common entry first).
+    entries, matching JMdict's ordering (most common entry first). Memoized because
+    the furigana build asks for it twice (reading hints + uncovered-word fallback);
+    the returned dict is shared, so callers must treat it as read-only.
     """
-    data = load_json("input/scriptin-jmdict-eng.json", {})
+    data = load_jmdict()
     lookup = {}
     for entry in data.get("words", []):
         kana_forms = entry.get("kana", [])

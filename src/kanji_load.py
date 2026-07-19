@@ -13,10 +13,6 @@ IN_MISSING_COMPONENTS_PATH = os.path.join(const.dir_in, "missing_components.json
 IN_PHONETIC_COMPONENTS_PATH = os.path.join(const.dir_in, "phonetic_components.json")
 IN_CUM_USE_PATH = os.path.join(const.dir_in, "cum_use.json")
 
-IN_ALL_VOCAB_MEANING_JM_DICT_PATH = os.path.join(
-    const.dir_in, "scriptin-jmdict-eng.json"
-)
-
 IN_JITEN_FREQ_PATH = os.path.join(const.dir_raw, "JITEN_FREQUENCY.csv")
 IN_JPDB_FREQ_PATH = os.path.join(const.dir_raw, "JPDB_FREQUENCY_2026-02-09.csv")
 IN_KKLC_ORDER_PATH = os.path.join(const.dir_raw, "KKLC-ORDER.txt")
@@ -233,6 +229,9 @@ def dump_kanji_representative_words():
     In the OUTPUT only, the ✏️ manual-override tag is replaced with the word's real
     frequency badge (frequency_tag) — the -algo file and the algo's logs keep ✏️ so
     which picks were manual stays visible there.
+
+    Returns the merged {kanji: entry} dict it wrote, so the caller can reuse it
+    without re-reading the file it just produced.
     """
     # Lazy import: the resolver it constructs loads JMdict, so only pay for it here.
     import japanese_study_words_algo as study_words
@@ -303,6 +302,7 @@ def dump_kanji_representative_words():
     print(f"  kanji with two reading-aligned defs ([1]…[2]…):\n    {kanji_block_defs}")
 
     utils.dump_json(OUT_KANJI_REPRESENTATIVE_WORDS_PATH, merged)
+    return merged
 
 
 # *********************************
@@ -315,6 +315,9 @@ def dump_all_vocab_furigana(all_words):
     on the fly via generate_furigana_algo (furigana map + reading hints + JMdict
     fallback). A word covered by neither — or left as bare [[word]] with kanji —
     aborts the build.
+
+    Returns the {word: segments} dict it wrote, so the caller can reuse it without
+    re-reading the file it just produced.
     """
     import generate_furigana_algo as furigana_algo
 
@@ -353,6 +356,7 @@ def dump_all_vocab_furigana(all_words):
         )
 
     utils.dump_json(OUT_VOCAB_FURIGANA_PATH, vocab_furigana)
+    return vocab_furigana
 
 
 # Suffix-stripping fallback: a handle like 勃発する / 厳粛な is not a JMdict headword,
@@ -373,7 +377,7 @@ def make_meaning_resolver(*, definition_count=3):
     coverage breakdown in dump_all_vocab_meanings.
     """
     overrides: dict[str, str] = utils.get_data_from_file(IN_VOCAB_MEANING_OVERRIDES_PATH)
-    jmdict = utils.get_data_from_file(IN_ALL_VOCAB_MEANING_JM_DICT_PATH)
+    jmdict = sources.load_jmdict()
     gloss, is_common = sources.build_jmdict_meaning_index(jmdict, definition_count)
 
     def resolve(word):
@@ -413,7 +417,7 @@ def _word_to_kanji_map():
     return word_to_kanji
 
 
-def dump_all_vocab_meanings(all_words):
+def dump_all_vocab_meanings(all_words, representative_words):
     vocab_meanings = {}
     get_meaning = make_meaning_resolver(definition_count=3)
 
@@ -438,10 +442,7 @@ def dump_all_vocab_meanings(all_words):
         )
 
     # JMdict-common vs uncommon breakdown for the two shipped word sets.
-    study_words = [
-        e[0] for e in utils.get_data_from_file(OUT_KANJI_REPRESENTATIVE_WORDS_PATH).values()
-        if e is not None
-    ]
+    study_words = [e[0] for e in representative_words.values() if e is not None]
     print("JMdict-common coverage:")
     _print_common_breakdown("sample vocab", all_words, get_meaning.is_common)
     _print_common_breakdown("study words", study_words, get_meaning.is_common)
