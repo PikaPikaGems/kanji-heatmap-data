@@ -99,6 +99,7 @@ import csv
 import glob
 import json
 import unicodedata
+from typing import NamedTuple
 
 from sources import (
     resolve_path,
@@ -126,6 +127,17 @@ from jmdict_resolver import JmdictResolver
 
 EXISTING_TAG = '__existing__'
 JMDICT_TAG = '__jmdict__'
+
+
+class Candidate(NamedTuple):
+    """A sample-word candidate. Field order matches the (word, reading, tag, meaning)
+    4-tuples every candidate source historically emitted, so this stays index- and
+    unpack-compatible (a NamedTuple IS a tuple); use the named fields going forward.
+    Score it with score_candidate() rather than shuffling fields into word_score()."""
+    word: str
+    reading: str
+    tag: str
+    meaning: str
 
 PHRASE_PARTICLES = set('てでにをがはもへと')
 
@@ -351,6 +363,13 @@ def word_score(word, tag, e="", r=""):
             has_nonshipped_kanji(word), n)
 
 
+def score_candidate(c):
+    """word_score for a Candidate — keeps the field→argument mapping in ONE place
+    (word_score's positional signature is word, tag, meaning, reading — NOT the
+    candidate's field order, which is the transposition this wrapper prevents)."""
+    return word_score(c.word, c.tag, c.meaning, c.reading)
+
+
 def is_valid_candidate(word, kanji):
     if not word:
         return False
@@ -381,7 +400,7 @@ def _kana_spelling(other_forms):
 
 
 def build_freq_candidate_index(target_kanji):
-    """{kanji: [(word, reading, tag, meaning), ...]} over ALL raw/freq-ranks/*.tsv.
+    """{kanji: [Candidate, ...]} over ALL raw/freq-ranks/*.tsv.
 
     Each TSV lists words starting with its key character (kanji AND kana files),
     so one pass over every file, registering each word under every target kanji
@@ -408,7 +427,7 @@ def build_freq_candidate_index(target_kanji):
                         continue
                     seen.add((ch, word))
                     if candidate is None:
-                        candidate = (freq_key(row), (
+                        candidate = (freq_key(row), Candidate(
                             word,
                             _kana_spelling(row.get('other_forms')),
                             FREQ_TIER_TAG.get(row.get('tier', ''), DEFAULT_FREQ_TIER_TAG),
@@ -428,7 +447,7 @@ def load_textbook_candidates(kanji):
             continue
         if jlpt is not None:
             WORD_JLPT.setdefault(w, jlpt)
-        results.append((w, r, TEXTBOOK_TAG, e))
+        results.append(Candidate(w, r, TEXTBOOK_TAG, e))
     return results
 
 
@@ -443,7 +462,7 @@ def load_existing_candidates(kanji, existing_kanji_vocab, word_glosses):
     for word in existing_kanji_vocab.get(kanji, []):
         if is_valid_candidate(word, kanji):
             e = word_glosses.get(word, '')
-            results.append((word, '', EXISTING_TAG, e))
+            results.append(Candidate(word, '', EXISTING_TAG, e))
     return results
 
 
@@ -463,7 +482,7 @@ def build_jmdict_candidate_index(target_kanji, data):
     """Index JMdict (`data` = loaded scriptin-jmdict-eng.json) as a fallback source.
 
     Returns (index, word_meaning):
-      index        {kanji: [(word, reading, JMDICT_TAG, meaning), ...]} for every
+      index        {kanji: [Candidate, ...]} (each tagged JMDICT_TAG) for every
                    >=2-char JMdict word containing a target kanji. Search-only (sK)
                    and ateji forms are skipped. Rescues rare kanji whose only real
                    vocabulary lives in the full dictionary (楠 → 石楠花, 凜 → 凜々).
@@ -497,7 +516,7 @@ def build_jmdict_candidate_index(target_kanji, data):
                     if text in bucket:
                         continue
                     bucket.add(text)
-                    index.setdefault(ch, []).append((text, reading, JMDICT_TAG, meaning))
+                    index.setdefault(ch, []).append(Candidate(text, reading, JMDICT_TAG, meaning))
     return index, word_meaning
 
 
@@ -536,24 +555,24 @@ def _gather_sorted_candidates(kanji, existing_kanji_vocab, word_glosses, freq_in
     candidates = freq + textbook + existing + jmdict
 
     best_by_word = {}
-    for w, r, t, e in candidates:
-        if w not in best_by_word or word_score(w, t, e, r) < word_score(w, best_by_word[w][2], best_by_word[w][3], best_by_word[w][1]):
-            best_by_word[w] = (w, r, t, e)
+    for cand in candidates:
+        if cand.word not in best_by_word or score_candidate(cand) < score_candidate(best_by_word[cand.word]):
+            best_by_word[cand.word] = cand
 
-    return sorted(best_by_word.values(), key=lambda x: word_score(x[0], x[2], x[3], x[1]))
+    return sorted(best_by_word.values(), key=score_candidate)
 
 
 def _make_second_score(kanji, first, first_reading, furigana_map):
     """Build the sort key for choosing the second word: reward a DIFFERENT kanji
     reading when the candidate is high-frequency (🌱☘️🌷) or JLPT N5–N2."""
-    first_kanji_set = {ch for ch in first[0] if is_kanji_char(ch)}
+    first_kanji_set = {ch for ch in first.word if is_kanji_char(ch)}
 
     def second_score(entry):
-        ws = word_score(entry[0], entry[2], entry[3], entry[1])  # ws[0] = proper-noun flag
-        shared = len(first_kanji_set & {ch for ch in entry[0] if is_kanji_char(ch)})
-        cand_reading = kanji_reading_in_word(kanji, entry[0], entry[1], furigana_map)
-        tier = TAG_PRIORITY.get(entry[2], DEFAULT_TAG_PRIORITY)
-        jlpt = WORD_JLPT.get(entry[0])
+        ws = score_candidate(entry)  # ws[0] = proper-noun flag
+        shared = len(first_kanji_set & {ch for ch in entry.word if is_kanji_char(ch)})
+        cand_reading = kanji_reading_in_word(kanji, entry.word, entry.reading, furigana_map)
+        tier = TAG_PRIORITY.get(entry.tag, DEFAULT_TAG_PRIORITY)
+        jlpt = WORD_JLPT.get(entry.word)
         diversity_eligible = tier <= HIGH_FREQ_TIER_MAX or jlpt in DIVERSITY_JLPT_LEVELS
         different_reading = (
             first_reading is not None
@@ -579,7 +598,7 @@ def _pick_second_word(kanji, first, first_reading, all_candidates, furigana_map,
     reach down to textbook/📚 for a different-reading primary rather than ship the pair.
     """
     remaining = all_candidates[1:]
-    primary_remaining = [e for e in remaining if _is_primary_tag(e[2])]
+    primary_remaining = [e for e in remaining if _is_primary_tag(e.tag)]
     if not primary_remaining:
         return None
     second = min(primary_remaining, key=second_score)
@@ -587,16 +606,16 @@ def _pick_second_word(kanji, first, first_reading, all_candidates, furigana_map,
     # Last resort for redundant pairs (入る/入れる, 答える/答え): if the second word
     # merely repeats the first and no high-frequency word offered a different reading,
     # reach down to textbook/📚 for a different-reading word rather than ship the pair.
-    if first_reading is not None and is_redundant_pair(first[0], second[0]):
+    if first_reading is not None and is_redundant_pair(first.word, second.word):
         alt = []
         for e in remaining:
-            if TAG_PRIORITY.get(e[2], DEFAULT_TAG_PRIORITY) > EXTENDED_TIER_MAX:
+            if TAG_PRIORITY.get(e.tag, DEFAULT_TAG_PRIORITY) > EXTENDED_TIER_MAX:
                 continue
-            if is_redundant_pair(first[0], e[0]):
+            if is_redundant_pair(first.word, e.word):
                 continue
-            if is_proper_noun(e[0], e[3], e[1]):  # a name never rescues diversity (信じる → 信濃)
+            if is_proper_noun(e.word, e.meaning, e.reading):  # a name never rescues diversity (信じる → 信濃)
                 continue
-            cand_reading = kanji_reading_in_word(kanji, e[0], e[1], furigana_map)
+            cand_reading = kanji_reading_in_word(kanji, e.word, e.reading, furigana_map)
             if cand_reading is not None and not readings_equivalent(cand_reading, first_reading):
                 alt.append(e)
         if alt:
@@ -611,22 +630,22 @@ def _log_diversity_replacement(kanji, first, first_reading, second, all_candidat
     if replace_logs is None or second is None:
         return
     top_freq_band = TAG_PRIORITY['☘️']  # 🌱/☘️ are the two most-frequent tiers
-    if TAG_PRIORITY.get(second[2], DEFAULT_TAG_PRIORITY) <= top_freq_band:
+    if TAG_PRIORITY.get(second.tag, DEFAULT_TAG_PRIORITY) <= top_freq_band:
         return
     passed_over = [
         e for e in all_candidates[1:]
-        if TAG_PRIORITY.get(e[2], DEFAULT_TAG_PRIORITY) <= top_freq_band and e[0] != second[0]
+        if TAG_PRIORITY.get(e.tag, DEFAULT_TAG_PRIORITY) <= top_freq_band and e.word != second.word
     ]
     if not passed_over:
         return
     best_passed = min(passed_over, key=second_score)
-    second_kr = kanji_reading_in_word(kanji, second[0], second[1], furigana_map)
-    passed_kr = kanji_reading_in_word(kanji, best_passed[0], best_passed[1], furigana_map)
+    second_kr = kanji_reading_in_word(kanji, second.word, second.reading, furigana_map)
+    passed_kr = kanji_reading_in_word(kanji, best_passed.word, best_passed.reading, furigana_map)
     replace_logs.append((kanji, first, first_reading, second, second_kr, best_passed, passed_kr))
 
 
 def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index, furigana_map, replace_logs=None):
-    """Return up to 2 best (word, reading, tag, meaning) tuples for this kanji.
+    """Return up to 2 best Candidate(word, reading, tag, meaning) for this kanji.
 
     First slot prefers any primary (freq-ranks/textbook) candidate; existing/JMdict
     only win when the primary pool is empty, and never fill the second slot.
@@ -637,18 +656,18 @@ def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index
     if not all_candidates:
         return []
 
-    primary = [e for e in all_candidates if _is_primary_tag(e[2])]
+    primary = [e for e in all_candidates if _is_primary_tag(e.tag)]
     if not primary:
         # True last resort: one fallback word, no obscure second pad.
         return [all_candidates[0]]
 
     first = primary[0]
     # Second slot is primary-only (existing/JMdict never pad).
-    primary_pool = [first] + [e for e in primary if e[0] != first[0]]
+    primary_pool = [first] + [e for e in primary if e.word != first.word]
     if len(primary_pool) == 1:
         return [first]
 
-    first_reading = kanji_reading_in_word(kanji, first[0], first[1], furigana_map)
+    first_reading = kanji_reading_in_word(kanji, first.word, first.reading, furigana_map)
     second_score = _make_second_score(kanji, first, first_reading, furigana_map)
     second = _pick_second_word(kanji, first, first_reading, primary_pool, furigana_map, second_score)
     if second is None:
@@ -665,7 +684,7 @@ def _print_replace_logs(logs):
         return
     def cell(medal, entry, kanji_reading):
         # word, its full reading, and 「the kanji's own reading」 — the diversity signal.
-        return f"{medal} {_fmt_tag(entry[2])} 「{kanji_reading or '?'}」 {entry[0]} ~ {entry[1] or '?'}"
+        return f"{medal} {_fmt_tag(entry.tag)} 「{kanji_reading or '?'}」 {entry.word} ~ {entry.reading or '?'}"
 
     rows = []
     for kanji, first, fr, second, sr, best_passed, pr in logs:
@@ -737,13 +756,13 @@ def main():
         if not selected:
             continue
 
-        kanji_vocab_result[kanji] = [w for w, r, t, e in selected]
+        kanji_vocab_result[kanji] = [c.word for c in selected]
 
-        for w, r, t, e in selected:
-            selected_all.append((w, t, kanji, r if r and r != '-' else ''))
-            if w not in word_gloss:
-                g = e or jmdict_word_meanings.get(w, '')
-                word_gloss[w] = g if isinstance(g, str) else str(g)
+        for c in selected:
+            selected_all.append((c.word, c.tag, kanji, c.reading if c.reading and c.reading != '-' else ''))
+            if c.word not in word_gloss:
+                g = c.meaning or jmdict_word_meanings.get(c.word, '')
+                word_gloss[c.word] = g if isinstance(g, str) else str(g)
 
     _print_replace_logs(replace_logs)
 

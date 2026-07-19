@@ -3,6 +3,7 @@
 import kanji_extract
 import kanji_load
 import japanese
+import constants as const
 from build_helpers import get_words, furigana_stats
 from keyword_sources import load_raw_keyword_sources, raw_keyword, base_keyword
 
@@ -17,7 +18,7 @@ def word_kanji_keywords(kanji_extended, representative_words, shipped):
     Kanji with no keyword in any source are omitted. Written to output/extra_kanji_keyword.json."""
     referenced = set()
     for info in kanji_extended.values():
-        for word in info[9]:        # sample words
+        for word in info[const.kanji_extended_words_index]:  # sample words
             referenced.update(ch for ch in word if japanese.is_kanji_char(ch))
     for entry in representative_words.values():  # study words
         if entry:
