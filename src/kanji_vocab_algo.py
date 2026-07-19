@@ -220,10 +220,15 @@ def has_particle_before_kana(word):
     return False
 
 
-# Kanji we ship (intermediate/filtered_kanji.json); populated in main(). Sample words
-# whose every kanji ships are preferred, so a kanji's example doesn't drag in an
-# unshipped partner (玉 → 玉葱[葱 unshipped]) when an all-shipped option exists.
-SHIPPED = set()
+# The canonical kanji set (intermediate/filtered_kanji.json, written by
+# build_filtered_kanji_json.py): ALL_KANJI keeps the frequency order main() iterates
+# in; SHIPPED is the same set frozen for membership tests. Loaded once at import —
+# fixed constants, never mutated (main() aborts loudly if the file was missing).
+# Sample words whose every kanji ships are preferred, so a kanji's example doesn't
+# drag in an unshipped partner (玉 → 玉葱[葱 unshipped]) when an all-shipped option
+# exists.
+ALL_KANJI = load_json('intermediate/filtered_kanji.json', [])
+SHIPPED = frozenset(ALL_KANJI)
 
 # JmdictResolver over the same loaded JMdict as the candidate index; populated in
 # main(). is_valid_candidate uses it to reject phrase fragments (この人, 今も).
@@ -621,13 +626,16 @@ def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index
 
 
 def main():
-    # intermediate/filtered_kanji.json is the canonical kanji set (merged_kanji minus
-    # kanji_to_remove), produced by src/build_filtered_kanji_json.py. Reading it
-    # here (instead of output/kanji_main.json) removes the dependency on a prior
-    # build and keeps this script's kanji set identical to the other algo scripts'.
-    with open(resolve_path('intermediate/filtered_kanji.json'), encoding='utf-8') as f:
-        all_kanji = json.load(f)
-    SHIPPED.update(all_kanji)  # enable the all-shipped sample-word preference
+    # ALL_KANJI (intermediate/filtered_kanji.json) is the canonical kanji set
+    # (merged_kanji minus kanji_to_remove), produced by build_filtered_kanji_json.py
+    # and loaded once at module level together with SHIPPED — identical to the
+    # kanji set the other algo scripts use.
+    all_kanji = ALL_KANJI
+    if not all_kanji:
+        raise SystemExit(
+            "intermediate/filtered_kanji.json missing or empty — "
+            "run src/build_filtered_kanji_json.py first"
+        )
 
     with open(resolve_path('input/kanji_vocab.json'), encoding='utf-8') as f:
         existing_kanji_vocab = json.load(f)
@@ -650,10 +658,11 @@ def main():
                     JMDICT_EXP_WORDS.add(t)
 
     # Primary pool: the freq-ranks corpus dataset, indexed once contains-anywhere.
-    freq_index = build_freq_candidate_index(set(all_kanji))
+    # SHIPPED is the same kanji set already frozen — no need to re-set() the list.
+    freq_index = build_freq_candidate_index(SHIPPED)
 
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
-    jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(set(all_kanji), jmdict_data)
+    jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(SHIPPED, jmdict_data)
 
     # Resolved glosses for proper-noun detection, straight from JMdict's full gloss
     # ("Shinano (former province ...)" is what reveals the name-ness).

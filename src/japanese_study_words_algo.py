@@ -153,10 +153,14 @@ COL_JLPT = "jlpt_level"
 JLPT_UNTAGGED_RANK = 5
 
 
-# Kanji we ship (intermediate/filtered_kanji.json); populated in main(). Used to prefer
-# study words whose every kanji ships, so a word doesn't drag in an unshipped
-# partner (e.g. 麻 → 麻痺[痺 unshipped]) when an all-shipped option exists.
-SHIPPED = set()
+# The canonical kanji set (intermediate/filtered_kanji.json, written by
+# build_filtered_kanji_json.py): ALL_KANJI keeps the frequency order main() iterates
+# in; SHIPPED is the same set frozen for membership tests. Loaded once at import —
+# fixed constants, never mutated (main() aborts loudly if the file was missing).
+# Used to prefer study words whose every kanji ships, so a word doesn't drag in an
+# unshipped partner (e.g. 麻 → 麻痺[痺 unshipped]) when an all-shipped option exists.
+ALL_KANJI = load_json("intermediate/filtered_kanji.json", [])
+SHIPPED = frozenset(ALL_KANJI)
 
 
 def has_nonshipped_kanji(word):
@@ -372,12 +376,6 @@ def select_word_for_kanji(kanji, used_words, resolver):
 # Main
 # ---------------------------------------------------------------------------
 
-def load_kanji_list():
-    # intermediate/filtered_kanji.json is the canonical kanji set (merged_kanji minus
-    # kanji_to_remove), produced by src/build_filtered_kanji_json.py.
-    return load_json("intermediate/filtered_kanji.json", [])
-
-
 def load_manual_replace_words():
     data = load_json("overrides/resolver_hints.json", {})
     return {k: v.strip() for k, v in data.get("replaceKanjiStudyWords", {}).items()}
@@ -454,21 +452,24 @@ def resolve_manual_pin_entries(pins):
     The build step (kanji_load.dump_kanji_representative_words) calls this to merge
     overrides/japanese_study_words.json onto the -algo output WITHOUT re-running the
     whole selection, so that override file can stay a plain {kanji: word} map and the
-    derivation logic lives here only. Builds its own resolver/shipped/readings context
-    because it runs in a separate process from main()."""
+    derivation logic lives here only. Builds its own resolver/readings context because
+    it runs in a separate process from main(); SHIPPED is the module-level constant."""
     resolver = JmdictResolver()
-    shipped = set(load_kanji_list())
     jmdict_readings = load_jmdict_readings()
     return {
         kanji: attach_reading_meaning([word, "", "", OVERRIDE_TAG],
-                                      resolver, shipped, jmdict_readings)
+                                      resolver, SHIPPED, jmdict_readings)
         for kanji, word in pins.items()
     }
 
 
 def main():
-    all_kanji = load_kanji_list()
-    SHIPPED.update(all_kanji)  # enable the all-shipped study-word preference
+    all_kanji = ALL_KANJI  # loaded once at module level (with SHIPPED)
+    if not all_kanji:
+        raise SystemExit(
+            "intermediate/filtered_kanji.json missing or empty — "
+            "run src/build_filtered_kanji_json.py first"
+        )
     manual_words = load_manual_replace_words()
     jmdict_readings = load_jmdict_readings()
     resolver = JmdictResolver()
