@@ -114,8 +114,8 @@ from sources import (
     parse_rank,
 )
 from japanese import (
-    is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments,
-    readings_equivalent,
+    is_all_japanese, is_kanji_char, kanji_count, kana_spelling,
+    reading_of_kanji_in_segments, readings_equivalent,
 )
 from jmdict_resolver import JmdictResolver
 
@@ -341,19 +341,6 @@ def is_valid_candidate(word, kanji):
     return kanji in word
 
 
-def _kana_spelling(other_forms):
-    """First kana-only token from a TSV `other_forms` cell ("御金; おかね" → おかね).
-
-    Used as the candidate's reading: the furigana generator only treats it as a
-    HINT to disambiguate multi-reading words (the furigana map stays authoritative),
-    and a katakana token marks foreign proper nouns (北京 → ペキン) for demotion."""
-    for token in (other_forms or '').split(';'):
-        token = token.strip()
-        if token and is_all_japanese(token) and kanji_count(token) == 0:
-            return token
-    return ''
-
-
 def build_freq_candidate_index(target_kanji):
     """{kanji: [Candidate, ...]} over ALL raw/freq-ranks/*.tsv.
 
@@ -384,7 +371,7 @@ def build_freq_candidate_index(target_kanji):
                     if candidate is None:
                         candidate = (freq_key(row), Candidate(
                             word,
-                            _kana_spelling(row.get('other_forms')),
+                            kana_spelling(row.get('other_forms')),
                             FREQ_TIER_TAG.get(row.get('tier', ''), DEFAULT_FREQ_TIER_TAG),
                             (row.get('english_gloss') or '').strip(),
                         ))

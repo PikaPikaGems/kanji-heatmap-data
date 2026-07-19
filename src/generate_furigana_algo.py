@@ -39,7 +39,7 @@ import glob
 import re
 
 from sources import resolve_path, load_json, load_jmdict
-from japanese import is_kanji_char, is_all_japanese, kanji_count, kata_to_hira, segment_word
+from japanese import is_kanji_char, kana_spelling, kata_to_hira, segment_word
 
 # NOTE: the full JMdict dump (108MB) is only needed for the words NOT covered by
 # input/jmdict-furigana-map.json. It is loaded lazily inside build_furigana_for_words.
@@ -111,15 +111,6 @@ def load_scriptin_readings():
     return lookup
 
 
-def _kana_spelling(other_forms):
-    """First kana-only token from a TSV `other_forms` cell ("御金; おかね" → おかね)."""
-    for token in (other_forms or "").split(";"):
-        token = token.strip()
-        if token and is_all_japanese(token) and kanji_count(token) == 0:
-            return token
-    return ""
-
-
 def build_reading_hints(words=None):
     """{word: reading} hints for disambiguating multi-reading furigana-map entries.
 
@@ -136,7 +127,7 @@ def build_reading_hints(words=None):
                     continue
                 if words is not None and word not in words:
                     continue
-                kana = _kana_spelling(row.get("other_forms", ""))
+                kana = kana_spelling(row.get("other_forms", ""))
                 if kana:
                     hints[word] = kata_to_hira(kana)
 
