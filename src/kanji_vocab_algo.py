@@ -89,6 +89,7 @@ Sources:
   input/kanji_vocab.json                   → {kanji: [word, ...]}   (existing fallback)
   input/scriptin-jmdict-eng.json           → JMdict                 (jmdict fallback)
   input/jmdict-furigana-map.json           → {word: {reading: segments}}  (readings)
+  raw/word_jlpt.json                       → {word: jlpt level}     (WORD_JLPT constant)
 
 Outputs: overrides/kanji_vocab-algo.json
 
@@ -230,6 +231,17 @@ def has_particle_before_kana(word):
 # exists.
 ALL_KANJI = load_json('intermediate/filtered_kanji.json', [])
 SHIPPED = frozenset(ALL_KANJI)
+
+# {word: JLPT level (5=N5 easiest .. 1=N1)} — the second-word reading-diversity unlock
+# signal and the report's JLPT breakdown. Loaded once from raw/word_jlpt.json (the
+# authoritative source; its levels are stored as strings, converted to int here to
+# match DIVERSITY_JLPT_LEVELS / the report). A fixed constant like SHIPPED — no longer
+# harvested from the freq-ranks corpus scan.
+WORD_JLPT = {
+    w: lvl
+    for w, v in load_json('raw/word_jlpt.json', {}).items()
+    if (lvl := parse_rank(v)) is not None
+}
 
 # The JmdictResolver and the `exp`-tagged word set both derive from JMdict (the
 # ~100MB dictionary), so they are built lazily on first use — importing this module
@@ -376,31 +388,22 @@ def is_valid_candidate(word, kanji):
 
 
 def build_freq_candidate_index(target_kanji):
-    """Return (index, word_jlpt) over ALL raw/freq-ranks/*.tsv:
-      index      {kanji: [Candidate, ...]} — each TSV lists words starting with its
-                 key character (kanji AND kana files), so one pass over every file,
-                 registering each word under every target kanji it contains, yields
-                 the contains-anywhere pool this algorithm needs (比較 is stored in
-                 比.tsv but must count for 較; お金 lives in お.tsv). Buckets are
-                 sorted by composite corpus frequency so word_score ties within a
-                 tier resolve most-frequent-first (日 prefers 日本 over 一日), which
-                 raw file order can't provide — one kanji's words come from many files.
-      word_jlpt  {word: jlpt (5..1)} for every freq-ranks row that carries one — the
-                 second-word reading-diversity JLPT unlock and the report's JLPT
-                 breakdown read it. load_textbook_candidates keeps adding textbook
-                 words to this same dict during selection (freq wins ties, first-set).
-    Replaces a module-global side effect: the map is now returned and threaded
-    explicitly, so what a function depends on is visible at its call site."""
+    """{kanji: [Candidate, ...]} over ALL raw/freq-ranks/*.tsv.
+
+    Each TSV lists words starting with its key character (kanji AND kana files),
+    so one pass over every file, registering each word under every target kanji
+    it contains, yields the contains-anywhere pool this algorithm needs (比較 is
+    stored in 比.tsv but must count for 較; お金 lives in お.tsv).
+
+    Buckets are sorted by composite corpus frequency: word_score ties within a
+    tier then resolve most-frequent-first (日 must prefer 日本 over 一日), which
+    the raw file order can't provide — one kanji's words come from many files."""
     index = {}
-    word_jlpt = {}
     seen = set()  # (kanji, word) — defensive dedupe across files
     for path in sorted(glob.glob(resolve_path('raw/freq-ranks/*.tsv'))):
         with open(path, encoding='utf-8') as f:
             for row in csv.DictReader(f, delimiter='\t'):
                 word = row.get('japanese_word', '')
-                jlpt = parse_rank(row.get('jlpt_level'))
-                if word and jlpt is not None:
-                    word_jlpt.setdefault(word, jlpt)
                 candidate = None  # built lazily, once per word
                 for ch in set(word):
                     if ch not in target_kanji or not is_valid_candidate(word, ch):
@@ -416,22 +419,17 @@ def build_freq_candidate_index(target_kanji):
                             (row.get('english_gloss') or '').strip(),
                         ))
                     index.setdefault(ch, []).append(candidate)
-    freq_index = {
+    return {
         ch: [cand for _fk, cand in sorted(bucket, key=lambda pair: pair[0])]
         for ch, bucket in index.items()
     }
-    return freq_index, word_jlpt
 
 
-def load_textbook_candidates(kanji, word_jlpt):
-    """Textbook candidates for `kanji`; also records their JLPT into `word_jlpt`
-    (freq-ranks wins ties, being set first — see build_freq_candidate_index)."""
+def load_textbook_candidates(kanji):
     results = []
     for w, r, e, jlpt in load_textbook_entries(kanji):
         if not is_valid_candidate(w, kanji):
             continue
-        if jlpt is not None:
-            word_jlpt.setdefault(w, jlpt)
         results.append(Candidate(w, r, TEXTBOOK_TAG, e))
     return results
 
@@ -528,12 +526,12 @@ def is_redundant_pair(w1, w2):
     return {c for c in w1 if is_kanji_char(c)} == {c for c in w2 if is_kanji_char(c)}
 
 
-def _gather_sorted_candidates(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index, word_jlpt):
+def _gather_sorted_candidates(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index):
     """All valid candidates for `kanji`, deduped per word (best score kept) and
     sorted best-first. Meaning/reading availability is not filtered here — missing
     either just costs score (see word_score); the final build is the hard gate."""
     freq = freq_index.get(kanji, [])
-    textbook = load_textbook_candidates(kanji, word_jlpt)
+    textbook = load_textbook_candidates(kanji)
     existing = load_existing_candidates(kanji, existing_kanji_vocab, word_glosses)
     jmdict = jmdict_index.get(kanji, [])
 
@@ -547,7 +545,7 @@ def _gather_sorted_candidates(kanji, existing_kanji_vocab, word_glosses, freq_in
     return sorted(best_by_word.values(), key=score_candidate)
 
 
-def _make_second_score(kanji, first, first_reading, furigana_map, word_jlpt):
+def _make_second_score(kanji, first, first_reading, furigana_map):
     """Build the sort key for choosing the second word: reward a DIFFERENT kanji
     reading when the candidate is high-frequency (🌱☘️🌷) or JLPT N5–N2."""
     first_kanji_set = {ch for ch in first.word if is_kanji_char(ch)}
@@ -557,7 +555,7 @@ def _make_second_score(kanji, first, first_reading, furigana_map, word_jlpt):
         shared = len(first_kanji_set & {ch for ch in entry.word if is_kanji_char(ch)})
         cand_reading = kanji_reading_in_word(kanji, entry.word, entry.reading, furigana_map)
         tier = TAG_PRIORITY.get(entry.tag, DEFAULT_TAG_PRIORITY)
-        jlpt = word_jlpt.get(entry.word)
+        jlpt = WORD_JLPT.get(entry.word)
         diversity_eligible = tier <= HIGH_FREQ_TIER_MAX or jlpt in DIVERSITY_JLPT_LEVELS
         different_reading = (
             first_reading is not None
@@ -629,14 +627,14 @@ def _log_diversity_replacement(kanji, first, first_reading, second, all_candidat
     replace_logs.append((kanji, first, first_reading, second, second_kr, best_passed, passed_kr))
 
 
-def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index, furigana_map, word_jlpt, replace_logs=None):
+def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index, furigana_map, replace_logs=None):
     """Return up to 2 best Candidate(word, reading, tag, meaning) for this kanji.
 
     First slot prefers any primary (freq-ranks/textbook) candidate; existing/JMdict
     only win when the primary pool is empty, and never fill the second slot.
     """
     all_candidates = _gather_sorted_candidates(
-        kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index, word_jlpt
+        kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index
     )
     if not all_candidates:
         return []
@@ -653,7 +651,7 @@ def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index
         return [first]
 
     first_reading = kanji_reading_in_word(kanji, first.word, first.reading, furigana_map)
-    second_score = _make_second_score(kanji, first, first_reading, furigana_map, word_jlpt)
+    second_score = _make_second_score(kanji, first, first_reading, furigana_map)
     second = _pick_second_word(kanji, first, first_reading, primary_pool, furigana_map, second_score)
     if second is None:
         return [first]
@@ -687,9 +685,7 @@ def main():
 
     # Primary pool: the freq-ranks corpus dataset, indexed once contains-anywhere.
     # SHIPPED is the same kanji set already frozen — no need to re-set() the list.
-    # word_jlpt (freq-ranks JLPT levels) is returned here and threaded through
-    # selection; load_textbook_candidates keeps adding textbook words to it.
-    freq_index, word_jlpt = build_freq_candidate_index(SHIPPED)
+    freq_index = build_freq_candidate_index(SHIPPED)
 
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
     jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(SHIPPED, jmdict_data)
@@ -704,7 +700,7 @@ def main():
     replace_logs = []
 
     for kanji in all_kanji:
-        selected = select_vocab_for_kanji(kanji, existing_kanji_vocab, jmdict_word_meanings, freq_index, jmdict_index, furigana_map, word_jlpt, replace_logs)
+        selected = select_vocab_for_kanji(kanji, existing_kanji_vocab, jmdict_word_meanings, freq_index, jmdict_index, furigana_map, replace_logs)
         if not selected:
             continue
 
@@ -731,7 +727,7 @@ def main():
 
     report.print_report(
         selected_all, kanji_vocab_result, all_kanji, existing_vocab_words,
-        word_gloss, furigana_map, word_jlpt,
+        word_gloss, furigana_map,
     )
 
 
