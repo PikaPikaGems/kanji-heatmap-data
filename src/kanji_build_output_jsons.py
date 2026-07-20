@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
+import sys
+
 import kanji_extract
 import kanji_load
-import os
-import constants as const
-import utils
 import japanese
+import constants as const
 from build_helpers import get_words, furigana_stats
 from keyword_sources import load_raw_keyword_sources, raw_keyword, base_keyword
 
@@ -20,7 +20,7 @@ def word_kanji_keywords(kanji_extended, representative_words, shipped):
     Kanji with no keyword in any source are omitted. Written to output/extra_kanji_keyword.json."""
     referenced = set()
     for info in kanji_extended.values():
-        for word in info[9]:        # sample words
+        for word in info[const.kanji_extended_words_index]:  # sample words
             referenced.update(ch for ch in word if japanese.is_kanji_char(ch))
     for entry in representative_words.values():  # study words
         if entry:
@@ -51,10 +51,29 @@ def assert_unique_keywords(kanji_main):
             keyword_to_kanjis.setdefault(keyword, []).append(kanji)
     duplicates = {kw: ks for kw, ks in keyword_to_kanjis.items() if len(ks) > 1}
     if duplicates:
+        report = [
+            "",
+            "=" * 72,
+            "DUPLICATE KANJI KEYWORDS",
+            "=" * 72,
+            "Each keyword must map to exactly one kanji.",
+            "Fix these clashes in overrides/keywords.json:",
+            "",
+        ]
+        for keyword, kanjis in sorted(duplicates.items()):
+            report.append(f"  Keyword: {keyword!r}")
+            report.append(f"  Kanji ({len(kanjis)}): {', '.join(kanjis)}")
+            report.append("")
+        report.extend(
+            [
+                f"Found {len(duplicates)} duplicate keyword(s).",
+                "=" * 72,
+                "",
+            ]
+        )
+        print("\n".join(report), file=sys.stderr, flush=True)
         raise ValueError(
-            "Duplicate kanji keywords — each keyword must map to exactly one kanji "
-            "(fix the clash in overrides/keywords.json): "
-            + ", ".join(f"{kw!r} → {''.join(ks)}" for kw, ks in duplicates.items())
+            f"Found {len(duplicates)} duplicate kanji keyword(s); see report above."
         )
 
 
@@ -116,17 +135,18 @@ def main():
     assert_unique_keywords(kanji_main_reformatted)
     kanji_load.dump_to_main_kanji_info(kanji_main_reformatted)
     kanji_load.dump_to_extended_kanji_info(kanji_extended_reformatted)
-    kanji_load.dump_kanji_representative_words()
+    # These dumps also return what they wrote, so downstream steps reuse the data
+    # in-memory instead of re-reading the files this build just produced.
+    representative_words = kanji_load.dump_kanji_representative_words()
 
     # Sort for a deterministic, stable key order in the output JSONs (all_words is a
     # set, whose per-run iteration order would otherwise reshuffle the file each build).
     all_words = sorted(all_words)
     print("All sample words count:", len(all_words))
 
-    kanji_load.dump_all_vocab_furigana(all_words)
-    kanji_load.dump_all_vocab_meanings(all_words)
+    vocab_furigana = kanji_load.dump_all_vocab_furigana(all_words)
+    kanji_load.dump_all_vocab_meanings(all_words, representative_words)
 
-    vocab_furigana = utils.get_data_from_file(os.path.join(const.dir_out, const.outfile_vocab_furigana))
     furigana_stats(kanji_extended_reformatted, kanji_data, vocab_furigana)
 
     # ***********************
@@ -137,9 +157,6 @@ def main():
 
     kanji_load.dump_part_keyword_with_overrides(kanji_data)
 
-    representative_words = utils.get_data_from_file(
-        os.path.join(const.dir_out, const.outfile_kanji_representative_words)
-    )
     extra_keywords = word_kanji_keywords(
         kanji_extended_reformatted, representative_words, set(kanji_data)
     )

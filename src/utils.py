@@ -30,16 +30,15 @@ def compress_json(path_in, path_out):
     dump_json(path_out, in_file)
 
 
-def to_int(str, default_value=None):
-    if isinstance(str, (int)):
-        return str
+def to_int(value, default_value=None):
+    if isinstance(value, int):
+        return value
 
-    if not str:
+    if not value:
         return default_value
 
     try:
-        num = int(str)
-        return num
+        return int(value)
     except (ValueError, TypeError):
         return default_value
 

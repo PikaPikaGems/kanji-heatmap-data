@@ -31,9 +31,9 @@ def get_all_generic(all_, all_source_keys):
     return deduped
 
 
-def get_component_parts(kanji_info, overrides={}):
+def get_component_parts(kanji_info, overrides=None):
 
-    override = overrides.get(kanji_info["kanji"], None)
+    override = (overrides or {}).get(kanji_info["kanji"], None)
 
     if override is None:
         return kanji_info.get("componentDependencies", {}).get("topoKanji", [])

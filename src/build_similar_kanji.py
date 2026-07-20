@@ -50,7 +50,7 @@ import sources
 SIMILARITY_DIR = "raw/similarity"
 DKANJISTAT_PATH = f"{SIMILARITY_DIR}/dkanjistat.json"
 KANJIDICT_PATH = "raw/structure-info/kanjidict.txt"
-FILTERED_KANJI_PATH = "input/filtered_kanji.json"
+FILTERED_KANJI_PATH = "intermediate/filtered_kanji.json"
 OUT_PATH = "output/similar-kanjis.json"
 
 MAX_DIST = 0.15  # dkanjistat distance ceiling; lists are not padded below this

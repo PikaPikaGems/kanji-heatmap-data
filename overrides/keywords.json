@@ -20,6 +20,7 @@
   "月": "month",
   "日": "day",
   "先": "previous",
+  "昨": "yesterday",
   "市": "market",
   "喬": "proud",
   "巌": "majestic boulder",
@@ -30,13 +31,18 @@
   "裟": "a monk's robe",
   "嵩": "bulk and volume",
   "枯": "wither",
+  "萎": "wilt", 
   "坐": "sitting formally",
   "字": "written character",
   "力": "power",
+  "権": "rights",
   "体": "body",
+  "身": "somebody",
   "事": "abstract thing",
   "員": "group member",
   "暗": "darkness",
   "説": "hypothesis",
-  "爺": "old man"
+  "爺": "old man",
+  "異": "uncommon", 
+  "違": "different"
 }

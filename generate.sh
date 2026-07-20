@@ -44,6 +44,6 @@ run python3 src/keywords_algo.py
 run python3 src/build_similar_kanji.py
 run python3 src/kanji_build_output_jsons.py
 
-cp ./input/filtered_kanji.json ./output/filtered_kanji.json
+cp ./intermediate/filtered_kanji.json ./output/filtered_kanji.json
 
 run ./src/kanji_inspect.py

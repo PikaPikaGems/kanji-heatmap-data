@@ -53,6 +53,19 @@ def kata_to_hira(text):
     return "".join(result)
 
 
+def kana_spelling(other_forms):
+    """First kana-only token from a TSV `other_forms` cell ("御金; おかね" → おかね).
+
+    Used as a reading hint / foreign-name (katakana) signal by both the sample-vocab
+    algo and the furigana generator, which is why it lives here rather than duplicated.
+    """
+    for token in (other_forms or "").split(";"):
+        token = token.strip()
+        if token and is_all_japanese(token) and kanji_count(token) == 0:
+            return token
+    return ""
+
+
 # Corpus word lists contain phrase fragments that pass every structural check:
 # a demonstrative glued to a noun (この人, その様) and a standalone word with a
 # trailing particle (今も, 常に, 事になる). Both selection algorithms reject them

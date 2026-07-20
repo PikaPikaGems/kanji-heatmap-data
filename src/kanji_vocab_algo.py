@@ -82,13 +82,14 @@ gloss patterns ("(city", "surname", " era (", …) and katakana readings on all-
 words (北京 → ペキン).
 
 Sources:
-  input/filtered_kanji.json                → [kanji]  (the kanji set to process)
+  intermediate/filtered_kanji.json                → [kanji]  (the kanji set to process)
   raw/freq-ranks/*.tsv                     → corpus frequency rows (word, gloss,
                                              tier, other_forms with kana spelling)
   raw/kanji-textbook-words-min/[kanji].json → {kanji: {word: [reading, meaning, jlpt, tags]}}
   input/kanji_vocab.json                   → {kanji: [word, ...]}   (existing fallback)
   input/scriptin-jmdict-eng.json           → JMdict                 (jmdict fallback)
   input/jmdict-furigana-map.json           → {word: {reading: segments}}  (readings)
+  raw/word_jlpt.json                       → {word: jlpt level}     (WORD_JLPT constant)
 
 Outputs: overrides/kanji_vocab-algo.json
 
@@ -96,13 +97,15 @@ Run from the project root: python3 src/kanji_vocab_algo.py
 """
 
 import csv
+import functools
 import glob
 import json
-import unicodedata
+from typing import NamedTuple
 
 from sources import (
     resolve_path,
     load_json,
+    load_jmdict,
     write_json,
     jmdict_entry_gloss,
     load_textbook_entries,
@@ -113,8 +116,8 @@ from sources import (
     parse_rank,
 )
 from japanese import (
-    is_all_japanese, is_kanji_char, kanji_count, reading_of_kanji_in_segments,
-    readings_equivalent,
+    is_all_japanese, is_kanji_char, kanji_count, kana_spelling,
+    reading_of_kanji_in_segments, readings_equivalent,
 )
 from jmdict_resolver import JmdictResolver
 
@@ -125,6 +128,17 @@ from jmdict_resolver import JmdictResolver
 
 EXISTING_TAG = '__existing__'
 JMDICT_TAG = '__jmdict__'
+
+
+class Candidate(NamedTuple):
+    """A sample-word candidate. Field order matches the (word, reading, tag, meaning)
+    4-tuples every candidate source historically emitted, so this stays index- and
+    unpack-compatible (a NamedTuple IS a tuple); use the named fields going forward.
+    Score it with score_candidate() rather than shuffling fields into word_score()."""
+    word: str
+    reading: str
+    tag: str
+    meaning: str
 
 PHRASE_PARTICLES = set('てでにをがはもへと')
 
@@ -179,50 +193,6 @@ JMDICT_EXCLUDE_TAGS = {'sK', 'ateji'}
 EXP_PHRASE_PARTICLES = set('がをに')
 
 
-def _fmt_tag(tag):
-    # ☘️ and ✍️ are VS16 sequences (base char + U+FE0F) that macOS renders NARROWER
-    # than single-codepoint emoji, which breaks column alignment on the rows they appear
-    # in (every other tag/medal is a single, uniform-width emoji). Remap them to
-    # single-codepoint look-alikes (🍀 clover, 📝 memo) so all glyphs share one width.
-    return {
-        "☘️": "☘️ ",
-        "🌶️": "🌶️ ",
-        "✏️": "✏️ ",
-        TEXTBOOK_TAG: "📖",
-        EXISTING_TAG: "📋",
-        JMDICT_TAG: "📕",
-    }.get(tag, tag)
-
-
-def _display_width(s):
-    """Terminal display width: CJK and emoji (incl. VS16 sequences) count as 2 columns."""
-    w = 0
-    i = 0
-    n = len(s)
-    while i < n:
-        c = s[i]
-        cp = ord(c)
-        nxt = s[i + 1] if i + 1 < n else ''
-        if nxt == '️':  # emoji presentation: base + VS16 renders wide (☘️ ✍️)
-            w += 2
-            i += 2
-            continue
-        if 0xFE00 <= cp <= 0xFE0F or unicodedata.combining(c):  # stray VS / combining marks
-            i += 1
-            continue
-        eaw = unicodedata.east_asian_width(c)
-        if eaw in ('W', 'F') or cp >= 0x1F000:  # wide CJK + emoji plane (🥇🌱 etc.)
-            w += 2
-        else:
-            w += 1
-        i += 1
-    return w
-
-
-def _pad(s, target_width):
-    return s + ' ' * max(0, target_width - _display_width(s))
-
-
 def has_phrase_bridge(word):
     """True if a grammatical particle appears between two kanji sections."""
     saw_kanji = False
@@ -252,29 +222,59 @@ def has_particle_before_kana(word):
     return False
 
 
-# Kanji we ship (input/filtered_kanji.json); populated in main(). Sample words
-# whose every kanji ships are preferred, so a kanji's example doesn't drag in an
-# unshipped partner (玉 → 玉葱[葱 unshipped]) when an all-shipped option exists.
-SHIPPED = set()
+# The canonical kanji set (intermediate/filtered_kanji.json, written by
+# build_filtered_kanji_json.py): ALL_KANJI keeps the frequency order main() iterates
+# in; SHIPPED is the same set frozen for membership tests. Loaded once at import —
+# fixed constants, never mutated (main() aborts loudly if the file was missing).
+# Sample words whose every kanji ships are preferred, so a kanji's example doesn't
+# drag in an unshipped partner (玉 → 玉葱[葱 unshipped]) when an all-shipped option
+# exists.
+ALL_KANJI = load_json('intermediate/filtered_kanji.json', [])
+SHIPPED = frozenset(ALL_KANJI)
 
-# JmdictResolver over the same loaded JMdict as the candidate index; populated in
-# main(). is_valid_candidate uses it to reject phrase fragments (この人, 今も).
-RESOLVER = None
+# {word: JLPT level (5=N5 easiest .. 1=N1)} — the second-word reading-diversity unlock
+# signal and the report's JLPT breakdown. Loaded once from raw/word_jlpt.json (the
+# authoritative source; its levels are stored as strings, converted to int here to
+# match DIVERSITY_JLPT_LEVELS / the report). A fixed constant like SHIPPED — no longer
+# harvested from the freq-ranks corpus scan.
+WORD_JLPT = {
+    w: lvl
+    for w, v in load_json('raw/word_jlpt.json', {}).items()
+    if (lvl := parse_rank(v)) is not None
+}
 
-# Kanji forms whose JMdict entry carries partOfSpeech `exp`; populated in main()
-# from the same JMdict load. Used with has_particle_before_kana to drop true
-# phrases (音がする) without banning keepers tagged exp alone (挨拶, 女の子).
-JMDICT_EXP_WORDS = set()
+# The JmdictResolver and the `exp`-tagged word set both derive from JMdict (the
+# ~100MB dictionary), so they are built lazily on first use — importing this module
+# must stay cheap (the final build imports it just to borrow a function). Memoized so
+# the first caller pays the cost and every later call is a dict lookup; the shared
+# JMdict itself is already memoized in sources.load_jmdict. Being self-initializing,
+# there is no "not populated yet" state to guard against (the old RESOLVER-is-None /
+# empty-set checks silently skipped their filters when main() hadn't run).
+@functools.lru_cache(maxsize=1)
+def resolver():
+    """The JmdictResolver, built once over the shared JMdict. is_valid_candidate uses
+    it to reject phrase fragments (この人, 今も)."""
+    return JmdictResolver(load_jmdict())
 
-# {word: jlpt_level (5..1)} for every freq-ranks row that carries one; populated
-# by build_freq_candidate_index. Used for the report's JLPT breakdown and for the
-# second-word reading-diversity JLPT unlock.
-WORD_JLPT = {}
+
+@functools.lru_cache(maxsize=1)
+def jmdict_exp_words():
+    """Kanji forms whose JMdict entry carries partOfSpeech `exp`. Paired with
+    has_particle_before_kana to drop true phrases (音がする) without banning keepers
+    tagged exp alone (挨拶, 女の子)."""
+    words = set()
+    for entry in load_jmdict().get('words', []):
+        if any('exp' in s.get('partOfSpeech', []) for s in entry.get('sense', [])):
+            for form in entry.get('kanji', []):
+                t = form.get('text', '')
+                if t:
+                    words.add(t)
+    return frozenset(words)
 
 
 def is_exp_particle_phrase(word):
     """JMdict expression shaped as noun + が/を/に + kana verb (音がする, ご覧になる)."""
-    return word in JMDICT_EXP_WORDS and has_particle_before_kana(word)
+    return word in jmdict_exp_words() and has_particle_before_kana(word)
 
 
 def has_nonshipped_kanji(word):
@@ -303,11 +303,25 @@ PROPER_NOUN_GLOSS_FRAGMENTS = (
 # parenthesised forms above only catch entries where the country is an annotation
 # on a foreign place name ("Busan (South Korea)").
 
-# Resolved gloss per word for proper-noun detection; populated in main(). Needed
-# because v3/textbook candidate entries often carry a bare gloss ("Shinano") while
-# the dictionaries' richer one ("Shinano (former province ...)") is what reveals
-# the name-ness. Module-level for word_score's sake, like SHIPPED above.
-PN_GLOSS_LOOKUP = {}
+# Resolved gloss per word for proper-noun detection. Needed because textbook/freq
+# candidate entries often carry a bare gloss ("Shinano") while the dictionary's
+# richer one ("Shinano (former province ...)") is what reveals the name-ness. Built
+# lazily on first use (same first-wins appliesToKanji-aware gloss per form as
+# build_jmdict_candidate_index's word_meaning) and memoized, so is_proper_noun —
+# called deep in word_score — can read it without a global filled in main().
+@functools.lru_cache(maxsize=1)
+def pn_gloss_lookup():
+    glosses = {}
+    for entry in load_jmdict().get('words', []):
+        if jmdict_entry_gloss(entry) is None:
+            continue
+        for form in entry.get('kanji', []) + entry.get('kana', []):
+            t = form.get('text', '')
+            if t and t not in glosses:
+                meaning = jmdict_entry_gloss(entry, t)
+                if meaning:
+                    glosses[t] = meaning
+    return glosses
 
 
 def is_proper_noun(word, e="", r=""):
@@ -318,7 +332,7 @@ def is_proper_noun(word, e="", r=""):
     which marks foreign place names. Heuristic by necessity — JMdict has no
     reliable tag for these (北京/奈良 are tagged plain 'n').
     """
-    for gloss in (e, PN_GLOSS_LOOKUP.get(word)):
+    for gloss in (e, pn_gloss_lookup().get(word)):
         if gloss and any(frag in gloss for frag in PROPER_NOUN_GLOSS_FRAGMENTS):
             return 1
     if (
@@ -350,6 +364,13 @@ def word_score(word, tag, e="", r=""):
             has_nonshipped_kanji(word), n)
 
 
+def score_candidate(c):
+    """word_score for a Candidate — keeps the field→argument mapping in ONE place
+    (word_score's positional signature is word, tag, meaning, reading — NOT the
+    candidate's field order, which is the transposition this wrapper prevents)."""
+    return word_score(c.word, c.tag, c.meaning, c.reading)
+
+
 def is_valid_candidate(word, kanji):
     if not word:
         return False
@@ -361,26 +382,13 @@ def is_valid_candidate(word, kanji):
         return False
     if is_exp_particle_phrase(word):
         return False
-    if RESOLVER is not None and RESOLVER.is_phrase_fragment(word):
+    if resolver().is_phrase_fragment(word):
         return False
     return kanji in word
 
 
-def _kana_spelling(other_forms):
-    """First kana-only token from a TSV `other_forms` cell ("御金; おかね" → おかね).
-
-    Used as the candidate's reading: the furigana generator only treats it as a
-    HINT to disambiguate multi-reading words (the furigana map stays authoritative),
-    and a katakana token marks foreign proper nouns (北京 → ペキン) for demotion."""
-    for token in (other_forms or '').split(';'):
-        token = token.strip()
-        if token and is_all_japanese(token) and kanji_count(token) == 0:
-            return token
-    return ''
-
-
 def build_freq_candidate_index(target_kanji):
-    """{kanji: [(word, reading, tag, meaning), ...]} over ALL raw/freq-ranks/*.tsv.
+    """{kanji: [Candidate, ...]} over ALL raw/freq-ranks/*.tsv.
 
     Each TSV lists words starting with its key character (kanji AND kana files),
     so one pass over every file, registering each word under every target kanji
@@ -396,9 +404,6 @@ def build_freq_candidate_index(target_kanji):
         with open(path, encoding='utf-8') as f:
             for row in csv.DictReader(f, delimiter='\t'):
                 word = row.get('japanese_word', '')
-                jlpt = parse_rank(row.get('jlpt_level'))
-                if word and jlpt is not None:
-                    WORD_JLPT.setdefault(word, jlpt)
                 candidate = None  # built lazily, once per word
                 for ch in set(word):
                     if ch not in target_kanji or not is_valid_candidate(word, ch):
@@ -407,9 +412,9 @@ def build_freq_candidate_index(target_kanji):
                         continue
                     seen.add((ch, word))
                     if candidate is None:
-                        candidate = (freq_key(row), (
+                        candidate = (freq_key(row), Candidate(
                             word,
-                            _kana_spelling(row.get('other_forms')),
+                            kana_spelling(row.get('other_forms')),
                             FREQ_TIER_TAG.get(row.get('tier', ''), DEFAULT_FREQ_TIER_TAG),
                             (row.get('english_gloss') or '').strip(),
                         ))
@@ -425,9 +430,7 @@ def load_textbook_candidates(kanji):
     for w, r, e, jlpt in load_textbook_entries(kanji):
         if not is_valid_candidate(w, kanji):
             continue
-        if jlpt is not None:
-            WORD_JLPT.setdefault(w, jlpt)
-        results.append((w, r, TEXTBOOK_TAG, e))
+        results.append(Candidate(w, r, TEXTBOOK_TAG, e))
     return results
 
 
@@ -442,7 +445,7 @@ def load_existing_candidates(kanji, existing_kanji_vocab, word_glosses):
     for word in existing_kanji_vocab.get(kanji, []):
         if is_valid_candidate(word, kanji):
             e = word_glosses.get(word, '')
-            results.append((word, '', EXISTING_TAG, e))
+            results.append(Candidate(word, '', EXISTING_TAG, e))
     return results
 
 
@@ -462,7 +465,7 @@ def build_jmdict_candidate_index(target_kanji, data):
     """Index JMdict (`data` = loaded scriptin-jmdict-eng.json) as a fallback source.
 
     Returns (index, word_meaning):
-      index        {kanji: [(word, reading, JMDICT_TAG, meaning), ...]} for every
+      index        {kanji: [Candidate, ...]} (each tagged JMDICT_TAG) for every
                    >=2-char JMdict word containing a target kanji. Search-only (sK)
                    and ateji forms are skipped. Rescues rare kanji whose only real
                    vocabulary lives in the full dictionary (楠 → 石楠花, 凜 → 凜々).
@@ -496,7 +499,7 @@ def build_jmdict_candidate_index(target_kanji, data):
                     if text in bucket:
                         continue
                     bucket.add(text)
-                    index.setdefault(ch, []).append((text, reading, JMDICT_TAG, meaning))
+                    index.setdefault(ch, []).append(Candidate(text, reading, JMDICT_TAG, meaning))
     return index, word_meaning
 
 
@@ -535,24 +538,24 @@ def _gather_sorted_candidates(kanji, existing_kanji_vocab, word_glosses, freq_in
     candidates = freq + textbook + existing + jmdict
 
     best_by_word = {}
-    for w, r, t, e in candidates:
-        if w not in best_by_word or word_score(w, t, e, r) < word_score(w, best_by_word[w][2], best_by_word[w][3], best_by_word[w][1]):
-            best_by_word[w] = (w, r, t, e)
+    for cand in candidates:
+        if cand.word not in best_by_word or score_candidate(cand) < score_candidate(best_by_word[cand.word]):
+            best_by_word[cand.word] = cand
 
-    return sorted(best_by_word.values(), key=lambda x: word_score(x[0], x[2], x[3], x[1]))
+    return sorted(best_by_word.values(), key=score_candidate)
 
 
 def _make_second_score(kanji, first, first_reading, furigana_map):
     """Build the sort key for choosing the second word: reward a DIFFERENT kanji
     reading when the candidate is high-frequency (🌱☘️🌷) or JLPT N5–N2."""
-    first_kanji_set = {ch for ch in first[0] if is_kanji_char(ch)}
+    first_kanji_set = {ch for ch in first.word if is_kanji_char(ch)}
 
     def second_score(entry):
-        ws = word_score(entry[0], entry[2], entry[3], entry[1])  # ws[0] = proper-noun flag
-        shared = len(first_kanji_set & {ch for ch in entry[0] if is_kanji_char(ch)})
-        cand_reading = kanji_reading_in_word(kanji, entry[0], entry[1], furigana_map)
-        tier = TAG_PRIORITY.get(entry[2], DEFAULT_TAG_PRIORITY)
-        jlpt = WORD_JLPT.get(entry[0])
+        ws = score_candidate(entry)  # ws[0] = proper-noun flag
+        shared = len(first_kanji_set & {ch for ch in entry.word if is_kanji_char(ch)})
+        cand_reading = kanji_reading_in_word(kanji, entry.word, entry.reading, furigana_map)
+        tier = TAG_PRIORITY.get(entry.tag, DEFAULT_TAG_PRIORITY)
+        jlpt = WORD_JLPT.get(entry.word)
         diversity_eligible = tier <= HIGH_FREQ_TIER_MAX or jlpt in DIVERSITY_JLPT_LEVELS
         different_reading = (
             first_reading is not None
@@ -578,7 +581,7 @@ def _pick_second_word(kanji, first, first_reading, all_candidates, furigana_map,
     reach down to textbook/📚 for a different-reading primary rather than ship the pair.
     """
     remaining = all_candidates[1:]
-    primary_remaining = [e for e in remaining if _is_primary_tag(e[2])]
+    primary_remaining = [e for e in remaining if _is_primary_tag(e.tag)]
     if not primary_remaining:
         return None
     second = min(primary_remaining, key=second_score)
@@ -586,16 +589,16 @@ def _pick_second_word(kanji, first, first_reading, all_candidates, furigana_map,
     # Last resort for redundant pairs (入る/入れる, 答える/答え): if the second word
     # merely repeats the first and no high-frequency word offered a different reading,
     # reach down to textbook/📚 for a different-reading word rather than ship the pair.
-    if first_reading is not None and is_redundant_pair(first[0], second[0]):
+    if first_reading is not None and is_redundant_pair(first.word, second.word):
         alt = []
         for e in remaining:
-            if TAG_PRIORITY.get(e[2], DEFAULT_TAG_PRIORITY) > EXTENDED_TIER_MAX:
+            if TAG_PRIORITY.get(e.tag, DEFAULT_TAG_PRIORITY) > EXTENDED_TIER_MAX:
                 continue
-            if is_redundant_pair(first[0], e[0]):
+            if is_redundant_pair(first.word, e.word):
                 continue
-            if is_proper_noun(e[0], e[3], e[1]):  # a name never rescues diversity (信じる → 信濃)
+            if is_proper_noun(e.word, e.meaning, e.reading):  # a name never rescues diversity (信じる → 信濃)
                 continue
-            cand_reading = kanji_reading_in_word(kanji, e[0], e[1], furigana_map)
+            cand_reading = kanji_reading_in_word(kanji, e.word, e.reading, furigana_map)
             if cand_reading is not None and not readings_equivalent(cand_reading, first_reading):
                 alt.append(e)
         if alt:
@@ -610,22 +613,22 @@ def _log_diversity_replacement(kanji, first, first_reading, second, all_candidat
     if replace_logs is None or second is None:
         return
     top_freq_band = TAG_PRIORITY['☘️']  # 🌱/☘️ are the two most-frequent tiers
-    if TAG_PRIORITY.get(second[2], DEFAULT_TAG_PRIORITY) <= top_freq_band:
+    if TAG_PRIORITY.get(second.tag, DEFAULT_TAG_PRIORITY) <= top_freq_band:
         return
     passed_over = [
         e for e in all_candidates[1:]
-        if TAG_PRIORITY.get(e[2], DEFAULT_TAG_PRIORITY) <= top_freq_band and e[0] != second[0]
+        if TAG_PRIORITY.get(e.tag, DEFAULT_TAG_PRIORITY) <= top_freq_band and e.word != second.word
     ]
     if not passed_over:
         return
     best_passed = min(passed_over, key=second_score)
-    second_kr = kanji_reading_in_word(kanji, second[0], second[1], furigana_map)
-    passed_kr = kanji_reading_in_word(kanji, best_passed[0], best_passed[1], furigana_map)
+    second_kr = kanji_reading_in_word(kanji, second.word, second.reading, furigana_map)
+    passed_kr = kanji_reading_in_word(kanji, best_passed.word, best_passed.reading, furigana_map)
     replace_logs.append((kanji, first, first_reading, second, second_kr, best_passed, passed_kr))
 
 
 def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index, jmdict_index, furigana_map, replace_logs=None):
-    """Return up to 2 best (word, reading, tag, meaning) tuples for this kanji.
+    """Return up to 2 best Candidate(word, reading, tag, meaning) for this kanji.
 
     First slot prefers any primary (freq-ranks/textbook) candidate; existing/JMdict
     only win when the primary pool is empty, and never fill the second slot.
@@ -636,18 +639,18 @@ def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index
     if not all_candidates:
         return []
 
-    primary = [e for e in all_candidates if _is_primary_tag(e[2])]
+    primary = [e for e in all_candidates if _is_primary_tag(e.tag)]
     if not primary:
         # True last resort: one fallback word, no obscure second pad.
         return [all_candidates[0]]
 
     first = primary[0]
     # Second slot is primary-only (existing/JMdict never pad).
-    primary_pool = [first] + [e for e in primary if e[0] != first[0]]
+    primary_pool = [first] + [e for e in primary if e.word != first.word]
     if len(primary_pool) == 1:
         return [first]
 
-    first_reading = kanji_reading_in_word(kanji, first[0], first[1], furigana_map)
+    first_reading = kanji_reading_in_word(kanji, first.word, first.reading, furigana_map)
     second_score = _make_second_score(kanji, first, first_reading, furigana_map)
     second = _pick_second_word(kanji, first, first_reading, primary_pool, furigana_map, second_score)
     if second is None:
@@ -658,69 +661,34 @@ def select_vocab_for_kanji(kanji, existing_kanji_vocab, word_glosses, freq_index
     return [first, second]
 
 
-def _print_replace_logs(logs):
-    """Print aligned table of replacements: rows buffered first so columns can be padded."""
-    if not logs:
-        return
-    def cell(medal, entry, kanji_reading):
-        # word, its full reading, and 「the kanji's own reading」 — the diversity signal.
-        return f"{medal} {_fmt_tag(entry[2])} 「{kanji_reading or '?'}」 {entry[0]} ~ {entry[1] or '?'}"
-
-    rows = []
-    for kanji, first, fr, second, sr, best_passed, pr in logs:
-        c1 = cell('🥇', first, fr)
-        c2 = cell('🥈', second, sr)
-        c3 = cell('🙅', best_passed, pr)
-        rows.append((kanji, c1, c2, c3))
-
-    w1 = max(_display_width(c1) for _, c1, _, _ in rows)
-    w2 = max(_display_width(c2) for _, _, c2, _ in rows)
-
-    for i, (kanji, c1, c2, c3) in enumerate(rows, 1):
-        print(f"{i:03d}. {kanji}  →  {_pad(c1, w1 + 3)}{_pad(c2, w2 + 3)}{c3}")
-    print(f"\n  Replaced ({len(rows)}): {''.join(kanji for kanji, *_ in rows)}")
-
-
 def main():
-    # input/filtered_kanji.json is the canonical kanji set (merged_kanji minus
-    # kanji_to_remove), produced by src/build_filtered_kanji_json.py. Reading it
-    # here (instead of output/kanji_main.json) removes the dependency on a prior
-    # build and keeps this script's kanji set identical to the other algo scripts'.
-    with open(resolve_path('input/filtered_kanji.json'), encoding='utf-8') as f:
-        all_kanji = json.load(f)
-    SHIPPED.update(all_kanji)  # enable the all-shipped sample-word preference
+    # ALL_KANJI (intermediate/filtered_kanji.json) is the canonical kanji set
+    # (merged_kanji minus kanji_to_remove), produced by build_filtered_kanji_json.py
+    # and loaded once at module level together with SHIPPED — identical to the
+    # kanji set the other algo scripts use.
+    all_kanji = ALL_KANJI
+    if not all_kanji:
+        raise SystemExit(
+            "intermediate/filtered_kanji.json missing or empty — "
+            "run src/build_filtered_kanji_json.py first"
+        )
 
     with open(resolve_path('input/kanji_vocab.json'), encoding='utf-8') as f:
         existing_kanji_vocab = json.load(f)
     existing_vocab_words = set(w for words in existing_kanji_vocab.values() for w in words)
 
-    # One JMdict load feeds both the resolver (phrase-fragment detection needs it
-    # BEFORE any candidate indexing) and the fallback candidate index.
-    jmdict_data = load_json('input/scriptin-jmdict-eng.json', {})
-    global RESOLVER
-    RESOLVER = JmdictResolver(jmdict_data)
-
-    # exp POS forms — needed before indexing so is_valid_candidate can drop
-    # noun+particle+kana phrases (音がする) without banning every `exp` word.
-    JMDICT_EXP_WORDS.clear()
-    for entry in jmdict_data.get('words', []):
-        if any('exp' in s.get('partOfSpeech', []) for s in entry.get('sense', [])):
-            for form in entry.get('kanji', []):
-                t = form.get('text', '')
-                if t:
-                    JMDICT_EXP_WORDS.add(t)
+    # The resolver, the exp-word set, and the proper-noun gloss lookup all derive
+    # from JMdict and initialize themselves on first use (resolver() / jmdict_exp_words()
+    # / pn_gloss_lookup(), each memoized over the shared load_jmdict()), so nothing to
+    # wire up here. jmdict_data is still needed for the fallback candidate index.
+    jmdict_data = load_jmdict()
 
     # Primary pool: the freq-ranks corpus dataset, indexed once contains-anywhere.
-    freq_index = build_freq_candidate_index(set(all_kanji))
+    # SHIPPED is the same kanji set already frozen — no need to re-set() the list.
+    freq_index = build_freq_candidate_index(SHIPPED)
 
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
-    jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(set(all_kanji), jmdict_data)
-
-    # Resolved glosses for proper-noun detection, straight from JMdict's full gloss
-    # ("Shinano (former province ...)" is what reveals the name-ness).
-    PN_GLOSS_LOOKUP.update(
-        (w, m) for w, m in jmdict_word_meanings.items() if isinstance(m, str)
-    )
+    jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(SHIPPED, jmdict_data)
 
     # Per-kanji furigana, used to give the second word a different reading.
     furigana_map = load_json('input/jmdict-furigana-map.json', {})
@@ -736,15 +704,20 @@ def main():
         if not selected:
             continue
 
-        kanji_vocab_result[kanji] = [w for w, r, t, e in selected]
+        kanji_vocab_result[kanji] = [c.word for c in selected]
 
-        for w, r, t, e in selected:
-            selected_all.append((w, t, kanji, r if r and r != '-' else ''))
-            if w not in word_gloss:
-                g = e or jmdict_word_meanings.get(w, '')
-                word_gloss[w] = g if isinstance(g, str) else str(g)
+        for c in selected:
+            selected_all.append((c.word, c.tag, kanji, c.reading if c.reading and c.reading != '-' else ''))
+            if c.word not in word_gloss:
+                g = c.meaning or jmdict_word_meanings.get(c.word, '')
+                word_gloss[c.word] = g if isinstance(g, str) else str(g)
 
-    _print_replace_logs(replace_logs)
+    # Reporting is diagnostic-only (stdout, writes no file). Imported here (late) so
+    # the report module's top-level `import kanji_vocab_algo` sees this module fully
+    # loaded — avoids an import cycle.
+    import kanji_vocab_report as report
+
+    report.print_replace_logs(replace_logs)
 
     def write_and_report(rel_path, data):
         path = write_json(rel_path, data, indent=4)
@@ -752,244 +725,10 @@ def main():
 
     write_and_report('overrides/kanji_vocab-algo.json', kanji_vocab_result)
 
-    print_report(
+    report.print_report(
         selected_all, kanji_vocab_result, all_kanji, existing_vocab_words,
         word_gloss, furigana_map,
     )
-
-
-def _word_reading_from_map(word, furigana_map):
-    """Full-word reading from the JMdict furigana map, or None if absent."""
-    entry = furigana_map.get(word) or {}
-    return next(iter(entry), None)
-
-
-def _print_reading_diversity_stats(kanji_vocab_result, furigana_map, selected_all, word_gloss):
-    """Same-vs-different reading breakdown for the selected pairs (mirrors the
-    build-time furigana_stats summary, using the JMdict furigana map directly).
-
-    Skipped kanji (< 2 words or a missing per-kanji furigana segment) are listed
-    with tier / word / reading / gloss so gaps are easy to inspect.
-    """
-    by_kanji = {}
-    for w, t, k, r in selected_all:
-        by_kanji.setdefault(k, []).append((w, t, r))
-
-    same = rendaku_same = different = skipped = 0
-    skipped_rows = []  # (kanji, tag, word, candidate_reading)
-    for kanji, words in kanji_vocab_result.items():
-        if len(words) < 2:
-            skipped += 1
-            skipped_rows.extend((kanji, t, w, r) for w, t, r in by_kanji.get(kanji, []))
-            continue
-        r1 = kanji_reading_in_word(kanji, words[0], '', furigana_map)
-        r2 = kanji_reading_in_word(kanji, words[1], '', furigana_map)
-        if r1 is None or r2 is None:
-            skipped += 1
-            skipped_rows.extend((kanji, t, w, r) for w, t, r in by_kanji.get(kanji, []))
-            continue
-        if r1 == r2:
-            same += 1
-        elif readings_equivalent(r1, r2):
-            rendaku_same += 1
-        else:
-            different += 1
-    total = same + rendaku_same + different
-    if total == 0:
-        print("\n--- Furigana Reading Stats ---")
-        print("  No kanji with 2 sample words and furigana found.")
-        return
-    equiv_same = same + rendaku_same
-    print(f"\n--- Furigana Reading Stats ({total} kanji) ---")
-    print(f"  Same reading (exact):          {same:4d} ({same / total * 100:.1f}%)")
-    print(f"  Same reading (incl. 連濁/促音): {equiv_same:4d} ({equiv_same / total * 100:.1f}%)  [+{rendaku_same} rendaku/gemination]")
-    print(f"  Different reading:             {different:4d} ({different / total * 100:.1f}%)")
-    if skipped:
-        print(f"  Skipped (< 2 words or missing furigana): {skipped}")
-        for k, t, w, cand_r in skipped_rows:
-            reading = _word_reading_from_map(w, furigana_map) or cand_r or '?'
-            g = word_gloss.get(w, '')
-            gloss = f"  {g[:50]}" if g else ''
-            print(f"    {k} {_fmt_tag(t)} {w} ~ {reading}{gloss}")
-
-
-def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words, word_gloss, furigana_map):
-    """Print selection statistics, then detailed word groups (with gloss), then a
-    single Copy-paste kanji strings section. Read-only over the selection results —
-    it does not affect the written output files."""
-    total = len(selected_all)
-    unique = len({w for w, *_ in selected_all})
-    without_vocab = [k for k in all_kanji if k not in kanji_vocab_result]
-    with_one  = sum(1 for v in kanji_vocab_result.values() if len(v) == 1)
-    with_two  = sum(1 for v in kanji_vocab_result.values() if len(v) >= 2)
-
-    # label = display-glyph + source + plain-language meaning (the freq-ranks tiers
-    # 🌱→🦉 run most-frequent → rarest).
-    tier_labels = {
-        "🌱": "🌱  freq-ranks BASIC — most frequent (core everyday words)",
-        "☘️": "🍀  freq-ranks COMMON — very frequent",
-        "🌷": "🌷  freq-ranks FLUENT — frequent / common",
-        TEXTBOOK_TAG: "📖  textbook — from raw/kanji-textbook-words-min/",
-        "📚": "📚  freq-ranks ADVANCED — less common",
-        "🦉": "🦉  freq-ranks UNRANKED — rare",
-        "🌶️": "🌶️  freq-ranks NICHE — same tier as 🦉",
-        EXISTING_TAG: "📋  existing — current production word (fallback)",
-        JMDICT_TAG: "📕  jmdict — pulled from full JMdict (last resort)",
-    }
-    from collections import Counter
-
-    display_tag = _fmt_tag
-
-    tier_counts  = Counter(t for _, t, *_ in selected_all)
-    length_counts = Counter(len(w) for w, *_ in selected_all)
-    kanji_counts  = Counter(kanji_count(w) for w, *_ in selected_all)
-    new_words = sum(1 for w, *_ in selected_all if w not in existing_vocab_words)
-
-    print(f"\n{'─'*40}")
-    print(f"  Kanji processed:   {len(all_kanji)}")
-    print(f"  With 2 words:      {with_two}")
-    print(f"  With 1 word:       {with_one}")
-    print(f"  With 0 words:      {len(without_vocab)}")
-    print(f"  Total words:       {total}  (kanji→word assignments)")
-    print(f"  Unique words:      {unique}  ({total - unique} shared across >1 kanji)")
-
-    _print_reading_diversity_stats(kanji_vocab_result, furigana_map, selected_all, word_gloss)
-
-    print(f"\n  Source / tier breakdown")
-    for tag, label in tier_labels.items():
-        n = tier_counts.get(tag, 0)
-        print(f"    {label}: {n}  ({n/total*100:.1f}%)")
-
-    print(f"\n  Word length")
-    for l in sorted(length_counts):
-        print(f"    {l} chars: {length_counts[l]}  ({length_counts[l]/total*100:.1f}%)")
-
-    print(f"\n  Kanji per word")
-    for k in sorted(kanji_counts):
-        print(f"    {k} kanji: {kanji_counts[k]}  ({kanji_counts[k]/total*100:.1f}%)")
-    n3 = sum(n for k, n in kanji_counts.items() if k >= 3)
-    n4 = sum(n for k, n in kanji_counts.items() if k >= 4)
-    print(f"    (3+ kanji picks: {n3};  4+ kanji picks: {n4})")
-
-    # Textbook pools ({word: jlpt} per kanji), shared by the JLPT breakdown
-    # (fallback level for words freq-ranks doesn't rank) and the overlap stat.
-    tb_pool_cache = {}
-    def textbook_pool(kanji):
-        if kanji not in tb_pool_cache:
-            tb_pool_cache[kanji] = {w: j for w, _r, _e, j in load_textbook_entries(kanji)}
-        return tb_pool_cache[kanji]
-
-    # JLPT level from the word's own freq-ranks row (WORD_JLPT covers every corpus
-    # word, so textbook/existing/jmdict-tagged picks get counted too when ranked),
-    # falling back to the textbook pool's own jlpt field.
-    def jlpt_of(kanji, word):
-        jlpt = WORD_JLPT.get(word)
-        return jlpt if jlpt is not None else textbook_pool(kanji).get(word)
-
-    jlpt_counts = Counter(jlpt_of(k, w) for w, _, k, *_ in selected_all)
-    print(f"\n  JLPT level (freq-ranks jlpt_level, else the textbook's)")
-    for level in (5, 4, 3, 2, 1):
-        n = jlpt_counts.get(level, 0)
-        print(f"    N{level}: {n}  ({n/total*100:.1f}%)")
-    n = jlpt_counts.get(None, 0)
-    print(f"    no JLPT tag: {n}  ({n/total*100:.1f}%)")
-
-    # Textbook overlap: 📖-tagged words came from the textbook pool alone; count
-    # how many words tagged from another source ALSO sit in their kanji's pool.
-    overlap_counts = Counter(
-        t for w, t, k, *_ in selected_all
-        if t != TEXTBOOK_TAG and w in textbook_pool(k)
-    )
-    n_overlap = sum(overlap_counts.values())
-    print(f"\n  Textbook overlap")
-    print(f"    tagged 📖 (textbook was the best source): {tier_counts.get(TEXTBOOK_TAG, 0)}")
-    print(f"    tagged from another source but ALSO in the textbook pool: "
-          f"{n_overlap}  ({n_overlap/total*100:.1f}%)")
-    for t, n in overlap_counts.most_common():
-        print(f"      {display_tag(t)} {n}  ({n/total*100:.1f}%)")
-
-    print(f"\n  Not in input/kanji_vocab.json: {new_words}/{total}  ({new_words/total*100:.1f}%)")
-    print(f"{'─'*40}")
-
-    def sort_key(item):
-        w, t, *_ = item
-        return (TAG_PRIORITY.get(t, DEFAULT_TAG_PRIORITY), len(w), w)
-
-    def kanji_str(items):
-        return ''.join(k for _, _, k, *_ in sorted(items, key=sort_key))
-
-    def print_word_group(title, items):
-        """Per-row detail with english gloss. Copy-paste kanji strings go in the
-        bottom section so all inspectable sequences sit together."""
-        if not items:
-            return
-        items = sorted(items, key=sort_key)
-        print(f"\n  {title} ({len(items)}):")
-        for w, t, k, *_ in items:
-            g = word_gloss.get(w, '')
-            gloss = f"  {g[:50]}" if g else ''
-            print(f"    {k} {display_tag(t)} {w}{gloss}")
-
-    def print_nonshipped_group(items):
-        # Picks whose word drags in a kanji we don't ship: target kanji, the
-        # unshipped kanji(s), source tag, word, gloss — so a bad pull-in can be
-        # spotted and pinned. Tolerated by design (see has_nonshipped_kanji), but
-        # worth eyeballing for proper nouns that slipped through (嵯峨野線, 珊瑚海).
-        if not items:
-            return
-        items = sorted(items, key=sort_key)
-        print(f"\n  Non-shipped-kanji words ({len(items)}):")
-        for w, t, k, *_ in items:
-            unshipped = ''.join(c for c in w if is_kanji_char(c) and c not in SHIPPED)
-            g = word_gloss.get(w, '')
-            print(f"    {k} [{unshipped}] {display_tag(t)} {w}  {g[:50]}")
-
-    one_word_kanji = {k for k, v in kanji_vocab_result.items() if len(v) == 1}
-    one_word_items = [i for i in selected_all if i[2] in one_word_kanji]
-    advanced_items = [i for i in selected_all if i[1] == '📚']
-    unranked_items = [i for i in selected_all if i[1] == '🦉']
-    three_kanji_items = [i for i in selected_all if kanji_count(i[0]) == 3]
-    four_plus_items = [i for i in selected_all if kanji_count(i[0]) >= 4]
-    five_char_items = [i for i in selected_all if len(i[0]) == 5]
-    nonshipped_items = [i for i in selected_all if has_nonshipped_kanji(i[0])]
-    four_kanji_items = [i for i in selected_all if kanji_count(i[0]) == 4]
-    five_kanji_items = [i for i in selected_all if kanji_count(i[0]) == 5]
-    niche_items = [i for i in selected_all if i[1] == '🌶️']
-    existing_items = [i for i in selected_all if i[1] == EXISTING_TAG]
-    jmdict_items = [i for i in selected_all if i[1] == JMDICT_TAG]
-
-    # Detailed word lists (with gloss) — no trailing kanji strings here.
-    print_word_group("With 1 word", one_word_items)
-    print_word_group("🦉  UNRANKED words", unranked_items)
-    print_word_group("4+ kanji words", four_plus_items)
-    print_word_group("5-char words", five_char_items)
-    print_nonshipped_group(nonshipped_items)
-
-    # All copy-pasteable kanji sequences in one place (assignment targets, ordered
-    # by sort_key so the string matches the detailed groups above when present).
-    print(f"\n  Copy-paste kanji strings")
-    copy_groups = [
-        ("With 1 word", one_word_items),
-        ("With 0 words", None),  # handled specially below
-        ("📚  ADVANCED", advanced_items),
-        ("🦉  UNRANKED", unranked_items),
-        ("3-kanji words", three_kanji_items),
-        ("4-kanji words", four_kanji_items),
-        ("5-kanji words", five_kanji_items),
-        ("5-char words", five_char_items),
-        ("Non-shipped-kanji", nonshipped_items),
-        ("🌶️  NICHE", niche_items),
-        ("📋  existing", existing_items),
-        ("📕  jmdict", jmdict_items),
-    ]
-    for title, items in copy_groups:
-        if title == "With 0 words":
-            if without_vocab:
-                print(f"    {title} ({len(without_vocab)}): {''.join(sorted(without_vocab))}")
-            continue
-        if not items:
-            continue
-        print(f"    {title} ({len(items)}): {kanji_str(items)}")
 
 
 if __name__ == '__main__':

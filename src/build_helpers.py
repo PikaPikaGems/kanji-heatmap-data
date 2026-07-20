@@ -1,12 +1,13 @@
 """Importable, side-effect-free helpers for the output build.
 
-kanji_build_output_jsons.py runs the whole build at import time, so its logic
-couldn't be reused or unit-tested in isolation. These two functions live here
-instead — pure(ish) and parameterised, so they can be imported and tested
-without triggering a full build.
+These functions (sample-word selection by source priority, and the furigana
+reading-diversity stats) are pure(ish) and parameterised, kept out of
+kanji_build_output_jsons.py so they can be imported and reused without running a
+full build.
 """
 
 import kanji_extract
+import constants as const
 from japanese import reading_of_kanji_in_segments, readings_equivalent
 
 
@@ -46,7 +47,8 @@ def furigana_stats(kanji_extended, kanji_data, vocab_furigana):
     """Print how often a kanji's two sample words use the same vs different
     readings (on/kun classified via kanji_extract). Diagnostic only.
 
-    kanji_extended: {kanji: [...]} reformatted extended info (words at index 9).
+    kanji_extended: {kanji: [...]} reformatted extended info (sample words at
+                    const.kanji_extended_words_index).
     kanji_data:     full per-kanji info, for on/kun reading lookups.
     vocab_furigana: {word: [[span, reading], ...]} furigana breakdowns.
     """
@@ -77,7 +79,7 @@ def furigana_stats(kanji_extended, kanji_data, vocab_furigana):
     same = rendaku_same = different_both_on = different_both_kun = different_mixed = different_unknown = skipped = 0
 
     for kanji, extended in kanji_extended.items():
-        words = extended[9]
+        words = extended[const.kanji_extended_words_index]
         if len(words) < 2:
             skipped += 1
             continue

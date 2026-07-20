@@ -4,13 +4,14 @@ import sys
 from pathlib import Path
 from typing import Any
 import utils
+import constants as const
 
 
 def find_kanji_with_missing_vocab(kanji_extended: dict[str, list[Any]]):
     no_vocab = []
     one_vocab = []
     for kanji, info in kanji_extended.items():
-        vocab_list = info[9]
+        vocab_list = info[const.kanji_extended_words_index]
         if not vocab_list:
             no_vocab.append(kanji)
             print(f"{kanji}: none")
