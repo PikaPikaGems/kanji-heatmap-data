@@ -96,6 +96,7 @@ Run from the project root: python3 src/kanji_vocab_algo.py
 """
 
 import csv
+import functools
 import glob
 import json
 from typing import NamedTuple
@@ -230,24 +231,44 @@ def has_particle_before_kana(word):
 ALL_KANJI = load_json('intermediate/filtered_kanji.json', [])
 SHIPPED = frozenset(ALL_KANJI)
 
-# JmdictResolver over the same loaded JMdict as the candidate index; populated in
-# main(). is_valid_candidate uses it to reject phrase fragments (この人, 今も).
-RESOLVER = None
-
-# Kanji forms whose JMdict entry carries partOfSpeech `exp`; populated in main()
-# from the same JMdict load. Used with has_particle_before_kana to drop true
-# phrases (音がする) without banning keepers tagged exp alone (挨拶, 女の子).
-JMDICT_EXP_WORDS = set()
-
 # {word: jlpt_level (5..1)} for every freq-ranks row that carries one; populated
 # by build_freq_candidate_index. Used for the report's JLPT breakdown and for the
 # second-word reading-diversity JLPT unlock.
 WORD_JLPT = {}
 
 
+# The JmdictResolver and the `exp`-tagged word set both derive from JMdict (the
+# ~100MB dictionary), so they are built lazily on first use — importing this module
+# must stay cheap (the final build imports it just to borrow a function). Memoized so
+# the first caller pays the cost and every later call is a dict lookup; the shared
+# JMdict itself is already memoized in sources.load_jmdict. Being self-initializing,
+# there is no "not populated yet" state to guard against (the old RESOLVER-is-None /
+# empty-set checks silently skipped their filters when main() hadn't run).
+@functools.lru_cache(maxsize=1)
+def resolver():
+    """The JmdictResolver, built once over the shared JMdict. is_valid_candidate uses
+    it to reject phrase fragments (この人, 今も)."""
+    return JmdictResolver(load_jmdict())
+
+
+@functools.lru_cache(maxsize=1)
+def jmdict_exp_words():
+    """Kanji forms whose JMdict entry carries partOfSpeech `exp`. Paired with
+    has_particle_before_kana to drop true phrases (音がする) without banning keepers
+    tagged exp alone (挨拶, 女の子)."""
+    words = set()
+    for entry in load_jmdict().get('words', []):
+        if any('exp' in s.get('partOfSpeech', []) for s in entry.get('sense', [])):
+            for form in entry.get('kanji', []):
+                t = form.get('text', '')
+                if t:
+                    words.add(t)
+    return frozenset(words)
+
+
 def is_exp_particle_phrase(word):
     """JMdict expression shaped as noun + が/を/に + kana verb (音がする, ご覧になる)."""
-    return word in JMDICT_EXP_WORDS and has_particle_before_kana(word)
+    return word in jmdict_exp_words() and has_particle_before_kana(word)
 
 
 def has_nonshipped_kanji(word):
@@ -276,11 +297,25 @@ PROPER_NOUN_GLOSS_FRAGMENTS = (
 # parenthesised forms above only catch entries where the country is an annotation
 # on a foreign place name ("Busan (South Korea)").
 
-# Resolved gloss per word for proper-noun detection; populated in main(). Needed
-# because v3/textbook candidate entries often carry a bare gloss ("Shinano") while
-# the dictionaries' richer one ("Shinano (former province ...)") is what reveals
-# the name-ness. Module-level for word_score's sake, like SHIPPED above.
-PN_GLOSS_LOOKUP = {}
+# Resolved gloss per word for proper-noun detection. Needed because textbook/freq
+# candidate entries often carry a bare gloss ("Shinano") while the dictionary's
+# richer one ("Shinano (former province ...)") is what reveals the name-ness. Built
+# lazily on first use (same first-wins appliesToKanji-aware gloss per form as
+# build_jmdict_candidate_index's word_meaning) and memoized, so is_proper_noun —
+# called deep in word_score — can read it without a global filled in main().
+@functools.lru_cache(maxsize=1)
+def pn_gloss_lookup():
+    glosses = {}
+    for entry in load_jmdict().get('words', []):
+        if jmdict_entry_gloss(entry) is None:
+            continue
+        for form in entry.get('kanji', []) + entry.get('kana', []):
+            t = form.get('text', '')
+            if t and t not in glosses:
+                meaning = jmdict_entry_gloss(entry, t)
+                if meaning:
+                    glosses[t] = meaning
+    return glosses
 
 
 def is_proper_noun(word, e="", r=""):
@@ -291,7 +326,7 @@ def is_proper_noun(word, e="", r=""):
     which marks foreign place names. Heuristic by necessity — JMdict has no
     reliable tag for these (北京/奈良 are tagged plain 'n').
     """
-    for gloss in (e, PN_GLOSS_LOOKUP.get(word)):
+    for gloss in (e, pn_gloss_lookup().get(word)):
         if gloss and any(frag in gloss for frag in PROPER_NOUN_GLOSS_FRAGMENTS):
             return 1
     if (
@@ -341,7 +376,7 @@ def is_valid_candidate(word, kanji):
         return False
     if is_exp_particle_phrase(word):
         return False
-    if RESOLVER is not None and RESOLVER.is_phrase_fragment(word):
+    if resolver().is_phrase_fragment(word):
         return False
     return kanji in word
 
@@ -641,21 +676,11 @@ def main():
         existing_kanji_vocab = json.load(f)
     existing_vocab_words = set(w for words in existing_kanji_vocab.values() for w in words)
 
-    # One JMdict load feeds both the resolver (phrase-fragment detection needs it
-    # BEFORE any candidate indexing) and the fallback candidate index.
+    # The resolver, the exp-word set, and the proper-noun gloss lookup all derive
+    # from JMdict and initialize themselves on first use (resolver() / jmdict_exp_words()
+    # / pn_gloss_lookup(), each memoized over the shared load_jmdict()), so nothing to
+    # wire up here. jmdict_data is still needed for the fallback candidate index.
     jmdict_data = load_jmdict()
-    global RESOLVER
-    RESOLVER = JmdictResolver(jmdict_data)
-
-    # exp POS forms — needed before indexing so is_valid_candidate can drop
-    # noun+particle+kana phrases (音がする) without banning every `exp` word.
-    JMDICT_EXP_WORDS.clear()
-    for entry in jmdict_data.get('words', []):
-        if any('exp' in s.get('partOfSpeech', []) for s in entry.get('sense', [])):
-            for form in entry.get('kanji', []):
-                t = form.get('text', '')
-                if t:
-                    JMDICT_EXP_WORDS.add(t)
 
     # Primary pool: the freq-ranks corpus dataset, indexed once contains-anywhere.
     # SHIPPED is the same kanji set already frozen — no need to re-set() the list.
@@ -663,12 +688,6 @@ def main():
 
     # Full JMdict, indexed once as a last-resort candidate source for rare kanji.
     jmdict_index, jmdict_word_meanings = build_jmdict_candidate_index(SHIPPED, jmdict_data)
-
-    # Resolved glosses for proper-noun detection, straight from JMdict's full gloss
-    # ("Shinano (former province ...)" is what reveals the name-ness).
-    PN_GLOSS_LOOKUP.update(
-        (w, m) for w, m in jmdict_word_meanings.items() if isinstance(m, str)
-    )
 
     # Per-kanji furigana, used to give the second word a different reading.
     furigana_map = load_json('input/jmdict-furigana-map.json', {})
