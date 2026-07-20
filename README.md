@@ -45,9 +45,16 @@ tar -xzf ./input/jmdict-furigana-map.json.tar.gz -C ./input/
 Download and prepare the Simplified JMdict JSON file from [Jmdict Simplified][jmdict-simplified]
 
 ```
+# if all words
+
 curl --output-dir input -OL https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1%2B20250324123350/jmdict-eng-3.6.1+20250324123350.json.tgz
 tar -xzf ./input/jmdict-eng-3.6.1+20250324123350.json.tgz -C ./input/
 mv input/jmdict-eng-3.6.1.json input/scriptin-jmdict-eng.json
+
+# If common words only
+curl --output-dir input -OL https://github.com/scriptin/jmdict-simplified/releases/download/3.6.1%2B20250324123350/jmdict-eng-common-3.6.1+20250324123350.json.tgz
+tar -xzf ./input/jmdict-eng-common-3.6.1+20250324123350.json.tgz -C ./input/
+mv input/jmdict-eng-common-3.6.1.json input/scriptin-jmdict-eng.json
 ```
 
 Remove the files which you don't need anymore, to reduce clutter
@@ -182,7 +189,7 @@ The input data comes from:
 2. [Kanji Data Releases][pika-data] and [JMdict Furigana Map][pika-furi],
    both under [CC BY-SA 4.0][cc-by-sa-4].
 3. [Jiten Frequency](https://jiten.moe/other), [JPDB Frequency](https://github.com/Kuuuube/yomitan-dictionaries/blob/main/data/jpdbv2_kanji_frequency_2026-02-09.csv), [KKLC Order](https://github.com/vadasambar/kanji_order/blob/master/final_order.txt)
-4. Kanji structure data used to generate similarity search can be found on /raw/structure-info/SOURCES.md.
+4. Kanji structure data on /raw/structure-info/SOURCES.md
 5. Similar-kanji neighbors are built primarily from [Kanjistat][kanjistat] optimal-transport distances (`raw/similarity/dkanjistat.json` via [kanjidist-visualiser][kanjidist-visualiser]); Yencken's [kanji-confusion][yencken-kanji-confusion] CSVs remain under `/raw/similarity/` for reference (see that folder's README).
 
 ### JMdict and JMnedict
