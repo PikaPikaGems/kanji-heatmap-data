@@ -5,9 +5,10 @@ without ~300 lines of terminal-formatting interleaved. Everything here is
 read-only over the selection results; kanji_vocab_algo.main calls print_replace_logs
 and print_report after it has written overrides/kanji_vocab-algo.json.
 
-The selection state this needs (the SHIPPED set, WORD_JLPT map, tag priorities,
-per-kanji reading lookup) still lives on kanji_vocab_algo and is read through the
-`kv` alias below — by the time main() imports this module those are populated.
+Some selection state this needs (the SHIPPED constant, tag priorities, per-kanji
+reading lookup) is read through the `kv` alias below; the word→JLPT map is passed
+in to print_report as `word_jlpt` (it's built during selection, so it's threaded
+explicitly rather than reached for as a global).
 """
 
 import unicodedata
@@ -140,7 +141,7 @@ def _print_reading_diversity_stats(kanji_vocab_result, furigana_map, selected_al
             print(f"    {k} {fmt_tag(t)} {w} ~ {reading}{gloss}")
 
 
-def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words, word_gloss, furigana_map):
+def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_words, word_gloss, furigana_map, word_jlpt):
     """Print selection statistics, then detailed word groups (with gloss), then a
     single Copy-paste kanji strings section. Read-only over the selection results —
     it does not affect the written output files."""
@@ -205,11 +206,11 @@ def print_report(selected_all, kanji_vocab_result, all_kanji, existing_vocab_wor
             tb_pool_cache[kanji] = {w: j for w, _r, _e, j in load_textbook_entries(kanji)}
         return tb_pool_cache[kanji]
 
-    # JLPT level from the word's own freq-ranks row (WORD_JLPT covers every corpus
+    # JLPT level from the word's own freq-ranks row (word_jlpt covers every corpus
     # word, so textbook/existing/jmdict-tagged picks get counted too when ranked),
     # falling back to the textbook pool's own jlpt field.
     def jlpt_of(kanji, word):
-        jlpt = kv.WORD_JLPT.get(word)
+        jlpt = word_jlpt.get(word)
         return jlpt if jlpt is not None else textbook_pool(kanji).get(word)
 
     jlpt_counts = Counter(jlpt_of(k, w) for w, _, k, *_ in selected_all)
