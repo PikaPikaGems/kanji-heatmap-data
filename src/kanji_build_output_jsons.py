@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import sys
+
 import kanji_extract
 import kanji_load
 import japanese
@@ -49,10 +51,29 @@ def assert_unique_keywords(kanji_main):
             keyword_to_kanjis.setdefault(keyword, []).append(kanji)
     duplicates = {kw: ks for kw, ks in keyword_to_kanjis.items() if len(ks) > 1}
     if duplicates:
+        report = [
+            "",
+            "=" * 72,
+            "DUPLICATE KANJI KEYWORDS",
+            "=" * 72,
+            "Each keyword must map to exactly one kanji.",
+            "Fix these clashes in overrides/keywords.json:",
+            "",
+        ]
+        for keyword, kanjis in sorted(duplicates.items()):
+            report.append(f"  Keyword: {keyword!r}")
+            report.append(f"  Kanji ({len(kanjis)}): {', '.join(kanjis)}")
+            report.append("")
+        report.extend(
+            [
+                f"Found {len(duplicates)} duplicate keyword(s).",
+                "=" * 72,
+                "",
+            ]
+        )
+        print("\n".join(report), file=sys.stderr, flush=True)
         raise ValueError(
-            "Duplicate kanji keywords — each keyword must map to exactly one kanji "
-            "(fix the clash in overrides/keywords.json): "
-            + ", ".join(f"{kw!r} → {''.join(ks)}" for kw, ks in duplicates.items())
+            f"Found {len(duplicates)} duplicate kanji keyword(s); see report above."
         )
 
 
