@@ -12,7 +12,7 @@ python --version
 ```
 
 ### Overrides
-
+https://github.com/PikaPikaGems/kanji-heatmap/
 Edit the following files to specify the values you want to override:
 
 ```
@@ -81,14 +81,6 @@ scriptin-jmdict-eng.json # From: Jmdict Simplified
 vocab_furigana.json      # legacy, no longer read (furigana comes from jmdict-furigana-map)
 vocab_meaning.json       # legacy, no longer read (meanings come from scriptin-jmdict-eng.json)
 ```
-
-Note: Some scripts rely folders or files such as  `./raw/kanji-textbook-words/*.json` (`kanji-text-book-words-min/`) and `./raw/kanji-words/v3/*.json` (`v3b/`) .
-These files come from the repos which may or may not be public as of writing:
-- https://github.com/PikaPikaGems/textbook-japanese-words
-- https://github.com/PikaPikaGems/japanese-word-ranks/
-- https://github.com/PikaPikaGems/japanese-word-frequency-archive
-- https://github.com/PikaPikaGems/jp-word-ranks-data
-
 
 ### Transform Data
 
