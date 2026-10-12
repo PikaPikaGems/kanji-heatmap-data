@@ -42,6 +42,7 @@ run_to logs/study-words-algo-log.txt python3 src/japanese_study_words_algo.py
 run_to logs/sample-vocabs-algo.txt python3 src/kanji_vocab_algo.py
 run python3 src/keywords_algo.py
 run python3 src/build_similar_kanji.py
+run python3 src/similar_kanji_stats.py
 run python3 src/kanji_build_output_jsons.py
 
 cp ./intermediate/filtered_kanji.json ./output/filtered_kanji.json
