@@ -11,6 +11,8 @@ python --version
 # Python 3.13.2
 ```
 
+The one exception is `src/build_glyph_neighbors.py`, which is not part of `generate.sh`. It needs numpy, scipy, pillow and the Noto Sans JP font, and its output (`raw/similarity/glyph-neighbors.json`) is committed. Rerun it only when the shipped kanji set changes; `build_similar_kanji.py` stops with a message if it's out of date. See the script's header.
+
 ### Overrides
 https://github.com/PikaPikaGems/kanji-heatmap/
 Edit the following files to specify the values you want to override:
@@ -182,7 +184,7 @@ The input data comes from:
    both under [CC BY-SA 4.0][cc-by-sa-4].
 3. [Jiten Frequency](https://jiten.moe/other), [JPDB Frequency](https://github.com/Kuuuube/yomitan-dictionaries/blob/main/data/jpdbv2_kanji_frequency_2026-02-09.csv), [KKLC Order](https://github.com/vadasambar/kanji_order/blob/master/final_order.txt)
 4. Kanji structure data on /raw/structure-info/SOURCES.md
-5. Similar-kanji neighbors are built primarily from [Kanjistat][kanjistat] optimal-transport distances (`raw/similarity/dkanjistat.json` via [kanjidist-visualiser][kanjidist-visualiser]); Yencken's [kanji-confusion][yencken-kanji-confusion] CSVs remain under `/raw/similarity/` for reference (see that folder's README).
+5. Similar kanji combine Yencken's human-judged [kanji-confusion][yencken-kanji-confusion] pairs and stroke edit distance, [Kanjistat][kanjistat] optimal-transport distances (`raw/similarity/dkanjistat.json` via [kanjidist-visualiser][kanjidist-visualiser]), kanji that share a sound part (kanjium, see `/raw/structure-info/SOURCES.md`), and our own glyph distances rendered with [Noto Sans JP][noto-sans-jp] (SIL Open Font License). See `/raw/similarity/README.md`.
 
 ### JMdict and JMnedict
 
@@ -199,5 +201,6 @@ All derived files are distributed under the same license, as the original licens
 [jmdict-edict]: https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project
 [yencken-kanji-confusion]: https://lars.yencken.org/datasets/kanji-confusion/
 [kanjistat]: https://github.com/dschuhmacher/kanjistat
+[noto-sans-jp]: https://fonts.google.com/noto/specimen/Noto+Sans+JP
 [kanjidist-visualiser]: https://github.com/lennart-finke/kanjidist-visualiser
 [jmdict-simplified]: https://github.com/scriptin/jmdict-simplified
