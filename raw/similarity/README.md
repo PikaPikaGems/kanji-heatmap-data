@@ -1,7 +1,7 @@
 # Similarity Data 1
 From: https://lars.yencken.org/datasets/kanji-confusion/
 
-Kept for reference / evaluation. The live build (`src/build_similar_kanji.py`) no longer merges these CSVs; see Similarity Data 2 below.
+`src/build_similar_kanji.py` puts the `flashcards.csv` pairs first and uses `jyouyou__strokeEditDistance.csv` as one of its four ranked measures. `poolexp_judgements.yaml` isn't an input; the build prints how often our top pick matches the participant's. The weights were chosen by comparing a few settings against it, so that number is somewhat optimistic. `jyouyou__yehAndLiRadical.csv` is kept for reference only.
 
 ```
 Yencken, Lars (2010) Orthographic support for passing the reading hurdle in Japanese. PhD Thesis, University of Melbourne, Melbourne, Australia
@@ -46,10 +46,16 @@ Each line begins with the “pivot” kanji which is the basis for comparison. I
 衛 偉 0.75 衝 0.625 違 0.625 街 0.5625 停 0.5625 程 0.5625 ...
 ```
 
-# Similarity Data 2 (primary build input)
+# Similarity Data 2
 
-`dkanjistat.json` — Kanjistat hierarchical optimal-transport distances (lower = more similar). This is the primary source used by `src/build_similar_kanji.py` for shipped kanji it covers (~2134 of 2426), gated by a distance ceiling and stroke-count delta.
+`dkanjistat.json` — Kanjistat hierarchical optimal-transport distances (lower = more similar). One of the four ranked measures in `src/build_similar_kanji.py`. Covers the jōyō kanji only (~2134 of our 2426), about 20 neighbors each.
 
 - https://github.com/lennart-finke/kanjidist-visualiser/blob/master/data/dkanjistat.json
 - https://github.com/lennart-finke/kanjidist-visualiser/tree/master/data
 - Package / method: https://github.com/dschuhmacher/kanjistat
+
+# Similarity Data 3
+
+`glyph-neighbors.json` — our own glyph distances, built by `src/build_glyph_neighbors.py` (not part of `generate.sh`; needs numpy, scipy, pillow). Every shipped kanji is rendered in [Noto Sans JP](https://fonts.google.com/noto/specimen/Noto+Sans+JP) Regular at 64px, and each pair is compared by chamfer distance (mean px from one glyph's ink to the other's nearest ink, the larger of the two directions). Lower = more alike; top 50 neighbors per kanji. It covers all shipped kanji, so it (with sound parts) is the main measure for non-jōyō kanji, and it catches whole-shape lookalikes such as 午 牛, 人 入, 未 末. `nearest_unshipped` also lists up to 10 kanji from `raw/structure-info/kanjidict.txt` that we don't ship (within 0.6 px); the build lets up to 3 of them per kanji compete with the shipped kanji, ranked by the same score, when they are within 0.35 px, however rare (栗 粟, 撤 撒, 錬 鍊, 黒 黑). Rerun it when the shipped kanji set changes.
+
+`src/similar_kanji_stats.py` (run by `generate.sh`) prints how many kanji have unshipped lookalikes, how many distinct unshipped kanji appear, and where they land in the lists.
