@@ -38,9 +38,11 @@ Order of each list:
      Each measure is made symmetric first (a pair counts if either kanji lists
      the other), so a lookalike seen from one side shows up on both.
 
-The weights were tuned against raw/similarity/poolexp_judgements.yaml (native
-speakers picking the most confusable kanji from a pool), which is kept out of
-the inputs so it stays a fair check. The stats at the end report it.
+The stats at the end report how often our top pick matches
+raw/similarity/poolexp_judgements.yaml (native speakers picking the most
+confusable kanji from a pool). The file isn't an input, but the weights were
+chosen by comparing a few settings against it, so the number is somewhat
+optimistic (52.7% in October 2026; the old lists scored 39%).
 
 Non-jōyō kanji are ranked by the glyph and sound-part measures only, since
 the other two cover jōyō kanji only (dkanjistat does include official forms

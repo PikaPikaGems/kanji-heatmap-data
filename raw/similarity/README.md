@@ -1,7 +1,7 @@
 # Similarity Data 1
 From: https://lars.yencken.org/datasets/kanji-confusion/
 
-`src/build_similar_kanji.py` puts the `flashcards.csv` pairs first and uses `jyouyou__strokeEditDistance.csv` as one of its four ranked measures. `poolexp_judgements.yaml` is kept out of the inputs and used only to check the result (the build prints how often our top pick matches the participant's). `jyouyou__yehAndLiRadical.csv` is kept for reference only.
+`src/build_similar_kanji.py` puts the `flashcards.csv` pairs first and uses `jyouyou__strokeEditDistance.csv` as one of its four ranked measures. `poolexp_judgements.yaml` isn't an input; the build prints how often our top pick matches the participant's. The weights were chosen by comparing a few settings against it, so that number is somewhat optimistic. `jyouyou__yehAndLiRadical.csv` is kept for reference only.
 
 ```
 Yencken, Lars (2010) Orthographic support for passing the reading hurdle in Japanese. PhD Thesis, University of Melbourne, Melbourne, Australia
